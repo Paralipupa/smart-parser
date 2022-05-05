@@ -1,13 +1,15 @@
 import configparser 
-
+import sys
 from report_pu import ReportPU
-FILE_NAME="documents/отчёт по приборам учёта декабрь 2021.xls"
+from gisconfig import GisConfig
+
 if __name__ == "__main__":
-    config = configparser.ConfigParser()  
-    config.read("settings.ini")  
-    rep = ReportPU()
-    rep.set_condition_range(config["Отчет по ИПУ"]["condition_range"])
-    rep.set_columns_def(config["Отчет по ИПУ"]["columns_def"].split('|'))
-    if rep.read(filename = FILE_NAME, inn = "000000000"):
-        print(rep._documents[0])
+    file_name="documents/отчёт по приборам учёта декабрь 2021.xls"
+    inn = '0000000000'
+    if len (sys.argv) > 1:  file_name = sys.argv[1]
+    if len (sys.argv) > 2:  inn = sys.argv[2]
+
+    rep = ReportPU("gisconfig.ini")
+    if rep.is_init() and rep.read(filename = file_name, inn = inn):
+        print(rep._documents[-1])
 
