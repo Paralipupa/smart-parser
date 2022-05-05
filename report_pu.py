@@ -1,5 +1,5 @@
 from typing import NoReturn
-from excel_base_importer import ExcelBaseImporter 
+from excel_base_importer import ExcelBaseImporter
 
 
 class ReportPU(ExcelBaseImporter):
@@ -16,7 +16,8 @@ class ReportPU(ExcelBaseImporter):
             document = self._documents[-2]
         else:
             return
-        
-        
 
-        
+
+
+
+
