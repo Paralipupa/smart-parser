@@ -37,7 +37,7 @@ class GisConfig:
         self._documents:list[dict] = [] #список документов (настроек)
         self._parameters = dict()
 
-        self._set_parameter_period()
+        self._set_parameters()
 
         num_cols = int(self._config['main']['columns_count'])
         self._columns_heading = [self._config[f'col_{i}']['pattern'] for i in range(num_cols)]
@@ -53,7 +53,8 @@ class GisConfig:
 
     
     @check_error
-    def _set_parameter_period(self):
+    def _set_parameters(self):
+        self._parameters['path'] = self._config['parameters']['path']
         count = int(self._config['parameters']['count'])
         for i in range(count):
             self._parameters[self._config[f'param_{i}']['name']] = {
@@ -87,13 +88,15 @@ class GisConfig:
             attr = dict()
             attr['name'] = self._config[f'{doc["name"]}_{i}']['name'] #имя аттрибута
             attr['pattern'] =  self._config[f'{doc["name"]}_{i}']['pattern'] #шаблон поиска (регулярное выражение)
-            attr['column'] =  self._get_range(self._config[f'{doc["name"]}_{i}']['column']) #колонка для поиска данных аттрибут
-            attr['row'] =  self._get_range(self._config[f'{doc["name"]}_{i}']['row']) #запись (в области) для поиска данных атрибутта
+            attr['column'] =  self._get_range(self._config[f'{doc["name"]}_{i}']['col_config']) #колонка для поиска данных аттрибут
+            attr['row'] =  self._get_range(self._config[f'{doc["name"]}_{i}']['row_data']) #запись (в области) для поиска данных атрибутта
             doc['attributes'].append(attr)
         self._documents.append(doc)
 
     @check_error
     def _get_range(self, x:str) -> list:
+        if x == "*":
+            return x
         return [ int(i) for i in x.split(',')]
 
 

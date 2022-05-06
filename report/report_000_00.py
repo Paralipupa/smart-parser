@@ -2,14 +2,16 @@ from typing import NoReturn
 from module.excel_base_importer import ExcelBaseImporter
 import re
 
-
-class ReportPU(ExcelBaseImporter):
+##
+##   Отчет по индивидуальным приборам учета
+##
+class Report_000_00(ExcelBaseImporter):
 
     def __init__(self, file_name:str, inn:str, config_file:str) -> NoReturn:
         super().__init__(file_name, inn, config_file)
 
-    def process_record(self, team : dict):
-        for item_doc in self._config._documents:            
+    def process_record(self, team : dict) -> NoReturn:
+        for item_doc in self._config._documents:
             doc = dict()
             for item_attr  in item_doc['attributes']:
                 doc.setdefault(item_attr['name'], list())

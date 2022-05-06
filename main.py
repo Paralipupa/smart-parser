@@ -1,6 +1,6 @@
 import configparser
 import sys
-from report.report_pu import ReportPU
+from report.report_001_00 import Report_001_00
 from module.gisconfig import GisConfig
 
 if __name__ == "__main__":
@@ -12,7 +12,7 @@ if __name__ == "__main__":
     inn = sys.argv[2]
     file_config = sys.argv[3]
 
-    rep = ReportPU(file_name=file_name, inn=inn, config_file=file_config)
+    rep = Report_001_00(file_name=file_name, inn=inn, config_file=file_config)
     if rep.read():
-        rep.write()
+        rep.write_test()
 

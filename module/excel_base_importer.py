@@ -13,7 +13,6 @@ import pickle
 class ExcelBaseImporter:
 
     def __init__(self, file_name:str, inn:str, config_file:str):
-        self._is_new_team = False
         self._team = list()        #список областей с данными
         self._headers = list()     #список  записей до табличных данных
         self._names = dict()       #заголовки таблиц
@@ -64,11 +63,11 @@ class ExcelBaseImporter:
         self.done()
         return True
 
-    def write(self):
+    def write_test(self) -> NoReturn:
         if not self.is_init():
             return False
 
-        path = 'output'
+        path = self._config._parameters['path']
         os.makedirs(path,exist_ok=True)
         for name, records in self._collections.items():
             with open(f'{path}/{name}.csv', 'w') as file:
@@ -87,9 +86,7 @@ class ExcelBaseImporter:
                         for val in values:
                             file.write(f'{val} ')
                         file.write(f'],\n')
-                    file.write(f'}},\n')
-
-                                            
+                    file.write(f'}},\n')                                            
 
     def done(self):
         pass
@@ -131,7 +128,7 @@ class ExcelBaseImporter:
             return True
         return False
 
-    # Проверка на наличие 'якоря' (текста смещенного относительно позиции текущей ячейки)
+    # Проверка на наличие 'якоря' (текста, смещенного относительно позиции текущей ячейки)
     def check_columns_offset(self, key:str, index:int) -> bool:
         dic = self.get_columns_heading_offset(key)
         if dic and dic['text']:
@@ -143,7 +140,6 @@ class ExcelBaseImporter:
             return False, key
         return True, key
 
-
     def check_column_duplicates(self, file_name:str, names:list):
         dups = list([item for item, count in collections.Counter(names.values()).items() if count > 1])
         if len(dups) > 0:
@@ -152,27 +148,30 @@ class ExcelBaseImporter:
 
     def append_team(self, mapped_record:list) -> bool:
         match = re.search(self.get_condition_team(), mapped_record[self.get_condition_column()][0])
-        if match or len(self._team) == 0:
+        if match: # or len(self._team) == 0:
             self._team.append(mapped_record)
             return True
-        else:
-            self._is_new_team = False
+        elif len(self._team) != 0:
             for key, value in mapped_record.items():
                 self._team[-1][key].append(value[0])
             return False
 
-    def _set_parameters(self):
+    def _set_parameters(self) -> NoReturn:
         rows = self._config._parameters['period']['row']
         cols = self._config._parameters['period']['col']
-        pattern = self._config._parameters['period']['pattern']
+        pattern:str = self._config._parameters['period']['pattern']
         self._parameters.setdefault('period',list())
-        for row, col in product(rows,cols):           
-            result = re.findall(pattern, self._headers[row][col])
-            if result:
-                for item in result:
-                    self._parameters['period'].append(item)
+        if pattern:
+            if pattern[0] == '@':
+                self._parameters['period'].append(pattern[1:])
+            else:
+                for row, col in product(rows,cols):           
+                    result = re.findall(pattern, self._headers[row][col])
+                    if result:
+                        for item in result:
+                            self._parameters['period'].append(item)
 
-    def process_record(self):
+    def process_record(self, team:dict) -> NoReturn:
         pass
 
     def on_read_line(self, index, record):
