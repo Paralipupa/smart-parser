@@ -1,13 +1,14 @@
 import configparser
 import os
 from typing import NoReturn
+import logging
 
 def check_error(func):
     def wrapper(*args):
         try:
             return func(*args)
         except:
-            pass
+            logging.warning('error in func: {}. skip'.format(func))
     return wrapper
 
 class GisConfig:
@@ -34,6 +35,9 @@ class GisConfig:
         self._max_cols:int = int(self._config['main']['max_columns'])   #максимальное кол-во просматриваемых колонок 
         self._max_rows_heading:int = int(self._config['main']['max_rows_heading'])#максимальное кол-во строк до таблицы
         self._documents:list[dict] = [] #список документов (настроек)
+        self._parameters = dict()
+
+        self._set_parameter_period()
 
         num_cols = int(self._config['main']['columns_count'])
         self._columns_heading = [self._config[f'col_{i}']['pattern'] for i in range(num_cols)]
@@ -44,11 +48,20 @@ class GisConfig:
         num_cols = int(self._config['main']['documents_count'])
         for i in range(num_cols):
             self._set_documents(i)
-
+            
         self._is_init = True
 
+    
     @check_error
-    def _set_conditions(self, i:int):
+    def _set_parameter_period(self):
+        self._parameters['period'] = {
+            'row' : self._get_range(self._config['period']['row']),
+            'col' : self._get_range(self._config['period']['column']),
+            'pattern' : self._config['period']['pattern'],
+        }
+
+    @check_error
+    def _set_conditions(self, i:int) -> NoReturn:
         if not self._condition_team:
             self._condition_team = self._config[f'col_{i}']['condition_team']
             self._condition_column = self._config[f'col_{i}']['pattern']
@@ -63,7 +76,7 @@ class GisConfig:
         self._columns_heading_offset[-1]['is_include'] = False if self._config[f'col_{i}']['is_include_offset']=='0' else True
 
     @check_error
-    def _set_documents(self, i:int):
+    def _set_documents(self, i:int) -> NoReturn:
         doc = dict()
         doc['name'] = self._config[f'doc_{i}']['name']
         doc['attributes'] = list()
@@ -72,14 +85,13 @@ class GisConfig:
             attr = dict()
             attr['name'] = self._config[f'{doc["name"]}_{i}']['name'] #имя аттрибута
             attr['pattern'] =  self._config[f'{doc["name"]}_{i}']['pattern'] #шаблон поиска (регулярное выражение)
-            attr['column'] =  int(self._config[f'{doc["name"]}_{i}']['column']) #колонка для поиска данных аттрибут
-            attr['row'] =  int(self._config[f'{doc["name"]}_{i}']['row']) #запись (в области) для поиска данных атрибутта
+            attr['column'] =  self._get_range(self._config[f'{doc["name"]}_{i}']['column']) #колонка для поиска данных аттрибут
+            attr['row'] =  self._get_range(self._config[f'{doc["name"]}_{i}']['row']) #запись (в области) для поиска данных атрибутта
             doc['attributes'].append(attr)
         self._documents.append(doc)
 
     @check_error
-    def _get_range(self, x:str) -> range:
-        d = [ int(i) for i in x.split(',')]
-        return d
+    def _get_range(self, x:str) -> list:
+        return [ int(i) for i in x.split(',')]
 
 

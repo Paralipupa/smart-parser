@@ -12,8 +12,10 @@ class ExcelBaseImporter:
     def __init__(self, config_file:str):
         self._is_new_team = False
         self._team = list()        #список областей с данными
-        self._headers = list()      #список  записей до табличных данных
-        self._names = dict()        #заголовки таблиц
+        self._headers = list()     #список  записей до табличных данных
+        self._names = dict()       #заголовки таблиц
+        self._parameters = dict()   #данные отчета (период, и др.) 
+        self._collections = dict() #коллекция таблиц БД 
         self._config = GisConfig(config_file)
 
     def read(self, filename:str, inn:str) -> bool:
@@ -41,14 +43,18 @@ class ExcelBaseImporter:
                 if self.check_columns(names):
                     self._row_start = row
                 is_header = (len(self.get_columns_heading()) > len(self._names))
+                if not is_header:
+                    self._set_parameters()
             else:
                 mapped_record = self.map_record(record)
                 if mapped_record and self.append_team(mapped_record):
-                    self.process_record()
+                    if len(self._team) > 1:
+                        self.process_record(self._team[-2])
             row += 1
             if row % 100 == 0:
                 print('Обработано: {}   \r'.format(row), end='', flush=True)
-        self.process_record(True)
+        if len(self._team) !=0 :
+            self.process_record(self._team[-1])
         self.done()
         return True
 
@@ -121,6 +127,16 @@ class ExcelBaseImporter:
             for key, value in mapped_record.items():
                 self._team[-1][key].append(value[0])
             return False
+
+    def _set_parameters(self):
+        rows = self._config._parameters['period']['row']
+        cols = self._config._parameters['period']['col']
+        pattern = self._config._parameters['period']['pattern']
+        self._parameters.setdefault('period',list())
+        for row, col in product(rows,cols):           
+            result = re.search(pattern, self._headers[row][col])
+            if result:
+                self._parameters['period'].append(result.group(0))
 
     def process_record(self):
         pass

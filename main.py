@@ -14,5 +14,6 @@ if __name__ == "__main__":
 
     rep = ReportPU(file_config)
     if rep.is_init() and rep.read(filename = file_name, inn = inn):
-        print(rep._team[-1])
+        for val in rep._collections.values():
+            print(val[0])
 
