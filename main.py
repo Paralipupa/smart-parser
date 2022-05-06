@@ -1,7 +1,7 @@
 import configparser
 import sys
-from report_pu import ReportPU
-from gisconfig import GisConfig
+from report.report_pu import ReportPU
+from module.gisconfig import GisConfig
 
 if __name__ == "__main__":
     if len (sys.argv) < 4:

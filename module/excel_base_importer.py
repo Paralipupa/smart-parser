@@ -4,8 +4,8 @@ import collections
 import logging
 import re, os
 from typing import NoReturn
-from file_readers import get_file_reader
-from gisconfig import GisConfig
+from module.file_readers import get_file_reader
+from module.gisconfig import GisConfig
 from itertools import product
 import json
 import pickle
