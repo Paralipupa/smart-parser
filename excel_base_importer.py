@@ -1,4 +1,5 @@
 from ast import Index
+from asyncore import write
 import collections
 import logging
 import re, os
@@ -6,29 +7,34 @@ from typing import NoReturn
 from file_readers import get_file_reader
 from gisconfig import GisConfig
 from itertools import product
+import json
+import pickle
 
 class ExcelBaseImporter:
 
-    def __init__(self, config_file:str):
+    def __init__(self, file_name:str, inn:str, config_file:str):
         self._is_new_team = False
         self._team = list()        #список областей с данными
         self._headers = list()     #список  записей до табличных данных
         self._names = dict()       #заголовки таблиц
         self._parameters = dict()   #данные отчета (период, и др.) 
+        self._parameters['filename'] = [file_name]
+        self._parameters['inn'] = [inn]
+        self._parameters['config'] = [config_file]
         self._collections = dict() #коллекция таблиц БД 
         self._config = GisConfig(config_file)
 
-    def read(self, filename:str, inn:str) -> bool:
+    def read(self) -> bool:
         if not self.is_init():
             return False
-        self._filename = os.path.basename(filename)
-        if not os.path.exists(filename):
-            logging.warning('file not found {}. skip'.format(filename))
+
+        if not os.path.exists(self._parameters['filename'][0]):
+            logging.warning('file not found {}. skip'.format(self._parameters['filename'][0]))
             return False
 
-        print('Файл {}'.format(self._filename))
-        ReaderClass = get_file_reader(filename)
-        data_reader = ReaderClass(filename, self.get_page_name(), 0, range(0, self.get_max_cols()), self.get_page_index())
+        print('Файл {}'.format(self._parameters['filename'][0]))
+        ReaderClass = get_file_reader(self._parameters['filename'][0])
+        data_reader = ReaderClass(self._parameters['filename'][0], self.get_page_name(), 0, range(0, self.get_max_cols()), self.get_page_index())
         is_header = True
         names = None
         row = 0
@@ -37,7 +43,7 @@ class ExcelBaseImporter:
             if is_header:
                 if self.get_row_start() + self.get_max_rows_heading() < row:
                     logging.warning('В загружаемом файле "{}" не только лишь все (c) названия колонок найдены: "{}"'
-                                    .format(self._filename, ','.join(self._names)))
+                                    .format(self._parameters['filename'][0], ','.join(self._names)))
                     return False
                 names = self.get_names(record)
                 if self.check_columns(names):
@@ -57,6 +63,33 @@ class ExcelBaseImporter:
             self.process_record(self._team[-1])
         self.done()
         return True
+
+    def write(self):
+        if not self.is_init():
+            return False
+
+        path = 'output'
+        os.makedirs(path,exist_ok=True)
+        for name, records in self._collections.items():
+            with open(f'{path}/{name}.csv', 'w') as file:
+                for key, value in self._parameters.items():
+                    file.write(f'{{')
+                    file.write(f'{key}:{{')
+                    for val in value:
+                        file.write(f'{val} ')
+                    file.write(f'}},\n')
+                    file.write(f'}},\n')
+
+                for rec in records:
+                    file.write(f'{{\n')
+                    for fld_name, values in rec.items():
+                        file.write(f'\t{fld_name}:{{')
+                        for val in values:
+                            file.write(f'{val} ')
+                        file.write(f'}},\n')
+                    file.write(f'}},\n')
+
+                                            
 
     def done(self):
         pass
@@ -134,9 +167,10 @@ class ExcelBaseImporter:
         pattern = self._config._parameters['period']['pattern']
         self._parameters.setdefault('period',list())
         for row, col in product(rows,cols):           
-            result = re.search(pattern, self._headers[row][col])
+            result = re.findall(pattern, self._headers[row][col])
             if result:
-                self._parameters['period'].append(result.group(0))
+                for item in result:
+                    self._parameters['period'].append(item)
 
     def process_record(self):
         pass

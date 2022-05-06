@@ -54,11 +54,13 @@ class GisConfig:
     
     @check_error
     def _set_parameter_period(self):
-        self._parameters['period'] = {
-            'row' : self._get_range(self._config['period']['row']),
-            'col' : self._get_range(self._config['period']['column']),
-            'pattern' : self._config['period']['pattern'],
-        }
+        count = int(self._config['parameters']['count'])
+        for i in range(count):
+            self._parameters[self._config[f'param_{i}']['name']] = {
+                'row' : self._get_range(self._config[f'param_{i}']['row']),
+                'col' : self._get_range(self._config[f'param_{i}']['column']),
+                'pattern' : self._config[f'param_{i}']['pattern'],
+            }
 
     @check_error
     def _set_conditions(self, i:int) -> NoReturn:

@@ -5,8 +5,8 @@ import re
 
 class ReportPU(ExcelBaseImporter):
 
-    def __init__(self, config_file:str) -> NoReturn:
-        super().__init__(config_file)
+    def __init__(self, file_name:str, inn:str, config_file:str) -> NoReturn:
+        super().__init__(file_name, inn, config_file)
 
     def process_record(self, team : dict):
         for item_doc in self._config._documents:            
