@@ -72,21 +72,21 @@ class ExcelBaseImporter:
         os.makedirs(path,exist_ok=True)
         for name, records in self._collections.items():
             with open(f'{path}/{name}.csv', 'w') as file:
+                file.write(f'{{')
                 for key, value in self._parameters.items():
-                    file.write(f'{{')
-                    file.write(f'{key}:{{')
+                    file.write(f'\t{key}:[')
                     for val in value:
                         file.write(f'{val} ')
-                    file.write(f'}},\n')
-                    file.write(f'}},\n')
+                    file.write(f'],\n')
+                file.write(f'}},\n')
 
                 for rec in records:
                     file.write(f'{{\n')
                     for fld_name, values in rec.items():
-                        file.write(f'\t{fld_name}:{{')
+                        file.write(f'\t{fld_name}:[')
                         for val in values:
                             file.write(f'{val} ')
-                        file.write(f'}},\n')
+                        file.write(f'],\n')
                     file.write(f'}},\n')
 
                                             
