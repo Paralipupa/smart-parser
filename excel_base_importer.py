@@ -5,17 +5,20 @@ import re, os
 from typing import NoReturn
 from file_readers import get_file_reader
 from gisconfig import GisConfig
+from itertools import product
 
 class ExcelBaseImporter:
 
     def __init__(self, config_file:str):
-        self._is_new_document = False
-        self._documents = list()
-        self._headers = list()
-        self._names = dict()
+        self._is_new_team = False
+        self._team = list()        #список областей с данными
+        self._headers = list()      #список  записей до табличных данных
+        self._names = dict()        #заголовки таблиц
         self._config = GisConfig(config_file)
 
     def read(self, filename:str, inn:str) -> bool:
+        if not self.is_init():
+            return False
         self._filename = os.path.basename(filename)
         if not os.path.exists(filename):
             logging.warning('file not found {}. skip'.format(filename))
@@ -35,14 +38,14 @@ class ExcelBaseImporter:
                                     .format(self._filename, ','.join(self._names)))
                     return False
                 names = self.get_names(record)
-                if self.check_columns(names, row):
+                if self.check_columns(names):
                     self._row_start = row
                 is_header = (len(self.get_columns_heading()) > len(self._names))
             else:
                 mapped_record = self.map_record(record)
-                if mapped_record and self.append_document(mapped_record):
+                if mapped_record and self.append_team(mapped_record):
                     self.process_record()
-            row = row + 1
+            row += 1
             if row % 100 == 0:
                 print('Обработано: {}   \r'.format(row), end='', flush=True)
         self.process_record(True)
@@ -55,15 +58,10 @@ class ExcelBaseImporter:
     def map_record(self, record):
         result_record = {}
         is_empty = True
-        # for c in self.get_columns_heading():
-        #     v = record[self.get_index(self._names, c)]
-        #     is_empty = is_empty and (v == '' or v is None)
-        #     result_record[c] = [v]
         for key, index in self._names.items():
-            v = record[index]
+            v = record[index['col']]
             is_empty = is_empty and (v == '' or v is None)
             result_record[key] = [v]
-
         return result_record if not is_empty else None
 
     def get_names(self, record) -> dict:
@@ -79,14 +77,16 @@ class ExcelBaseImporter:
     def get_index(self, names:list, col_name:str) -> int:
         return next((index for name, index in names.items() if name == col_name), -1)
 
-    def check_columns(self, names:list, row:int) -> bool:
+    def check_columns(self, names:list) -> bool:
         result = dict()
+        index = 0
         for c in self.get_columns_heading():
-            index = self.get_index(names, c)
-            if index != -1:
-                b, c = self.check_columns_offset(c,index)
+            col = self.get_index(names, c)
+            if col != -1:
+                b, c = self.check_columns_offset(c,col)
                 if b:
-                    result[c] = index
+                    result[c] = {'index':index, 'col': col}
+            index += 1
         if len(result) > 0:
             self._names.update(result)
             return True
@@ -96,12 +96,12 @@ class ExcelBaseImporter:
     def check_columns_offset(self, key:str, index:int) -> bool:
         dic = self.get_columns_heading_offset(key)
         if dic and dic['text']:
-            row = dic['row'] - 1
-            col = dic['col']
-            if self._headers[row][index+col] == dic['text']:
-                return True, (dic['text'] + ' ' + key if dic['is_include'] else key)
-            else:
-                return False, key
+            rows = [i-1 for i in dic['row']]
+            cols = dic['col']
+            for row, col in product(rows,cols):                
+                if self._headers[row][index+col] == dic['text']:
+                    return True, (dic['text'] + ' ' + key if dic['is_include'] else key)
+            return False, key
         return True, key
 
 
@@ -111,15 +111,15 @@ class ExcelBaseImporter:
             raise Exception('В загружаемом файле {} найдены дублирующиеся названия колонок: {}'
                             .format(file_name, ','.join(dups)))
 
-    def append_document(self, mapped_record:list) -> bool:
-        match = re.search(self.get_condition_range(), mapped_record[self.get_condition_column()][0])
-        if match or len(self._documents) == 0:
-            self._documents.append(mapped_record)
+    def append_team(self, mapped_record:list) -> bool:
+        match = re.search(self.get_condition_team(), mapped_record[self.get_condition_column()][0])
+        if match or len(self._team) == 0:
+            self._team.append(mapped_record)
             return True
         else:
-            self._is_new_document = False
+            self._is_new_team = False
             for key, value in mapped_record.items():
-                self._documents[-1][key].append(value[0])
+                self._team[-1][key].append(value[0])
             return False
 
     def process_record(self):
@@ -141,8 +141,8 @@ class ExcelBaseImporter:
             return self._config._columns_heading_offset[index]
         return None
 
-    def get_condition_range(self) -> str:
-        return self._config._condition_range
+    def get_condition_team(self) -> str:
+        return self._config._condition_team
 
     def get_condition_column(self) -> str:
         return self._config._condition_column

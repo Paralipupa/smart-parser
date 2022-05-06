@@ -8,14 +8,18 @@ class ReportPU(ExcelBaseImporter):
         super().__init__(config_file)
 
     def process_record(self, is_last : bool = False):
-        if len(self._documents) == 0:
+        if len(self._team) == 0:
             return
         elif is_last:
-            document = self._documents[-1]
-        elif len(self._documents) > 1:
-            document = self._documents[-2]
+            section = self._team[-1]
+        elif len(self._team) > 1:
+            section = self._team[-2]
         else:
             return
+            
+        documents = list()
+        for key, value in section.items():
+            pass
 
 
 
