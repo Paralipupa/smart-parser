@@ -14,5 +14,5 @@ if __name__ == "__main__":
 
     rep = Report_001_00(file_name=file_name, inn=inn, config_file=file_config)
     if rep.read():
-        rep.write_test()
+        rep.write_collections()
 

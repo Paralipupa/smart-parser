@@ -1,14 +1,13 @@
-from ast import Index
-from asyncore import write
 import collections
 import logging
-import re, os
+import re, os, hashlib, datetime
 from typing import NoReturn
 from module.file_readers import get_file_reader
 from module.gisconfig import GisConfig
 from itertools import product
-import json
-import pickle
+import uuid
+
+_hashit = lambda s: hashlib.sha1(s).hexdigest()
 
 class ExcelBaseImporter:
 
@@ -16,11 +15,11 @@ class ExcelBaseImporter:
         self._team = list()        #список областей с данными
         self._headers = list()     #список  записей до табличных данных
         self._names = dict()       #заголовки таблиц
-        self._parameters = dict()   #данные отчета (период, и др.) 
+        self._parameters = dict()   #параметры отчета (период, и др.)
         self._parameters['filename'] = [file_name]
         self._parameters['inn'] = [inn]
         self._parameters['config'] = [config_file]
-        self._collections = dict() #коллекция таблиц БД 
+        self._collections = dict() #коллекция выходных таблиц
         self._config = GisConfig(config_file)
 
     def read(self) -> bool:
@@ -33,7 +32,7 @@ class ExcelBaseImporter:
 
         print('Файл {}'.format(self._parameters['filename'][0]))
         ReaderClass = get_file_reader(self._parameters['filename'][0])
-        data_reader = ReaderClass(self._parameters['filename'][0], self.get_page_name(), 0, range(0, self.get_max_cols()), self.get_page_index())
+        data_reader = ReaderClass(self._parameters['filename'][0], self.get_page_name(), 0, range(self.get_max_cols()), self.get_page_index())
         is_header = True
         names = None
         row = 0
@@ -49,7 +48,7 @@ class ExcelBaseImporter:
                     self._row_start = row
                 is_header = (len(self.get_columns_heading()) > len(self._names))
                 if not is_header:
-                    self._set_parameters()
+                    self.set_parameters()
             else:
                 mapped_record = self.map_record(record)
                 if mapped_record and self.append_team(mapped_record):
@@ -62,31 +61,6 @@ class ExcelBaseImporter:
             self.process_record(self._team[-1])
         self.done()
         return True
-
-    def write_test(self) -> NoReturn:
-        if not self.is_init():
-            return False
-
-        path = self._config._parameters['path']
-        os.makedirs(path,exist_ok=True)
-        for name, records in self._collections.items():
-            with open(f'{path}/{name}.csv', 'w') as file:
-                file.write(f'{{')
-                for key, value in self._parameters.items():
-                    file.write(f'\t{key}:[')
-                    for val in value:
-                        file.write(f'{val} ')
-                    file.write(f'],\n')
-                file.write(f'}},\n')
-
-                for rec in records:
-                    file.write(f'{{\n')
-                    for fld_name, values in rec.items():
-                        file.write(f'\t{fld_name}:[')
-                        for val in values:
-                            file.write(f'{val} ')
-                        file.write(f'],\n')
-                    file.write(f'}},\n')                                            
 
     def done(self):
         pass
@@ -128,13 +102,13 @@ class ExcelBaseImporter:
             return True
         return False
 
-    # Проверка на наличие 'якоря' (текста, смещенного относительно позиции текущей ячейки)
+    # Проверка на наличие 'якоря' (текста, смещенного относительно позиции текущего заголовка)
     def check_columns_offset(self, key:str, index:int) -> bool:
         dic = self.get_columns_heading_offset(key)
         if dic and dic['text']:
             rows = [i-1 for i in dic['row']]
             cols = dic['col']
-            for row, col in product(rows,cols):                
+            for row, col in product(rows,cols):
                 if self._headers[row][index+col] == dic['text']:
                     return True, (dic['text'] + ' ' + key if dic['is_include'] else key)
             return False, key
@@ -156,7 +130,10 @@ class ExcelBaseImporter:
                 self._team[-1][key].append(value[0])
             return False
 
-    def _set_parameters(self) -> NoReturn:
+    def set_parameters(self) -> NoReturn:
+        self.set_period()
+
+    def set_period(self):
         rows = self._config._parameters['period']['row']
         cols = self._config._parameters['period']['col']
         pattern:str = self._config._parameters['period']['pattern']
@@ -165,17 +142,107 @@ class ExcelBaseImporter:
             if pattern[0] == '@':
                 self._parameters['period'].append(pattern[1:])
             else:
-                for row, col in product(rows,cols):           
+                for row, col in product(rows,cols):
                     result = re.findall(pattern, self._headers[row][col])
                     if result:
                         for item in result:
                             self._parameters['period'].append(item)
+        if len(self._parameters['period']) == 0:
+            self._parameters['period'].append(datetime.date.today())
+
 
     def process_record(self, team:dict) -> NoReturn:
         pass
 
     def on_read_line(self, index, record):
         pass
+
+    def get_key(self, index:int) -> str:
+        for key, value in self._names.items():
+            if value['index'] == index:
+                return key
+        return ''
+
+    def get_value_str(self, value:str, pattern:str) -> str:
+        result = re.search(pattern, value)
+        if result:
+            return result.group(0)
+        return ''
+
+    def get_value_int(self, value:list) -> int:
+        if value and isinstance(value, list):
+            return value[0]
+        else:
+            return 0
+
+    def get_value_range(self, value:list, count:int=0) -> list:
+        try:
+            if value:
+                return value
+            else:
+                return range(count)
+        except:
+            return range(count)
+
+# ---------- Документы --------------------
+
+    def append_to_collection(self, name:str, doc:dict) -> NoReturn:
+        self._collections.setdefault(name, list())
+        self._collections[name].append(doc)
+
+    def get_document(self, team:dict, doc_param):
+        doc = dict()
+        count = 0
+        for item_fld  in doc_param['fields']:
+            doc.setdefault(item_fld['name'], list())
+            key = self.get_key(self.get_value_int(item_fld['column']))
+            if key and item_fld['pattern']:
+                rows = self.get_value_range(item_fld['row'], len(team[key]))
+                for row in rows:
+                    if len(team[key]) > row and team[key][row]:
+                        value = self.get_value_str(team[key][row], item_fld['pattern'] )
+                        if value:
+                            if item_fld['func']:
+                                value = self.func(item_fld['func'], value)
+                            doc[item_fld['name']].append(value)
+                            count = len(doc[item_fld['name']]) if len(doc[item_fld['name']]) > count else count
+        return doc, count
+
+    def document_split_one_line(self, doc:dict, count:int, name:str):
+        for i in range(count):
+            elem = dict()
+            for key, value in doc.items():
+                elem[key] = list()
+                if i < len(value):
+                    elem[key].append(value[i])
+                elif len(value) != 0:
+                    elem[key].append(value[0])
+            self.append_to_collection(name, elem)
+
+    def write_collections(self) -> NoReturn:
+        if not self.is_init():
+            return False
+
+        path = self._config._parameters['path']
+        os.makedirs(path,exist_ok=True)
+        for name, records in self._collections.items():
+            with open(f'{path}/{name}.csv', 'w') as file:
+                file.write(f'{{')
+                for key, value in self._parameters.items():
+                    file.write(f'\t{key}:[')
+                    for val in value:
+                        file.write(f'{val} ')
+                    file.write(f'],\n')
+                file.write(f'}},\n')
+
+                for rec in records:
+                    file.write(f'{{\n')
+                    for fld_name, values in rec.items():
+                        file.write(f'\t{fld_name}:[')
+                        for val in values:
+                            file.write(f'{val} ')
+                        file.write(f'],\n')
+                    file.write(f'}},\n')
 
 # ---------- Параметры конфигурации --------------------
     def is_init(self) -> bool:
@@ -200,14 +267,41 @@ class ExcelBaseImporter:
         return self._config._page_name
 
     def get_page_index(self) -> int:
-        return self._config._page_index
+        return self.get_value_int(self._config._page_index)
 
     def get_max_cols(self) -> int:
-        return self._config._max_cols
+        return self.get_value_int(self._config._max_cols)
 
     def get_row_start(self) -> int:
-        return self._config._row_start
+        return self.get_value_int(self._config._row_start)
 
     def get_max_rows_heading(self) -> int:
-        return self._config._max_rows_heading
+        return self.get_value_int(self._config._max_rows_heading)
 
+# ---------- Функции --------------------
+    def func(self, key:str, data):
+        dic_f = {
+            'inn': self.func_inn,
+            'hash': self.func_hash,
+            'uuid': self.func_uuid,
+            'id': self.func_id,
+        }
+        try:
+            f = dic_f[key]
+            return f(data)
+        except:
+            return ''
+
+
+    def func_inn(self,data):
+        return self._parameters['inn'][0]
+
+    def func_hash(self, data):
+        return _hashit(data.encode('utf-8'))
+
+    def func_uuid(self, data):
+        return uuid.uuid4()
+
+    def func_id(self,data):
+        d = self._parameters["period"][0]
+        return f'{data}_{d[6:]}_{d[3:5]}'
