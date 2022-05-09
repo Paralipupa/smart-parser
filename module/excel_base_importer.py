@@ -21,6 +21,36 @@ class ExcelBaseImporter:
         self._parameters['config'] = [config_file]
         self._collections = dict() #коллекция выходных таблиц
         self._config = GisConfig(config_file)
+    
+    def check(self, is_warning:bool=True) -> bool:
+        if not self.is_init():
+            return False
+
+        if not os.path.exists(self._parameters['filename'][0]):
+            logging.warning('file not found {}. skip'.format(self._parameters['filename'][0]))
+            return False
+        headers = list()
+        rows:list[int] = self._config._check['row']
+        cols:list[int] = self._config._check['col']
+        pattern:str = self._config._check['pattern']
+        ReaderClass = get_file_reader(self._parameters['filename'][0])
+        data_reader = ReaderClass(self._parameters['filename'][0], self.get_page_name(), 0, range(self.get_max_cols()), self.get_page_index())
+        index = 0
+        for record in data_reader:
+            headers.append(record)
+            index +=1
+            if index > rows[-1]:
+                break            
+
+        for row, col in product(rows,cols):
+            match = re.search(pattern, headers[row][col])
+            if match:
+                return True
+        if is_warning:
+            logging.warning('файл "{0}" не сооответствует шаблону "{1}". skip'.format(self._parameters['filename'][0],self._parameters['config'][0]))
+        return False
+
+
 
     def read(self) -> bool:
         if not self.is_init():
@@ -47,13 +77,15 @@ class ExcelBaseImporter:
                 if self.check_columns(names):
                     self._row_start = row
                 is_header = (len(self.get_columns_heading()) > len(self._names))
-                if not is_header:
-                    self.set_parameters()
             else:
                 mapped_record = self.map_record(record)
                 if mapped_record and self.append_team(mapped_record):
                     if len(self._team) > 1:
                         self.process_record(self._team[-2])
+                    else:
+                        self.set_parameters()
+                elif len(self._team) == 0:
+                    self._headers.append(record)
             row += 1
             if row % 100 == 0:
                 print('Обработано: {}   \r'.format(row), end='', flush=True)
@@ -122,7 +154,7 @@ class ExcelBaseImporter:
 
     def append_team(self, mapped_record:list) -> bool:
         match = re.search(self.get_condition_team(), mapped_record[self.get_condition_column()][0])
-        if match: # or len(self._team) == 0:
+        if match: 
             self._team.append(mapped_record)
             return True
         elif len(self._team) != 0:
@@ -130,25 +162,26 @@ class ExcelBaseImporter:
                 self._team[-1][key].append(value[0])
             return False
 
-    def set_parameters(self) -> NoReturn:
-        self.set_period()
+    def set_parameters(self) -> NoReturn:        
+        if not self.set_fixed_parameters('period'):
+            self._parameters['period'].append(datetime.date.today())
+        if not self.set_fixed_parameters('address'):
+            self._parameters['period'].append('')
 
-    def set_period(self):
-        rows = self._config._parameters['period']['row']
-        cols = self._config._parameters['period']['col']
-        pattern:str = self._config._parameters['period']['pattern']
-        self._parameters.setdefault('period',list())
+    def set_fixed_parameters(self, name:str):
+        rows:list[int] = self._config._parameters[name]['row']
+        cols:list[int] = self._config._parameters[name]['col']
+        pattern:str = self._config._parameters[name]['pattern']
+        self._parameters.setdefault(name,list())
         if pattern:
             if pattern[0] == '@':
-                self._parameters['period'].append(pattern[1:])
+                self._parameters[name].append(pattern[1:])
             else:
                 for row, col in product(rows,cols):
                     result = re.findall(pattern, self._headers[row][col])
-                    if result:
-                        for item in result:
-                            self._parameters['period'].append(item)
-        if len(self._parameters['period']) == 0:
-            self._parameters['period'].append(datetime.date.today())
+                    for item in result:
+                        self._parameters[name].append(item)
+        return self._parameters[name]
 
 
     def process_record(self, team:dict) -> NoReturn:
@@ -202,6 +235,10 @@ class ExcelBaseImporter:
                     if len(team[key]) > row and team[key][row]:
                         value = self.get_value_str(team[key][row], item_fld['pattern'] )
                         if value:
+                            if item_fld['column_offset']:
+                                key = self.get_key(self.get_value_int(item_fld['column_offset']))
+                                if key:
+                                    value = self.get_value_str(team[key][row], item_fld['pattern_offset'] )
                             if item_fld['func']:
                                 value = self.func(item_fld['func'], value)
                             doc[item_fld['name']].append(value)
@@ -279,29 +316,43 @@ class ExcelBaseImporter:
         return self.get_value_int(self._config._max_rows_heading)
 
 # ---------- Функции --------------------
-    def func(self, key:str, data):
+    def func(self, keys:str, data):
         dic_f = {
             'inn': self.func_inn,
+            'period': self.func_period,
+            'period_last': self.func_period_last,
+            'address': self.func_address,
             'hash': self.func_hash,
-            'uuid': self.func_uuid,
+            'guid': self.func_uuid,
             'id': self.func_id,
         }
         try:
-            f = dic_f[key]
-            return f(data)
+            for key in keys.split(','):
+                f = dic_f[key]
+                data = f(data)
+            return data
         except:
             return ''
 
 
-    def func_inn(self,data):
+    def func_inn(self,data:str=''):
         return self._parameters['inn'][0]
 
-    def func_hash(self, data):
+    def func_period(self,data:str=''):
+        return self._parameters["period"][0]
+
+    def func_period_last(self,data:str=''):
+        return self._parameters["period"][-1]
+
+    def func_address(self,data:str=''):
+        return self._parameters["address"][0]
+
+    def func_hash(self, data:str=''):
         return _hashit(data.encode('utf-8'))
 
-    def func_uuid(self, data):
-        return uuid.uuid4()
+    def func_uuid(self, data:str=''):
+        return uuid.uuid5(uuid.NAMESPACE_X500, data)
 
-    def func_id(self,data):
+    def func_id(self,data:str=''):
         d = self._parameters["period"][0]
         return f'{data}_{d[6:]}_{d[3:5]}'

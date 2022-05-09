@@ -49,13 +49,22 @@ class GisConfig:
         num_cols = self.read_config('main','documents_count',isNumeric=True)
         for i in range(num_cols[0]):
             self.set_documents(i)
+
+        self.set_check()
             
         self._is_init = True
+
+    def set_check(self):
+        self._check = {'row':[0], 'col':[0], 'pattern':''}
+        self._check['row'] = self.read_config('check','row',isNumeric=True)
+        self._check['col'] = self.read_config('check','column',isNumeric=True)
+        self._check['pattern'] = self.read_config('check','pattern')
 
     @check_error
     def set_parameters(self):
         self._parameters['period'] = {'row':0, 'col':0, 'pattern':''}
-        self._parameters['path'] = self.read_config('main','path')
+        self._parameters['address'] = {'row':0, 'col':0, 'pattern':''}
+        self._parameters['path'] = self.read_config('main','path_output')
         num_parms = self.read_config('main','parameters_count',isNumeric=True)
         for i in range(num_parms[0]):
             self._parameters[self.read_config(f'param_{i}','name')] = {
@@ -90,8 +99,13 @@ class GisConfig:
             fld['pattern'] =  self.read_config(f'{doc["name"]}_{i}','pattern') #шаблон поиска (регулярное выражение)
             fld['column'] =  self.read_config(f'{doc["name"]}_{i}','col_config',isNumeric=True) #колонка для поиска данных аттрибут
             fld['row'] =  self.read_config(f'{doc["name"]}_{i}','row_data',isNumeric=True) #запись (в области) для поиска данных атрибутта
+            fld['column_offset'] =  self.read_config(f'{doc["name"]}_{i}','col_offset',isNumeric=True) #колонка для поиска данных аттрибут
+            fld['pattern_offset'] =  self.read_config(f'{doc["name"]}_{i}','pattern_offset') #шаблон поиска (регулярное выражение)
             fld['func'] =  self.read_config(f'{doc["name"]}_{i}','func') #запись (в области) для поиска данных атрибутта
             doc['fields'].append(fld)
+        for fld in doc['fields']:
+            if fld['pattern'][0:1] == "@":
+                fld['pattern'] = doc['fields'][int(fld['pattern'][1:])]['pattern']
         self._documents.append(doc)
     
     @check_error
