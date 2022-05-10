@@ -16,10 +16,13 @@ class GisConfig:
 
     def __init__(self, filename : str):
         self._is_init = False
-        if self.is_exist(filename):
-            self._config = configparser.ConfigParser()
-            self._config.read(filename)
-            self.configuration_initialize()
+        if not self.is_exist(filename):
+            logging.warning('file not found {}. skip'.format(filename))
+            return
+
+        self._config = configparser.ConfigParser()
+        self._config.read(filename)
+        self.configuration_initialize()
 
     def is_exist(self, filename : str) -> bool:
         return os.path.exists(filename)
@@ -27,7 +30,9 @@ class GisConfig:
     @check_error
     def configuration_initialize(self) -> NoReturn:
         self._condition_team:str = ''  #условие начала новой области (регулярное выражение)
-        self._condition_column:int = '' # колонка в которой просматривается условие области
+        self._condition_end_table:str = ''  #условие окончания табличных данных (регулярное выражение)
+        self._condition_team_column:int = '' # колонка в которой просматривается условие области
+        self._condition_end_table_column:int = '' # колонка в которой просматривается условие окончания таблицы
         self._columns_heading:list[str] = []  # список заголовков колонок таблицы 
         self._columns_heading_offset:list[dict] = [] #список "якорей" заголовков таблицы 
         self._row_start:int = self.read_config('main','row_start',isNumeric=True)    #
@@ -51,8 +56,15 @@ class GisConfig:
             self.set_documents(i)
 
         self.set_check()
+        self.set_header()
             
         self._is_init = True
+
+    def set_header(self):
+        self._header = {'row':[0], 'col':[0], 'pattern':''}
+        self._header['row'] = self.read_config('header','rows_count',isNumeric=True)
+        self._header['col'] = self.read_config('header','column',isNumeric=True)
+        self._header['pattern'] = self.read_config('header','pattern')
 
     def set_check(self):
         self._check = {'row':[0], 'col':[0], 'pattern':''}
@@ -62,21 +74,39 @@ class GisConfig:
 
     @check_error
     def set_parameters(self):
-        self._parameters['period'] = {'row':0, 'col':0, 'pattern':''}
-        self._parameters['address'] = {'row':0, 'col':0, 'pattern':''}
-        self._parameters['path'] = self.read_config('main','path_output')
-        num_parms = self.read_config('main','parameters_count',isNumeric=True)
+        self._parameters['period'] = [{'row':0, 'col':0, 'pattern':'', 'ishead': True}]
+        self._parameters['address'] = [{'row':0, 'col':0, 'pattern':'', 'ishead': True}]
+        self._parameters['path'] = [{'row':0, 'col':0, 'pattern':'@'+self.read_config('main','path_output'), 'ishead': True}]
+        num_parms = self.read_config('main','headers_count',isNumeric=True)
         for i in range(num_parms[0]):
-            self._parameters[self.read_config(f'param_{i}','name')] = {
-                'row' : self.read_config(f'param_{i}','row',isNumeric=True),
-                'col' : self.read_config(f'param_{i}','column',isNumeric=True),
-                'pattern' : self.read_config(f'param_{i}','pattern'),
-            }
+            self._parameters.setdefault(self.read_config(f'headers_{i}','name'), [])
+            self._parameters[self.read_config(f'headers_{i}','name')].append( 
+                {
+                'row' : self.read_config(f'headers_{i}','row',isNumeric=True),
+                'col' : self.read_config(f'headers_{i}','column',isNumeric=True),
+                'pattern' : self.read_config(f'headers_{i}','pattern'),
+                'ishead' : True,
+                }
+            )
+        num_parms = self.read_config('main','footers_count',isNumeric=True)
+        for i in range(num_parms[0]):
+            self._parameters.setdefault(self.read_config(f'footers_{i}','name'), [])
+            self._parameters[self.read_config(f'footers_{i}','name')].append( 
+                {
+                'row' : self.read_config(f'footers_{i}','row',isNumeric=True),
+                'col' : self.read_config(f'footers_{i}','column',isNumeric=True),
+                'pattern' : self.read_config(f'footers_{i}','pattern'),
+                'ishead' : False,
+                }
+            )
 
     def set_conditions(self, i:int) -> NoReturn:
         if not self._condition_team:
-            self._condition_team = self.read_config(f'col_{i}','condition_team')
-            self._condition_column = self.read_config(f'col_{i}','pattern')
+            self._condition_team = self.read_config(f'col_{i}','condition_begin_team')
+            self._condition_team_column = self.read_config(f'col_{i}','pattern')
+        if not self._condition_end_table:
+            self._condition_end_table = self.read_config(f'col_{i}','condition_end_table')
+            self._condition_end_table_column = self.read_config(f'col_{i}','pattern')
 
     def set_heading_offset(self, i:int):
         off = {'row':[0], 'col':[0], 'text':'', 'is_include':False}
@@ -102,11 +132,13 @@ class GisConfig:
             fld['column_offset'] =  self.read_config(f'{doc["name"]}_{i}','col_offset',isNumeric=True) #колонка для поиска данных аттрибут
             fld['pattern_offset'] =  self.read_config(f'{doc["name"]}_{i}','pattern_offset') #шаблон поиска (регулярное выражение)
             fld['func'] =  self.read_config(f'{doc["name"]}_{i}','func') #запись (в области) для поиска данных атрибутта
+            fld['func_pattern'] =  self.read_config(f'{doc["name"]}_{i}','func_pattern') #шаблон поиска (регулярное выражение)
             doc['fields'].append(fld)
         for fld in doc['fields']:
             if fld['pattern'][0:1] == "@":
                 fld['pattern'] = doc['fields'][int(fld['pattern'][1:])]['pattern']
         self._documents.append(doc)
+    
     
     @check_error
     def get_range(self, x:str) -> list:
