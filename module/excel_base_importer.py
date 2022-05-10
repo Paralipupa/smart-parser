@@ -21,27 +21,33 @@ class ExcelBaseImporter:
         self._parameters['config'] = [config_file]
         self._collections = dict() #коллекция выходных таблиц
         self._config = GisConfig(config_file)
-    
-    def check(self, is_warning:bool=True) -> bool:
+
+    def is_verify(self, file_name:str) -> bool:
         if not self.is_init():
             return False
-
         if not os.path.exists(self._parameters['filename'][0]):
             logging.warning('file not found {}. skip'.format(self._parameters['filename'][0]))
             return False
+        return True
+
+    def get_data(self):
+        ReaderClass = get_file_reader(self._parameters['filename'][0])
+        data_reader = ReaderClass(self._parameters['filename'][0], self.get_page_name(), 0, range(self.get_max_cols()), self.get_page_index())
+        return data_reader
+
+    def check(self, is_warning:bool=True) -> bool:
+        if not self.is_verify(self._parameters['filename'][0]): return False
         headers = list()
         rows:list[int] = self._config._check['row']
         cols:list[int] = self._config._check['col']
         pattern:str = self._config._check['pattern']
-        ReaderClass = get_file_reader(self._parameters['filename'][0])
-        data_reader = ReaderClass(self._parameters['filename'][0], self.get_page_name(), 0, range(self.get_max_cols()), self.get_page_index())
         index = 0
+        data_reader = self.get_data()
         for record in data_reader:
             headers.append(record)
             index +=1
             if index > rows[-1]:
-                break            
-
+                break
         for row, col in product(rows,cols):
             match = re.search(pattern, headers[row][col])
             if match:
@@ -53,19 +59,12 @@ class ExcelBaseImporter:
 
 
     def read(self) -> bool:
-        if not self.is_init():
-            return False
-
-        if not os.path.exists(self._parameters['filename'][0]):
-            logging.warning('file not found {}. skip'.format(self._parameters['filename'][0]))
-            return False
-
-        print('Файл {}'.format(self._parameters['filename'][0]))
-        ReaderClass = get_file_reader(self._parameters['filename'][0])
-        data_reader = ReaderClass(self._parameters['filename'][0], self.get_page_name(), 0, range(self.get_max_cols()), self.get_page_index())
+        if not self.is_verify(self._parameters['filename'][0]): return False
+        print('Файл {} ({})'.format(self._parameters['filename'][0],self._parameters['config'][0]))
         is_header = True
         names = None
         row = 0
+        data_reader = self.get_data()
         for record in data_reader:
             self.on_read_line(row,record)
             if is_header:
@@ -154,7 +153,7 @@ class ExcelBaseImporter:
 
     def append_team(self, mapped_record:list) -> bool:
         match = re.search(self.get_condition_team(), mapped_record[self.get_condition_column()][0])
-        if match: 
+        if match:
             self._team.append(mapped_record)
             return True
         elif len(self._team) != 0:
@@ -162,7 +161,7 @@ class ExcelBaseImporter:
                 self._team[-1][key].append(value[0])
             return False
 
-    def set_parameters(self) -> NoReturn:        
+    def set_parameters(self) -> NoReturn:
         if not self.set_fixed_parameters('period'):
             self._parameters['period'].append(datetime.date.today())
         if not self.set_fixed_parameters('address'):
@@ -185,7 +184,9 @@ class ExcelBaseImporter:
 
 
     def process_record(self, team:dict) -> NoReturn:
-        pass
+        for doc_param in self._config._documents:
+            doc,count_rows = self.get_document(team, doc_param)
+            self.document_split_one_line(doc, count_rows, doc_param['name'])
 
     def on_read_line(self, index, record):
         pass
@@ -225,12 +226,13 @@ class ExcelBaseImporter:
 
     def get_document(self, team:dict, doc_param):
         doc = dict()
-        count = 0
+        count_rows = {'count': 0, 'rel' : list()}
         for item_fld  in doc_param['fields']:
             doc.setdefault(item_fld['name'], list())
             key = self.get_key(self.get_value_int(item_fld['column']))
             if key and item_fld['pattern']:
                 rows = self.get_value_range(item_fld['row'], len(team[key]))
+                rows_rel = list()
                 for row in rows:
                     if len(team[key]) > row and team[key][row]:
                         value = self.get_value_str(team[key][row], item_fld['pattern'] )
@@ -241,19 +243,26 @@ class ExcelBaseImporter:
                                     value = self.get_value_str(team[key][row], item_fld['pattern_offset'] )
                             if item_fld['func']:
                                 value = self.func(item_fld['func'], value)
-                            doc[item_fld['name']].append(value)
-                            count = len(doc[item_fld['name']]) if len(doc[item_fld['name']]) > count else count
-        return doc, count
+                            rows_rel.append({'index':len(doc[item_fld['name']]), 'row':row})    
+                            doc[item_fld['name']].append({'row':row, 'value':value})
+                            if len(doc[item_fld['name']]) > count_rows['count']:
+                                count_rows['count'] = len(doc[item_fld['name']]) 
+                                count_rows['rel'] = rows_rel
 
-    def document_split_one_line(self, doc:dict, count:int, name:str):
-        for i in range(count):
+        return doc, count_rows
+
+    def document_split_one_line(self, doc:dict, count_rows:dict, name:str):
+        for i in range(count_rows['count']):
             elem = dict()
             for key, value in doc.items():
-                elem[key] = list()
-                if i < len(value):
-                    elem[key].append(value[i])
-                elif len(value) != 0:
-                    elem[key].append(value[0])
+                elem[key] = ""
+                if value:
+                    if i < len(value):
+                        index = next((x['index'] for x in count_rows['rel'] if x['row']==value[i]['row']), 0)
+                        if i >= index:
+                            elem[key] = value[i]['value']
+                    elif len(value) != 0: 
+                        elem[key] = value[0]['value']
             self.append_to_collection(name, elem)
 
     def write_collections(self) -> NoReturn:
@@ -266,19 +275,18 @@ class ExcelBaseImporter:
             with open(f'{path}/{name}.csv', 'w') as file:
                 file.write(f'{{')
                 for key, value in self._parameters.items():
-                    file.write(f'\t{key}:[')
+                    file.write(f'\t{key}:"')
                     for val in value:
                         file.write(f'{val} ')
-                    file.write(f'],\n')
+                    file.write(f'",\n')
                 file.write(f'}},\n')
 
                 for rec in records:
                     file.write(f'{{\n')
-                    for fld_name, values in rec.items():
-                        file.write(f'\t{fld_name}:[')
-                        for val in values:
-                            file.write(f'{val} ')
-                        file.write(f'],\n')
+                    for fld_name, val in rec.items():
+                        file.write(f'\t{fld_name}:"')
+                        file.write(f'{val}')
+                        file.write(f'",\n')
                     file.write(f'}},\n')
 
 # ---------- Параметры конфигурации --------------------
