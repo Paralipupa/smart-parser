@@ -34,10 +34,52 @@ class ExcelBaseImporter:
         return True
 
 
-    def get_data(self):
-        ReaderClass = get_file_reader(self._parameters['filename']['value'][0])
-        data_reader = ReaderClass(self._parameters['filename']['value'][0], self.get_page_name(), 0, range(self.get_max_cols()), self.get_page_index())
-        return data_reader
+    def read(self) -> bool:
+        if not self.is_verify(self._parameters['filename']['value'][0]): return False
+        print('Файл {} ({})'.format(self._parameters['filename']['value'][0],self._parameters['config']['value'][0]))
+        names = None
+        row = 0
+        if not self.get_condition_end_table():
+            self._heads_foots['status'] = 1
+        data_reader = self.get_data()
+        for record in data_reader:
+            self.on_read_line(row,record)
+            if self._heads_foots['status'] != 2:
+                if not self.check_bound_row(row):
+                    return (len(self._collections) > 0)
+                names = self.get_names(record)
+                self.check_head_and_foot(names, row)
+            else:
+                self.check_body(record, row)
+            row += 1
+            if row % 100 == 0:
+                print('Обработано: {}   \r'.format(row), end='', flush=True)
+        self.done()
+        return True
+
+
+    def map_record(self, record):
+        result_record = {}
+        is_empty = True
+        for key, index in self._names.items():
+            v = record[index['index']]
+            is_empty = is_empty and (v == '' or v is None)
+            result_record[key] = [v]
+        return result_record if not is_empty else None
+
+
+    def append_team(self, mapped_record:list) -> bool:
+        if not self.get_condition_team():
+            match = True
+        else:
+            match = re.search(self.get_condition_team(), mapped_record[self.get_condition_column()][0])
+        if match:
+            self._team.append(mapped_record)
+            return True
+        elif len(self._team) != 0:
+            for key, value in mapped_record.items():
+                self._team[-1][key].append(value[0])
+            return False
 
 
     def check(self, is_warning:bool=True) -> bool:
@@ -62,30 +104,6 @@ class ExcelBaseImporter:
         return False
 
 
-    def read(self) -> bool:
-        if not self.is_verify(self._parameters['filename']['value'][0]): return False
-        print('Файл {} ({})'.format(self._parameters['filename']['value'][0],self._parameters['config']['value'][0]))
-        names = None
-        row = 0
-        if not self.get_condition_end_table(): 
-            self._heads_foots['status'] = 1
-        data_reader = self.get_data()
-        for record in data_reader:
-            self.on_read_line(row,record)
-            if self._heads_foots['status'] != 2:
-                if not self.check_bound_row(row): 
-                    return (len(self._collections) > 0)
-                names = self.get_names(record)
-                self.check_head_and_foot(names, row)
-            else:
-                self.check_body(record, row)
-            row += 1
-            if row % 100 == 0:
-                print('Обработано: {}   \r'.format(row), end='', flush=True)
-        self.done()
-        return True
-
-
     def check_bound_row(self, row:int) -> bool:
         if self.get_row_start() + self.get_max_rows_heading() < row:
             s1, s2 = '', ''
@@ -99,6 +117,7 @@ class ExcelBaseImporter:
             if s1: logging.warning('Не найдены колонки:\n {} \n'.format(s1))
             return False
         return True
+
 
     def check_head_and_foot(self, names:list, row:int):
         if self._heads_foots['status'] == 0:
@@ -130,18 +149,96 @@ class ExcelBaseImporter:
                 item['active'] = False
 
 
-    def done(self):
-        if len(self._team) !=0 :
-            self.process_record(self._team[-1])
+    def check_columns(self, names:list, row:int) -> bool:
+        if names:
+            result = dict()
+            for item in self.get_columns_heading():
+                if not item['active'] and item['name']:
+                    index = self.get_index(names, item['name']) #номер колонки в таблице Excel
+                    if index != -1:
+                        b,c = True, item['name']
+                        if item['offset']['text']:
+                            b, c = self.check_columns_offset(item, index)
+                        if b:
+                            result[c] = {'index':index, 'col': item['col'], 'active': False}
+                            item['index'] = index
+                            item['row'] = row
+                            item['active'] = True
+            if len(result) > 0:
+                self._names.update(result)
+                return True
+        return False
 
-    def map_record(self, record):
-        result_record = {}
-        is_empty = True
-        for key, index in self._names.items():
-            v = record[index['index']]
-            is_empty = is_empty and (v == '' or v is None)
-            result_record[key] = [v]
-        return result_record if not is_empty else None
+
+    def check_end_table(self, mapped_record) ->bool:
+        if not self.get_condition_end_table(): return False
+        match = re.search(self.get_condition_end_table(), mapped_record[self.get_condition_end_table_column()][0])
+        if match:
+            return True
+        return False
+
+
+    def check_period_value(self):
+        ls=list()
+        for item in self._parameters['period']['value']:
+            if item:
+                try:
+                    d = item.strftime('%d.%m.%Y')
+                    datetime.date.fromisoformat(    )
+                    ls.append(d)
+                except:
+                    d = datetime.date.today().strftime('%d.%m.%Y')
+        self._parameters['period']['value'] = list()
+        if ls:
+            for item in ls:
+                self._parameters['period']['value'].append(item)
+        else:
+            self._parameters['period']['value'].append(datetime.date.today().strftime('%d.%m.%Y'))
+
+
+    def check_headers_status(self, names):
+        if self._heads_foots['status'] == 1:
+            return False
+        m = self._config._header['pattern']
+        if not m:
+            self._heads_foots['status'] = 1
+        else:
+            col = self.get_index(names, m )
+            if col != -1:
+                self._heads_foots['status'] = 1
+        return (self._heads_foots['status'] == 1)
+
+
+    # Проверка на наличие 'якоря' (текста, смещенного относительно позиции текущего заголовка)
+    def check_columns_offset(self, item:dict, index:int) -> bool:
+        dic = item['offset']
+        if dic and dic['text']:
+            rows = [i for i in dic['row']]
+            cols = dic['col']
+            row_count = len(self._heads_foots['head'])
+            for row, col in product(rows,cols):
+                match = re.search(dic['text'],self._heads_foots['head'][(row_count-1)+row][index+col])
+                if match:
+                    return True, (dic['text'] + ' ' + item['name'] if dic['is_include'] else item['name'])
+            return False, item['name']
+        return True, item['name']
+
+
+    def get_data(self):
+        ReaderClass = get_file_reader(self._parameters['filename']['value'][0])
+        data_reader = ReaderClass(self._parameters['filename']['value'][0], self.get_page_name(), 0, range(self.get_max_cols()), self.get_page_index())
+        return data_reader
+
+
+    def get_re(self, pattern:str, name:str, row:int, col:int):
+        try:
+            match = re.search(pattern, self._heads_foots[name][row][col])
+            if match:
+                return match.group(0).strip()
+            else:
+                return ''
+        except:
+            return ['error']
 
 
     def get_names(self, record) -> dict:
@@ -170,83 +267,45 @@ class ExcelBaseImporter:
                     name['active'] = True
                     return name['col']
         return -1
-        # return next((index for name, index in names.items() if  re.search(col_name,name)), -1)
 
 
-    def check_columns(self, names:list, row:int) -> bool:
-        if names:
-            result = dict()
-            for item in self.get_columns_heading():
-                if not item['active'] and item['name']:
-                    index = self.get_index(names, item['name']) #номер колонки в таблице Excel
-                    if index != -1:
-                        b,c = True, item['name']
-                        if item['offset']['text']:
-                            b, c = self.check_columns_offset(item, index)
-                        if b:
-                            result[c] = {'index':index, 'col': item['col'], 'active': False}
-                            item['index'] = index
-                            item['row'] = row
-                            item['active'] = True
-            if len(result) > 0:
-                self._names.update(result)
-                return True
-        return False
+    def get_key(self, col:int) -> str:
+        for key, value in self._names.items():
+            if value['col'] == col:
+                return key
+        return ''
 
 
-    # Проверка на наличие 'якоря' (текста, смещенного относительно позиции текущего заголовка)
-    def check_columns_offset(self, item:dict, index:int) -> bool:
-        dic = item['offset']
-        if dic and dic['text']:
-            rows = [i for i in dic['row']]
-            cols = dic['col']
-            row_count = len(self._heads_foots['head'])
-            for row, col in product(rows,cols):
-                match = re.search(dic['text'],self._heads_foots['head'][(row_count-1)+row][index+col])
-                if match:
-                    return True, (dic['text'] + ' ' + item['name'] if dic['is_include'] else item['name'])
-            return False, item['name']
-        return True, item['name']
+    def get_value_str(self, value:str, pattern:str) -> str:
+        result = re.search(pattern, value.strip())
+        if result:
+            return result.group(0)
+        return ''
 
 
-    def append_team(self, mapped_record:list) -> bool:
-        if not self.get_condition_team():
-            match = True
+    def get_value_int(self, value:list) -> int:
+        if value and isinstance(value, list):
+            return value[0]
         else:
-            match = re.search(self.get_condition_team(), mapped_record[self.get_condition_column()][0])
-        if match:
-            self._team.append(mapped_record)
-            return True
-        elif len(self._team) != 0:
-            for key, value in mapped_record.items():
-                self._team[-1][key].append(value[0])
-            return False
+            return 0
 
 
-    def check_end_table(self, mapped_record) ->bool:
-        if not self.get_condition_end_table(): return False
-        match = re.search(self.get_condition_end_table(), mapped_record[self.get_condition_end_table_column()][0])
-        if match:
-            return True
-        return False
+    def get_value_range(self, value:list, count:int=0) -> list:
+        try:
+            if value:
+                return value
+            else:
+                return range(count)
+        except:
+            return range(count)
 
 
-    def check_period_value(self):
-        ls=list()
-        for item in self._parameters['period']['value']:
-            if item:
-                try:
-                    d = item.strftime('%d.%m.%Y')
-                    datetime.date.fromisoformat(    )
-                    ls.append(d)
-                except:
-                    d = datetime.date.today().strftime('%d.%m.%Y')
-        self._parameters['period']['value'] = list()
-        if ls:
-            for item in ls:
-                self._parameters['period']['value'].append(item)
-        else:
-            self._parameters['period']['value'].append(datetime.date.today().strftime('%d.%m.%Y'))
+    def done(self):
+        if len(self._team) !=0 :
+            self.process_record(self._team[-1])
+
+    def on_read_line(self, index, record):
+        pass
 
 
     def set_parameters(self) -> NoReturn:
@@ -288,72 +347,12 @@ class ExcelBaseImporter:
         return self._parameters[name]
 
 
-    def get_re(self, pattern:str, name:str, row:int, col:int):
-        try:
-            match = re.search(pattern, self._heads_foots[name][row][col])
-            if match:
-                return match.group(0).strip()
-            else:
-                return ''
-        except:
-            return ['error']
-
-
     def process_record(self, team:dict) -> NoReturn:
         if not self._heads_foots['is_parameters']:
             self.set_parameters()
         for doc_param in self._config._documents:
             doc,count_rows = self.get_document(team, doc_param)
             self.document_split_one_line(doc, count_rows, doc_param['name'])
-
-
-    def on_read_line(self, index, record):
-        pass
-
-
-    def get_key(self, col:int) -> str:
-        for key, value in self._names.items():
-            if value['col'] == col:
-                return key
-        return ''
-
-
-    def get_value_str(self, value:str, pattern:str) -> str:
-        result = re.search(pattern, value.strip())
-        if result:
-            return result.group(0)
-        return ''
-
-
-    def get_value_int(self, value:list) -> int:
-        if value and isinstance(value, list):
-            return value[0]
-        else:
-            return 0
-
-
-    def get_value_range(self, value:list, count:int=0) -> list:
-        try:
-            if value:
-                return value
-            else:
-                return range(count)
-        except:
-            return range(count)
-
-
-    def check_headers_status(self, names):
-        if self._heads_foots['status'] == 1:
-            return False
-        m = self._config._header['pattern']
-        if not m:
-            self._heads_foots['status'] = 1
-        else:
-            col = self.get_index(names, m )
-            if col != -1:
-                self._heads_foots['status'] = 1
-        return (self._heads_foots['status'] == 1)
-
 
 # ---------- Документы --------------------
 
@@ -374,13 +373,26 @@ class ExcelBaseImporter:
                 for row in rows:
                     if len(team[key]) > row and team[key][row]:
                         value = self.get_value_str(team[key][row], item_fld['pattern'] )
-                        if value:
+                        if not value:
+                            if item_fld['sub']:
+                                for item_sub in item_fld['sub']:
+                                    value = self.get_value_str(team[key][row], item_sub['pattern'] )
+                                    if value:
+                                        if item_sub['column_offset']:
+                                            m = self.get_key(self.get_value_int(item_sub['column_offset']))
+                                            if m:
+                                                value = self.get_value_str(team[m][row], item_sub['pattern_offset'] )
+                                        if item_sub['func']:
+                                            value = self.func(item_sub['func'], item_sub['func_pattern'], value)
+                                        break
+                        else:
                             if item_fld['column_offset']:
                                 m = self.get_key(self.get_value_int(item_fld['column_offset']))
                                 if m:
                                     value = self.get_value_str(team[m][row], item_fld['pattern_offset'] )
                             if item_fld['func']:
                                 value = self.func(item_fld['func'], item_fld['func_pattern'], value)
+                        if value:
                             rows_rel.append({'index':len(doc[item_fld['name']]), 'row':row})
                             doc[item_fld['name']].append({'row':row, 'value':value})
                             if len(doc[item_fld['name']]) > count_rows['count']:
@@ -408,7 +420,7 @@ class ExcelBaseImporter:
 
     def write_collections(self) -> NoReturn:
         if not self.is_init() or len(self._collections) == 0:
-            return 
+            return
 
         path = self._parameters['path']['value'][0]
         os.makedirs(path,exist_ok=True)
