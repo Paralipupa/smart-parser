@@ -30,9 +30,9 @@ class GisConfig:
 
     @check_error
     def configuration_initialize(self) -> NoReturn:
-        self._condition_team:str = ''  #условие начала новой области (регулярное выражение)
-        self._condition_end_table:str = ''  #условие окончания табличных данных (регулярное выражение)
-        self._condition_team_column:int = '' # колонка в которой просматривается условие области
+        self._condition_team = ''  #регул.выражение начала новой области (иерархии)
+        self._condition_end_table = ''  #регул.выражение окончания табличных данных 
+        self._condition_team_column = '' # регул.выражение колонки начала области (иерархии)
         self._condition_end_table_column:int = '' # колонка в которой просматривается условие окончания таблицы
         self._columns_heading:list[dict] = []  # список заголовков колонок таблицы
         self._row_start:int = self.read_config('main','row_start',isNumeric=True)    #
@@ -40,33 +40,11 @@ class GisConfig:
         self._page_index:int = self.read_config('main','page_index',isNumeric=True)  #
         self._max_cols:int = self.read_config('main','max_columns',isNumeric=True)   #максимальное кол-во просматриваемых колонок
         self._max_rows_heading:int = self.read_config('main','max_rows_heading',isNumeric=True) #максимальное кол-во строк до таблицы
-        self._documents:list[dict] = [] #список документов (настроек)
-        self._parameters = dict()
-
-        self.set_parameters()
-
-        num_cols = self.read_config('main','columns_count',isNumeric=True)
-        self._columns_heading = [{'name':self.read_config(f'col_{i}',
-                                'pattern'),
-                                'index':-1,
-                                'row':-1,
-                                'col':i,
-                                'active':False,
-                                'offset':dict(),
-                                }
-                                for i in range(num_cols[0])]
-        for i in range(num_cols[0]):
-            self.set_conditions(i)
-            self.set_heading_offset(i)
-
-
-        num_cols = self.read_config('main','documents_count',isNumeric=True)
-        for i in range(num_cols[0]):
-            self.set_documents(i)
-
         self.set_check()
         self.set_header()
-
+        self.set_parameters()
+        self.set_table_columns()
+        self.set_documents()
         self._is_init = True
 
 
@@ -85,34 +63,58 @@ class GisConfig:
 
     @check_error
     def set_parameters(self):
+        self._parameters = dict()
         self._parameters['period'] = [{'row':0, 'col':0, 'pattern':'', 'ishead': True}]
         self._parameters['address'] = [{'row':0, 'col':0, 'pattern':'', 'ishead': True}]
-        self._parameters['path'] = [{'row':0, 'col':0, 'pattern':'@'+self.read_config('main','path_output'), 'ishead': True}]
-        num_parms = self.read_config('main','headers_count',isNumeric=True)
-        if num_parms:
-            for i in range(num_parms[0]):
-                self._parameters.setdefault(self.read_config(f'headers_{i}','name'), [])
-                self._parameters[self.read_config(f'headers_{i}','name')].append(
-                    {
-                    'row' : self.read_config(f'headers_{i}','row',isNumeric=True),
-                    'col' : self.read_config(f'headers_{i}','column',isNumeric=True),
-                    'pattern' : self.read_config(f'headers_{i}','pattern'),
-                    'ishead' : True,
-                    }
-                )
-        num_parms = self.read_config('main','footers_count',isNumeric=True)
-        if num_parms:
-            for i in range(num_parms[0]):
-                self._parameters.setdefault(self.read_config(f'footers_{i}','name'), [])
-                self._parameters[self.read_config(f'footers_{i}','name')].append(
-                    {
-                    'row' : self.read_config(f'footers_{i}','row',isNumeric=True),
-                    'col' : self.read_config(f'footers_{i}','column',isNumeric=True),
-                    'pattern' : self.read_config(f'footers_{i}','pattern'),
-                    'ishead' : False,
-                    }
-                )
+        self._parameters['path'] = [{'row':0, 'col':0, 'pattern':'@'+self.read_config('main','path_output'), 'ishead': True}]        
+        self.set_param_headers()    
+        self.set_param_footers()
 
+    def set_param_headers(self) -> NoReturn:
+        i = 0
+        while self.read_config(f'headers_{i}','name'):
+            self._parameters.setdefault(self.read_config(f'headers_{i}','name'), [])
+            self._parameters[self.read_config(f'headers_{i}','name')].append(
+                {
+                'row' : self.read_config(f'headers_{i}','row',isNumeric=True),
+                'col' : self.read_config(f'headers_{i}','column',isNumeric=True),
+                'pattern' : self.read_config(f'headers_{i}','pattern'),
+                'ishead' : True,
+                }
+            )
+            i += 1
+
+
+    def set_param_footers(self) -> NoReturn:
+        i = 0
+        while self.read_config(f'footers_{i}','name'):
+            self._parameters.setdefault(self.read_config(f'footers_{i}','name'), [])
+            self._parameters[self.read_config(f'footers_{i}','name')].append(
+                {
+                'row' : self.read_config(f'footers_{i}','row',isNumeric=True),
+                'col' : self.read_config(f'footers_{i}','column',isNumeric=True),
+                'pattern' : self.read_config(f'footers_{i}','pattern'),
+                'ishead' : False,
+                }
+            )
+            i += 1
+
+    def set_table_columns(self) -> NoReturn:
+        num_cols = self.read_config('main','columns_count',isNumeric=True)
+        i = 0
+        while self.read_config(f'col_{i}','pattern'):
+            heading = {'name':self.read_config(f'col_{i}','pattern'),
+                                'index':-1,
+                                'row':-1,
+                                'col':i,
+                                'group_name': self.read_config(f'col_{i}','group'),
+                                'active':False,
+                                'offset':dict(),
+                    }
+            self._columns_heading.append(heading)
+            self.set_conditions(i)
+            self.set_heading_offset(i)
+            i += 1
 
     def set_conditions(self, i:int) -> NoReturn:
         if not self._condition_team:
@@ -131,6 +133,39 @@ class GisConfig:
             else True
 
 
+    @check_error
+    def set_documents(self) -> NoReturn:
+        self._documents = list() #список документов
+        k = 0
+        while self.read_config(f'doc_{k}','name'):
+            doc = dict()
+            doc['name'] = self.read_config(f'doc_{k}','name')
+            doc['fields'] = list()
+            self.set_document_fields(doc)
+            self._documents.append(doc)
+            k += 1
+
+
+    def set_document_fields(self, doc) -> NoReturn:
+        i = 0
+        while self.read_config(f'{doc["name"]}_{i}','name'):
+            fld = dict()
+            fld['name'] = self.read_config(f'{doc["name"]}_{i}','name') #имя аттрибута
+            fld['pattern'] =  self.read_config(f'{doc["name"]}_{i}','pattern') #шаблон поиска (регулярное выражение)
+            fld['column'] =  self.read_config(f'{doc["name"]}_{i}','col_config',isNumeric=True) #колонка для поиска данных аттрибут
+            fld['row'] =  self.read_config(f'{doc["name"]}_{i}','row_data',isNumeric=True) #запись (в области) для поиска данных атрибутта
+            fld['column_offset'] =  self.read_config(f'{doc["name"]}_{i}','col_offset',isNumeric=True) #колонка для поиска данных аттрибут
+            fld['pattern_offset'] =  self.read_config(f'{doc["name"]}_{i}','pattern_offset') #шаблон поиска (регулярное выражение)
+            fld['func'] =  self.read_config(f'{doc["name"]}_{i}','func') #запись (в области) для поиска данных атрибутта
+            fld['func_pattern'] =  self.read_config(f'{doc["name"]}_{i}','func_pattern') #шаблон поиска (регулярное выражение)
+            fld['sub'] = []
+            doc['fields'].append(fld)
+            self.set_field_sub(fld['sub'], doc["name"], i)
+            i += 1
+        for fld in doc['fields']:
+            if fld['pattern'][0:1] == "@":
+                fld['pattern'] = doc['fields'][int(fld['pattern'][1:])]['pattern']
+
     def set_field_sub(self, fld, name, i:int):
         j = 0
         while self.read_config(f'{name}_{i}_{j}','pattern'):
@@ -147,32 +182,6 @@ class GisConfig:
             )
             j += 1
 
-    @check_error
-    def set_documents(self, k:int) -> NoReturn:
-        doc = dict()
-        doc['name'] = self.read_config(f'doc_{k}','name')
-        doc['fields'] = list()
-        num_docs = self.read_config(f'doc_{k}','fields_count',isNumeric=True)
-        for i in range(num_docs[0]):
-            fld = dict()
-            fld['name'] = self.read_config(f'{doc["name"]}_{i}','name') #имя аттрибута
-            fld['pattern'] =  self.read_config(f'{doc["name"]}_{i}','pattern') #шаблон поиска (регулярное выражение)
-            fld['column'] =  self.read_config(f'{doc["name"]}_{i}','col_config',isNumeric=True) #колонка для поиска данных аттрибут
-            fld['row'] =  self.read_config(f'{doc["name"]}_{i}','row_data',isNumeric=True) #запись (в области) для поиска данных атрибутта
-            fld['column_offset'] =  self.read_config(f'{doc["name"]}_{i}','col_offset',isNumeric=True) #колонка для поиска данных аттрибут
-            fld['pattern_offset'] =  self.read_config(f'{doc["name"]}_{i}','pattern_offset') #шаблон поиска (регулярное выражение)
-            fld['func'] =  self.read_config(f'{doc["name"]}_{i}','func') #запись (в области) для поиска данных атрибутта
-            fld['func_pattern'] =  self.read_config(f'{doc["name"]}_{i}','func_pattern') #шаблон поиска (регулярное выражение)
-            fld['sub'] = []
-            doc['fields'].append(fld)
-
-            self.set_field_sub(fld['sub'], doc["name"], i)
-
-
-        for fld in doc['fields']:
-            if fld['pattern'][0:1] == "@":
-                fld['pattern'] = doc['fields'][int(fld['pattern'][1:])]['pattern']
-        self._documents.append(doc)
 
     @check_error
     def get_range(self, x:str) -> list:
