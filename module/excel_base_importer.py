@@ -72,7 +72,7 @@ class ExcelBaseImporter:
             for index in value['indexes']:
                 v = record[index]
                 is_empty = is_empty and (v == '' or v is None)
-                result_record.setdefault(key,[])
+                result_record.setdefault(key, [])
                 result_record[key].append(v)
         return result_record if not is_empty else None
 
@@ -146,22 +146,24 @@ class ExcelBaseImporter:
 
     def check_body(self, record: list, row: int):
         mapped_record = self.map_record(record)
-        if mapped_record and self.append_team(mapped_record):
-            if len(self._team) > 1:
-                self.process_record(self._team[-2])
-        elif len(self._team) == 0:
+        if mapped_record:  #строка не пустая
+            if self.check_end_table(mapped_record): #проверяем условие конеца таблицы
+                self._heads_foots['status'] = 0
+                self._heads_foots['is_parameters'] = False
+                self.set_row_start(row)
+                for item in self.get_columns_heading():
+                    item['active'] = False
+            elif self.append_team(mapped_record): #добавили новую область
+                if len(self._team) > 1: #если больше одной области, то добавляем предпоследнюю в документ 
+                    self.process_record(self._team[-2])
+        if len(self._team) == 0:
             self._heads_foots['head'].append(record)
-        if mapped_record and self.check_end_table(mapped_record):
-            self._heads_foots['status'] = 0
-            self._heads_foots['is_parameters'] = False
-            self.set_row_start(row)
-            for item in self.get_columns_heading():
-                item['active'] = False
 
     def check_columns(self, names: list, row: int) -> bool:
         is_find = False
         if names:
-            cols_exclude = list() # список уже добавленных колонок, которые нужно исключить при следующем
+            # список уже добавленных колонок, которые нужно исключить при следующем
+            cols_exclude = list()
             # сначала проходим колонки без групп
             for item in self.get_columns_heading():
                 if not item['group_name']:
@@ -185,7 +187,7 @@ class ExcelBaseImporter:
                         b, c = self.check_column_offset(item, name['col'])
                     if b:
                         self._names.setdefault(c, {'col': item['col'],
-                                                   'active': True, 'indexes': []})                        
+                                                   'active': True, 'indexes': []})
                         self._names[c]['active'] = True
                         self._names[c]['indexes'].append(name['col'])
                         cols_exclude.append(name['col'])
@@ -221,9 +223,17 @@ class ExcelBaseImporter:
         for item in self._parameters['period']['value']:
             if item:
                 try:
-                    d = item.strftime('%d.%m.%Y')
-                    datetime.date.fromisoformat()
-                    ls.append(d)
+                    result = re.search('19[89][0-9]|20[0-3][0-9]', item)
+                    if result:
+                        year = result.group(0)
+                        month = next((val for key, val in self.get_months().items() if re.search(
+                            key+'[а-я]+\s', item, re.IGNORECASE)), None)
+                        if month:
+                            ls.append(f'01.{month}.{year}')
+                        else:
+                            d = item.strftime('%d.%m.%Y')
+                            datetime.date.fromisoformat()
+                            ls.append(d)
                 except:
                     d = datetime.date.today().strftime('%d.%m.%Y')
         self._parameters['period']['value'] = list()
@@ -232,7 +242,7 @@ class ExcelBaseImporter:
                 self._parameters['period']['value'].append(item)
         else:
             self._parameters['period']['value'].append(
-                datetime.date.today().strftime('%d.%m.%Y'))
+                datetime.date.today().replace(day=1).strftime('%d.%m.%Y'))
 
     def check_headers_status(self, names):
         if self._heads_foots['status'] == 1:
@@ -328,6 +338,22 @@ class ExcelBaseImporter:
         except:
             return range(count)
 
+    def get_months(self):
+        return {'январ': '01',
+                'феврал': '02',
+                'март': '03',
+                'апрел': '04',
+                'май': '05',
+                'мая': '05',
+                'июн': '06',
+                'июл': '07',
+                'август': '08',
+                'сентябр': '09',
+                'октябр': '10',
+                'ноябр': '11',
+                'декабр': '12'
+                }
+
     def done(self):
         if len(self._team) != 0:
             self.process_record(self._team[-1])
@@ -347,15 +373,15 @@ class ExcelBaseImporter:
         if not self._parameters['period']['value']:
             self._parameters['period']['value'].append(
                 datetime.date.today().strftime('%d.%m.%Y'))
-        # self.check_period_value()
+        self.check_period_value()
 
         self._parameters.setdefault('path', {'fixed': False, 'value': list()})
         if not self._parameters['path']['value']:
-            self._parameters['period']['value'].append('output')
+            self._parameters['path']['value'].append('output')
         self._parameters.setdefault(
             'address', {'fixed': False, 'value': list()})
         if not self._parameters['address']['value']:
-            self._parameters['period']['value'].append('')
+            self._parameters['address']['value'].append('')
         self._heads_foots['is_parameters'] = True
 
     def set_parameter(self, name: str):
@@ -382,7 +408,7 @@ class ExcelBaseImporter:
         if not self._heads_foots['is_parameters']:
             self.set_parameters()
         for doc_param in self._config._documents:
-            doc, count_rows = self.get_document(team, doc_param)
+            doc, count_rows = self.set_document(team, doc_param)
             self.document_split_one_line(doc, count_rows, doc_param['name'])
 
 # ---------- Документы --------------------
@@ -391,56 +417,64 @@ class ExcelBaseImporter:
         self._collections.setdefault(name, list())
         self._collections[name].append(doc)
 
-    def get_document(self, team: dict, doc_param):
+    def set_document(self, team: dict, doc_param):
         doc = dict()
         count_rows = {'count': 0, 'rel': list()}
         for item_fld in doc_param['fields']:
             doc.setdefault(item_fld['name'], list())
-            key = self.get_key(self.get_value_int(item_fld['column']))
-            if key and item_fld['pattern']:
-                rows = self.get_value_range(item_fld['row'], len(team[key]))
-                rows_rel = list()
-                for row in rows:
-                    if len(team[key]) > row and team[key][row]:
-                        value = self.get_value_str(
-                            team[key][row], item_fld['pattern'])
-                        if not value:
-                            if item_fld['sub']:
-                                for item_sub in item_fld['sub']:
-                                    value = self.get_value_str(
-                                        team[key][row], item_sub['pattern'])
-                                    if value:
-                                        if item_sub['column_offset']:
-                                            m = self.get_key(self.get_value_int(
-                                                item_sub['column_offset']))
-                                            if m:
-                                                value = self.get_value_str(
-                                                    team[m][row], item_sub['pattern_offset'])
-                                        if item_sub['func']:
-                                            value = self.func(
-                                                item_sub['func'], item_sub['func_pattern'], value)
-                                        break
-                        else:
-                            if item_fld['column_offset']:
-                                m = self.get_key(self.get_value_int(
-                                    item_fld['column_offset']))
-                                if m:
-                                    value = self.get_value_str(
-                                        team[m][row], item_fld['pattern_offset'])
-                            if item_fld['func']:
-                                value = self.func(
-                                    item_fld['func'], item_fld['func_pattern'], value)
-                        if value:
-                            rows_rel.append(
-                                {'index': len(doc[item_fld['name']]), 'row': row})
-                            doc[item_fld['name']].append(
-                                {'row': row, 'value': value})
-                            if len(doc[item_fld['name']]) > count_rows['count']:
-                                count_rows['count'] = len(
-                                    doc[item_fld['name']])
-                                count_rows['rel'] = rows_rel
+            nums_col = self.get_value_range(item_fld['column'])
+            rows_rel = list()
+            for num_col in nums_col:
+                key = self.get_key(num_col)
+                if key and item_fld['pattern']:
+                    rows = self.get_value_range(
+                        item_fld['row'], len(team[key]))
+                    for row in rows:
+                        if len(team[key]) > row and team[key][row]:
+                            value = self.get_value_str(
+                                team[key][row], item_fld['pattern'])
+                            if not value:
+                                value = self.get_document_value(
+                                    item_fld, team, row, key)
+                            else:
+                                if item_fld['column_offset']:
+                                    m = self.get_key(self.get_value_int(
+                                        item_fld['column_offset']))
+                                    if m:
+                                        value = self.get_value_str(
+                                            team[m][row], item_fld['pattern_offset'])
+                                if item_fld['func']:
+                                    value = self.func(
+                                        item_fld['func'], item_fld['func_pattern'], value)
+                            if value:
+                                rows_rel.append(
+                                    {'index': len(doc[item_fld['name']]), 'row': row})
+                                doc[item_fld['name']].append(
+                                    {'row': row, 'col': num_col, 'value': value})
+                                if len(doc[item_fld['name']]) > count_rows['count']:
+                                    count_rows['count'] = len(
+                                        doc[item_fld['name']])
+                                    count_rows['rel'] = rows_rel
 
         return doc, count_rows
+
+    def get_document_value(self, item_fld, team, row, key):
+        if item_fld['sub']:
+            for item_sub in item_fld['sub']:
+                value = self.get_value_str(
+                    team[key][row], item_sub['pattern'])
+                if value:
+                    if item_sub['column_offset']:
+                        m = self.get_key(self.get_value_int(
+                            item_sub['column_offset']))
+                        if m:
+                            value = self.get_value_str(
+                                team[m][row], item_sub['pattern_offset'])
+                    if item_sub['func']:
+                        value = self.func(
+                            item_sub['func'], item_sub['func_pattern'], value)
+                    return value
+        return None
 
     def document_split_one_line(self, doc: dict, count_rows: dict, name: str):
         for i in range(count_rows['count']):
@@ -548,7 +582,7 @@ class ExcelBaseImporter:
                         data = match.group(0)
             return data
         except:
-            return ''
+            return f'error {key}'
 
     def func_inn(self, data: str = ''):
         return self._parameters['inn']['value'][0]
@@ -569,7 +603,7 @@ class ExcelBaseImporter:
         return self._parameters['address']['value'][0]
 
     def func_hash(self, data: str = ''):
-        return _hashit(data.encode('utf-8'))
+        return _hashit(str(data).encode('utf-8'))
 
     def func_uuid(self, data: str = ''):
         return uuid.uuid5(uuid.NAMESPACE_X500, data)
