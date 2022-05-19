@@ -10,8 +10,8 @@ def check_error(func):
     def wrapper(*args):
         try:
             return func(*args)
-        except:
-            logging.warning('error in func: {}. skip'.format(func))
+        except Exception as ex:
+            logging.warning('error in func: {}. skip :\n{}'.format(func, str(ex)))
             return None
     return wrapper
 
@@ -79,12 +79,9 @@ class GisConfig:
         self._parameters = dict()
         self.set_param_headers()
         self.set_param_footers()
-        self._parameters['period'].setdefault(
-            [{'row': 0, 'col': 0, 'pattern': '', 'ishead': True}])
-        self._parameters['address'].setdefault(
-            [{'row': 0, 'col': 0, 'pattern': '', 'ishead': True}])
-        self._parameters['path'].setdefault(
-            [{'row': 0, 'col': 0, 'pattern': '@'+self.read_config('main', 'path_output'), 'ishead': True}])
+        self._parameters.setdefault('period',[{'row': 0, 'col': 0, 'pattern': '', 'ishead': True}])
+        self._parameters.setdefault('address',[{'row': 0, 'col': 0, 'pattern': '', 'ishead': True}])
+        self._parameters.setdefault('path',[{'row': 0, 'col': 0, 'pattern': '@output', 'ishead': True}])
 
     def set_param_headers(self) -> NoReturn:
         i = 0
@@ -151,7 +148,7 @@ class GisConfig:
             f'col_{i}', 'row_offset', isNumeric=True)
         self._columns_heading[i]['offset']['col'] = self.read_config(
             f'col_{i}', 'col_offset', isNumeric=True)
-        self._columns_heading[i]['offset']['text'] = self.read_config(
+        self._columns_heading[i]['offset']['pattern'] = self.read_config(
             f'col_{i}', 'pattern_offset')
         self._columns_heading[i]['offset']['is_include'] = False if self.read_config(f'col_{i}', 'is_include_offset') == '0' \
             else True
@@ -179,6 +176,9 @@ class GisConfig:
             # колонка для поиска данных аттрибут
             fld['column'] = self.read_config(
                 f'{doc["name"]}_{i}', 'col_config', isNumeric=True)
+            # тип данных в колонке
+            fld['type'] = self.read_config(
+                f'{doc["name"]}_{i}', 'type')
             # запись (в области) для поиска данных атрибутта
             fld['row'] = self.read_config(
                 f'{doc["name"]}_{i}', 'row_data', isNumeric=True)
