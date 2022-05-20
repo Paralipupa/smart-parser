@@ -592,9 +592,6 @@ class ExcelBaseImporter:
 
 # ---------- Функции --------------------
     def func(self, team: dict, fld_param, data: str, col: int):
-        list_funcs = fld_param['func'].split(',')
-        pattern = fld_param['func_pattern']
-        data_origin = data
         dic_f = {
             'inn': self.func_inn,
             'period': self.func_period,
@@ -609,38 +606,42 @@ class ExcelBaseImporter:
             'param': self.func_param,
             'id': self.func_id,
         }
+        pattern = fld_param['func_pattern']
         try:
-            for name_func_add in list_funcs:
+            for name_func_add in fld_param['func'].split(','):
                 value = ''
                 for name_func in name_func_add.split('+'):
-                    data = data_origin
-                    is_check = False  # условия проверки по шаблону без изменения входных данных
-                    if name_func.find('(') != -1:
-                        # если функция с параметром, то заменяем входные данные (data) на этот параметр
-                        param = re.search(
-                            r'(?<=\()[a-z_0-9-]+(?=\))', name_func, re.IGNORECASE)
-                        if param:
-                            data = param.group(0)
-                        name_func = name_func[:name_func.find('(')]
-                    if name_func.find('check_') != -1:
-                        name_func = name_func.replace('check_', '')
-                        is_check = True
+                    name_func, data_calc, is_check = self.__get_func_name(name_func=name_func, data=data)
                     f = dic_f[name_func.strip()]
-                    value += f(data, col, team)+' '
-                if pattern:
-                    match = re.search(pattern, value.strip(), re.IGNORECASE)
-                    if match:
-                        value = match.group(0)
+                    if is_check:
+                        if f(data_calc, col, team):
+                            value += data_calc + ' '
                     else:
-                        value = ''
-                if is_check:
-                    if not value:
+                        value += f(data_calc, col, team) +' '
+                data = value.strip()
+                if pattern:
+                    match = re.search(pattern, data, re.IGNORECASE)
+                    if match:
+                        data = match.group(0)
+                    else:
                         data = ''
-                else:
-                    data = value
             return data.strip()
         except Exception as ex:
             return f'error {name_func}: {str(ex)}'
+
+    def __get_func_name(self, name_func, data):
+        is_check = False
+        if name_func.find('(') != -1:
+            # если функция с параметром, то заменяем входные данные (data) на этот параметр
+            param = re.search(
+                r'(?<=\()[a-z_0-9-]+(?=\))', name_func, re.IGNORECASE)
+            if param:
+                data = param.group(0)
+            name_func = name_func[:name_func.find('(')]
+        if name_func.find('check_') != -1:
+            name_func = name_func.replace('check_', '')
+            is_check = True
+        return name_func, data, is_check
 
     def func_inn(self, data: str = '', col: int = -1, team: dict = {}):
         return self._parameters['inn']['value'][0]
@@ -680,7 +681,7 @@ class ExcelBaseImporter:
         return value
 
     def func_param(self, key: str = '', col: int = -1, team: dict = {}):
-        m: str = ''
+        m = ''
         for item in self._parameters[key]['value']:
-            m += item.strip() + ' '
+            m += (item.strip() + ' ') if isinstance(item,str) else ''
         return f'{m.strip()}'
