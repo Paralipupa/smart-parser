@@ -164,6 +164,7 @@ class GisConfig:
             doc = dict()
             doc['name'] = self.read_config(f'doc_{k}', 'name')
             doc['rows_exclude'] = self.read_config(f'doc_{k}', 'rows_exclude',isNumeric=True)
+            doc['required_fields'] = self.read_config(f'doc_{k}', 'required_fields')
             doc['fields'] = list()
             self.set_document_fields(doc)
             self._documents.append(doc)
