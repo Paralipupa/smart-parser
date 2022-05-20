@@ -88,12 +88,12 @@ class ExcelBaseImporter:
             self._team.append(mapped_record)
             return True
         elif len(self._team) != 0:
-            size = len(self._team[-1][key])
             for key, value in mapped_record.items():
+                size = len(self._team[-1][key])
                 self._team[-1][key].append({'row': size,
                                             'col': self._team[-1][key][0]['col'],
                                             'index': self._team[-1][key][0]['index'],
-                                            'value': value[0]})
+                                            'value': mapped_record[key][0]['value']})
             return False
 
     def check(self, is_warning: bool = True) -> bool:
@@ -169,7 +169,7 @@ class ExcelBaseImporter:
     def check_columns(self, names: list, row: int) -> bool:
         is_find = False
         if names:
-            # список уже добавленных колонок, которые нужно исключить при следующем
+            # список уже добавленных колонок, которые нужно исключить при следующем прохождении
             cols_exclude = list()
             # сначала проходим колонки без групп
             for item in self.get_columns_heading():
@@ -230,18 +230,25 @@ class ExcelBaseImporter:
         for item in self._parameters['period']['value']:
             if item:
                 try:
+                    month = 0
+                    year = 0
                     result = re.search(
-                        '19[89][0-9]|20[0-3][0-9]', item, re.IGNORECASE)
+                        '(0?[1-9]|[12][0-9]|3[01])[\/\-\.](0?[1-9]|1[012])[\/\-\.][0-9]{4}',
+                        item, re.IGNORECASE)
                     if result:
-                        year = result.group(0)
-                        month = next((val for key, val in self.get_months().items() if re.search(
-                            key+'[а-я]+\s', item, re.IGNORECASE)), None)
-                        if month:
-                            ls.append(f'01.{month}.{year}')
-                        else:
-                            d = item.strftime('%d.%m.%Y')
-                            datetime.date.fromisoformat()
-                            ls.append(d)
+                        year = item[6:]
+                        month = item[3:5]
+                    else:
+                        result = re.search(
+                            '19[89][0-9]|20[0-3][0-9]', item, re.IGNORECASE)
+                        if result:
+                            year = result.group(0)
+                            month = next((val for key, val in self.get_months().items() if re.search(
+                                key+'[а-я]+\s', item, re.IGNORECASE)), None)
+                    if month:
+                        ls.append(f'01.{month}.{year}')
+                    else:
+                        ls.append(datetime.date.today().strftime('%d.%m.%Y'))
                 except:
                     d = datetime.date.today().strftime('%d.%m.%Y')
         self._parameters['period']['value'] = list()
@@ -457,9 +464,9 @@ class ExcelBaseImporter:
                     rows = self.get_value_range(
                         item_fld['row'], len(team[name_field]))
                     for row in rows:
-                        if len(team[name_field]) > row:
+                        if len(team[name_field]) > row and not (row in doc_param['rows_exclude']):
                             value = self.get_fld_value(
-                                team=team[name_field], type_fld=item_fld['type'], pattern=item_fld['pattern'], row=row)
+                                team=team[name_field], type_fld=item_fld['type'], pattern=item_fld['pattern'], row=row)                                
                             if not value:
                                 value = self.get_sub_value(
                                     item_fld, team, name_field, row, col)
@@ -469,8 +476,8 @@ class ExcelBaseImporter:
                                         item_fld['column_offset']))
                                     if m_key:
                                         value = self.get_fld_value(
-                                            team=team[m_key], type_fld=item_fld['type'], pattern=item_fld['pattern'], row=row)
-                            if item_fld['func']:
+                                            team=team[m_key], type_fld=item_fld['type'], pattern=item_fld['pattern_offset'], row=row)
+                            if value and item_fld['func']:
                                 value = self.func(
                                     team=team, fld_param=item_fld, data=value, col=col)
                             if value:
@@ -513,7 +520,12 @@ class ExcelBaseImporter:
             if val_item['row'] == row:
                 value += self.get_value(
                     val_item['value'], pattern, type_fld)
-        return str(round(value, 4) if isinstance(value, float) else value)
+        if (type_fld == 'float' or type_fld == 'double' or type_fld == 'int'):
+            if value == 0:
+                value = ''
+            else:
+                value = str(round(value, 4) if isinstance(value, float) else value)
+        return value
 
     def document_split_one_line(self, doc: dict, count_rows: dict, name: str):
         for i in range(count_rows['count']):
@@ -523,7 +535,7 @@ class ExcelBaseImporter:
                 if values:
                     if i < len(values):
                         # проверяем соответствие номера строки (row) в данных с номером записи (i) в выходном файле
-                        if values[i]['row'] == count_rows['rel'][i]['row']:
+                        if (values[i]['row'] == 0) or (values[i]['row'] == count_rows['rel'][i]['row']):
                             elem[key] = values[i]['value']
                     elif len(values) != 0:
                         elem[key] = values[0]['value']
@@ -611,13 +623,14 @@ class ExcelBaseImporter:
             for name_func_add in fld_param['func'].split(','):
                 value = ''
                 for name_func in name_func_add.split('+'):
-                    name_func, data_calc, is_check = self.__get_func_name(name_func=name_func, data=data)
+                    name_func, data_calc, is_check = self.__get_func_name(
+                        name_func=name_func, data=data)
                     f = dic_f[name_func.strip()]
                     if is_check:
                         if f(data_calc, col, team):
                             value += data_calc + ' '
                     else:
-                        value += f(data_calc, col, team) +' '
+                        value += f(data_calc, col, team) + ' '
                 data = value.strip()
                 if pattern:
                     match = re.search(pattern, data, re.IGNORECASE)
@@ -677,11 +690,12 @@ class ExcelBaseImporter:
         return ''
 
     def func_column_value(self, data: str = '', col: int = 0, team: dict = {}):
-        value = next((x[0]['value'] for x in team.values() if x[0]['col'] == int(data)), '')
+        value = next((x[0]['value']
+                     for x in team.values() if x[0]['col'] == int(data)), '')
         return value
 
     def func_param(self, key: str = '', col: int = -1, team: dict = {}):
         m = ''
         for item in self._parameters[key]['value']:
-            m += (item.strip() + ' ') if isinstance(item,str) else ''
+            m += (item.strip() + ' ') if isinstance(item, str) else ''
         return f'{m.strip()}'

@@ -11,7 +11,8 @@ def check_error(func):
         try:
             return func(*args)
         except Exception as ex:
-            logging.warning('error in func: {}. skip :\n{}'.format(func, str(ex)))
+            logging.warning(
+                'error in func: {}. skip :\n{}'.format(func, str(ex)))
             return None
     return wrapper
 
@@ -79,9 +80,12 @@ class GisConfig:
         self._parameters = dict()
         self.set_param_headers()
         self.set_param_footers()
-        self._parameters.setdefault('period',[{'row': 0, 'col': 0, 'pattern': '', 'ishead': True}])
-        self._parameters.setdefault('address',[{'row': 0, 'col': 0, 'pattern': '', 'ishead': True}])
-        self._parameters.setdefault('path',[{'row': 0, 'col': 0, 'pattern': '@output', 'ishead': True}])
+        self._parameters.setdefault(
+            'period', [{'row': 0, 'col': 0, 'pattern': '', 'ishead': True}])
+        self._parameters.setdefault(
+            'address', [{'row': 0, 'col': 0, 'pattern': '', 'ishead': True}])
+        self._parameters.setdefault(
+            'path', [{'row': 0, 'col': 0, 'pattern': '@output', 'ishead': True}])
 
     def set_param_headers(self) -> NoReturn:
         i = 0
@@ -112,7 +116,6 @@ class GisConfig:
                 }
             )
             i += 1
-
 
     def set_table_columns(self) -> NoReturn:
         num_cols = self.read_config('main', 'columns_count', isNumeric=True)
@@ -160,6 +163,7 @@ class GisConfig:
         while self.read_config(f'doc_{k}', 'name'):
             doc = dict()
             doc['name'] = self.read_config(f'doc_{k}', 'name')
+            doc['rows_exclude'] = self.read_config(f'doc_{k}', 'rows_exclude',isNumeric=True)
             doc['fields'] = list()
             self.set_document_fields(doc)
             self._documents.append(doc)
@@ -182,6 +186,9 @@ class GisConfig:
             # запись (в области) для поиска данных атрибутта
             fld['row'] = self.read_config(
                 f'{doc["name"]}_{i}', 'row_data', isNumeric=True)
+            # запись (в области) для исключения поиска данных атрибутта
+            fld['row_exclude'] = self.read_config(
+                f'{doc["name"]}_{i}', 'row_data_exclude', isNumeric=True)
             fld['column_offset'] = self.read_config(
                 f'{doc["name"]}_{i}', 'col_offset', isNumeric=True)  # колонка для поиска данных аттрибут
             fld['pattern_offset'] = self.read_config(
