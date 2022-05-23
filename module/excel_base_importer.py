@@ -483,11 +483,11 @@ class ExcelBaseImporter:
                             if value:
                                 # формируем документ
                                 doc[item_fld['name']].append(
-                                    {'row': row, 'col': col, 'value': value})
+                                    {'row': len(doc[item_fld['name']]), 'col': col, 'value': value})
                 else:
                     # все равно заносим в документ
                     doc[item_fld['name']].append(
-                        {'row': 0, 'col': col, 'value': ''})
+                        {'row': len(doc[item_fld['name']]), 'col': col, 'value': ''})
 
         return doc
 
@@ -497,6 +497,8 @@ class ExcelBaseImporter:
         # для каждого поля свой индекс прохода
         index = {x: 0 for x in doc.keys()}
         rows = [x[-1]['row'] for x in doc.values() if x]
+        counts = [len(x) for x in doc.values() if x]
+        rows = rows + counts
         rows_count = max(rows) if rows else 0
         rows_required = self.__get_required_rows(name, doc)
         rows_exclude = [x if x >= 0 else rows_count +
@@ -521,6 +523,8 @@ class ExcelBaseImporter:
                         done = True
                     elif values[0]['row'] == 0:
                         elem[key] = values[0]['value']
+                elif len(values) > 0 and values[0]['row'] == 0:
+                    elem[key] = values[0]['value']
             if not is_empty and not (i in rows_exclude) and (not rows_required or i in rows_required):
                 self.append_to_collection(name, elem)
 
