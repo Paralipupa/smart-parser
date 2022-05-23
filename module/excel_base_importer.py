@@ -9,16 +9,17 @@ from module.file_readers import get_file_reader
 from module.gisconfig import GisConfig
 from itertools import product
 import uuid
+from .gisconfig import check_error
 
+db_logger = logging.getLogger('parser')
 
 def _hashit(s): return hashlib.sha1(s).hexdigest()
 
-# lock = Lock()
-
-
 class ExcelBaseImporter:
 
+    @check_error
     def __init__(self, file_name: str, inn: str, config_file: str):
+        self.is_file_exists = True
         self._team = list()  # список областей с данными
         self.colontitul = {'status': 0, 'is_parameters': False, 'head': list(
         ), 'foot': list()}  # список  записей до и после табличных данных
@@ -30,15 +31,18 @@ class ExcelBaseImporter:
         self._collections = dict()  # коллекция выходных таблиц
         self._config = GisConfig(config_file)
 
+    @check_error
     def is_verify(self, file_name: str) -> bool:
         if not self.is_init():
             return False
         if not os.path.exists(self._parameters['filename']['value'][0]):
             logging.warning('file not found {}. skip'.format(
                 self._parameters['filename']['value'][0]))
+            self.is_file_exists = False
             return False
         return True
 
+    @check_error
     def read(self) -> bool:
         if not self.is_verify(self._parameters['filename']['value'][0]):
             return False
@@ -162,7 +166,7 @@ class ExcelBaseImporter:
             elif self.append_team(mapped_record):  # добавили новую область
                 if len(self._team) > 1:  # если больше одной области, то добавляем предпоследнюю в документ
                     self.process_record(self._team[-2])
-        if len(self._team) == 0:
+        if len(self._team) < 2:
             self.colontitul['head'].append(record)
 
     def check_columns(self, names: list, row: int) -> bool:
@@ -305,7 +309,7 @@ class ExcelBaseImporter:
     def get_names(self, record) -> dict:
         names = []
         index = 0
-        if (self.colontitul['status'] == 1) or (len(self._collections) == 0):
+        if (self.colontitul['status'] == 1):
             self.colontitul['head'].append(record)
         elif self.colontitul['status'] == 0:
             self.colontitul['foot'].append(record)
@@ -418,8 +422,8 @@ class ExcelBaseImporter:
         for param in self._config._parameters[name]:
             rows: list[int] = param['row']
             cols: list[int] = param['col']
-            pattern: str = param['pattern']
-            is_head: bool = param['ishead']
+            pattern = param['pattern']
+            is_head = param['ishead']
             self._parameters.setdefault(
                 name, {'fixed': False, 'value': list()})
             if pattern:
@@ -472,14 +476,9 @@ class ExcelBaseImporter:
                                 # если значение пустое, то проверяем под-поля (col_x_y если они заданы)
                                 value = self.get_sub_value(
                                     item_fld, team, name_field, row, col)
-                            else:
+                            elif item_fld['row_offset'] or item_fld['column_offset']:
                                 # если есть смещение, то берем данные от туда
-                                if item_fld['column_offset']:
-                                    m_key = self.get_key(self.get_value_int(
-                                        item_fld['column_offset']))
-                                    if m_key:
-                                        value = self.get_fld_value(
-                                            team=team[m_key], type_fld=item_fld['type'], pattern=item_fld['pattern_offset'], row=row)
+                                value = self.get_value_offset(team=team, item_fld=item_fld, item_type=item_fld['type'], row=row,col=col)
                             if value and item_fld['func']:
                                 # запускаем функцию и передаем в нее полученное значение
                                 value = self.func(
@@ -488,13 +487,6 @@ class ExcelBaseImporter:
                                 # формируем документ
                                 doc[item_fld['name']].append(
                                     {'row': row, 'col': col, 'value': value})
-                            # эта часть скорее всего не нужна (проверить позже)
-                                rows_rel.append(
-                                    {'index': len(doc[item_fld['name']]), 'row': row})
-                                if len(doc[item_fld['name']]) > count_rows['count']:
-                                    count_rows['count'] = len(
-                                        doc[item_fld['name']])
-                                    count_rows['rel'] = rows_rel
                 else:
                     # все равно заносим в документ
                     doc[item_fld['name']].append(
@@ -502,16 +494,36 @@ class ExcelBaseImporter:
 
         return doc, count_rows
 
+    def get_value_offset(self, team, item_fld, item_type, row, col):
+        # если есть смещение, то берем данные от туда
+        value = self.get_value(item_fld['type'])
+        rows = list(zip(item_fld['row_offset'], item_fld['row_offset_mark']))
+        if not rows:
+            # При отсутствии настоек по смещению строки берем значение текущуй строки
+            rows = [(0, False)]
+        for r in rows:
+            col_config = col
+            if item_fld['column_offset']:
+                col_config = self.get_value_int(item_fld['column_offset'])
+            m_key = self.get_key(col_config)
+            if m_key:
+                value += self.get_fld_value(
+                    team=team[m_key], type_fld=item_type, pattern=item_fld['pattern_offset'], row=r[0]+row if not r[1] else r[0])
+        return value
+
+
 # Разбиваем данные документа по-строчно
     def document_split_one_line(self, doc: dict, count_rows: dict, name: str):
         s = self.__get_required_rows(name, doc)
         # для каждого поля свой индекс прохода
         index = {x: 0 for x in doc.keys()}
+        rows = [x[-1]['row'] for x in doc.values() if x]
+        rows_count = max(rows) if rows else 0
         i = -1
         done = True
         while done:
-            done = False
             i += 1
+            done = (i<rows_count)
             elem = dict()
             is_empty = True
             for key, values in doc.items():
@@ -609,16 +621,11 @@ class ExcelBaseImporter:
                 value = self.get_fld_value(
                     team=team[name_field], type_fld=item_fld['type'], pattern=item_sub['pattern'], row=row)
                 if value:
-                    if item_sub['column_offset']:
-                        name_field_sub = self.get_key(self.get_value_int(
-                            item_sub['column_offset']))
-                        if name_field_sub:
-                            value = self.get_fld_value(
-                                team=team[name_field_sub], type_fld=item_fld['type'], pattern=item_sub['pattern'], row=row)
+                    if item_sub['row_offset'] or item_sub['column_offset']:
+                        value = self.get_value_offset(team=team, item_fld=item_sub, item_type=item_fld['type'], row=row,col=col)
                     if item_sub['func']:
                         value = self.func(
                             team=team, fld_param=item_sub, data=value, col=col)
-
                     return value
         return None
 

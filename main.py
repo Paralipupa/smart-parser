@@ -17,8 +17,10 @@ if __name__ == "__main__":
         for file in files:
             file_config = f'{path}/{file}'
             rep = Report_001_00(file_name=file_name, inn=inn, config_file=file_config)
-            if rep.check(is_warning=False):
+            if rep.check(is_warning=False) and rep.is_file_exists:
                 break
+            if not rep.is_file_exists:
+                exit()
             file_config = ''
 
     if file_config:
