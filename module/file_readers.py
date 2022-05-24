@@ -88,7 +88,7 @@ class XlsFile(DataFile):
 class XlsxFile(DataFile):
     def __init__(self, fname, sheet_name, first_line, columns, page_index=None):
         super(XlsxFile, self).__init__(fname, sheet_name, first_line, columns)
-        self._wb = load_workbook(filename=fname)
+        self._wb = load_workbook(filename=fname, read_only=True)
         if page_index is not None:
             self._ws = self._wb.worksheets[page_index]
         else:
@@ -104,10 +104,11 @@ class XlsxFile(DataFile):
         return str(cell.value) if cell.value else ""
 
     def get_row(self, row):
+        i=0
         for cell in row:
-            col_index = self.get_index(cell)
-            if col_index in self._columns:
+            if i in self._columns:
                 yield XlsxFile.get_cell_text(cell)
+            i+=1
 
     def __next__(self):
         return list(self.get_row(next(self._cursor)))
@@ -117,9 +118,9 @@ class XlsxFile(DataFile):
 
     def get_index(self, cell):
         try:
-            return cell.col_idx
-        except AttributeError:
             return cell.column
+        except AttributeError:
+            return  -1
 
 
 def get_file_reader(fname):

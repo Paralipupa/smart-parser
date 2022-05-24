@@ -4,23 +4,21 @@ import re
 import os
 import hashlib
 import datetime
-from typing import NoReturn, Tuple, Union
-from module.file_readers import get_file_reader
-from module.gisconfig import GisConfig
+from typing import NoReturn, Union
 from itertools import product
 import uuid
-from .gisconfig import check_error
+from .gisconfig import GisConfig, check_error
+from .file_readers import get_file_reader
 
 db_logger = logging.getLogger('parser')
 
 
 def _hashit(s): return hashlib.sha1(s).hexdigest()
 
-
 class ExcelBaseImporter:
 
     @check_error
-    def __init__(self, file_name: str, inn: str, config_file: str):
+    def __init__(self, file_name: str, config_file: str, inn: str):
         self.is_file_exists = True
         self._team = list()  # список областей с данными
         self.colontitul = {'status': 0, 'is_parameters': False, 'head': list(
@@ -531,11 +529,18 @@ class ExcelBaseImporter:
     def write_collections(self) -> NoReturn:
         if not self.is_init() or len(self._collections) == 0:
             return
-
         path = self._parameters['path']['value'][0]
+
         os.makedirs(path, exist_ok=True)
+
+        id = self.func_id()
         for name, records in self._collections.items():
-            with open(f'{path}/{name}.csv', 'w') as file:
+            i = 0
+            file_output = f'{path}/{self._parameters["inn"]["value"][0]}{id}_{name}'
+            while os.path.exists(f'{file_output}{"("+str(i)+")" if i != 0 else ""}.csv'):
+                i+=1
+            file_output = f'{file_output}{"("+str(i)+")" if i != 0 else ""}.csv'
+            with open(file_output, 'w') as file:
                 file.write(f'{{')
                 for key, value in self._parameters.items():
                     file.write(f'\t{key}:"')

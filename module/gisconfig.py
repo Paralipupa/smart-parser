@@ -1,10 +1,6 @@
-import configparser
+import configparser, os, re, logging, traceback
 from datetime import datetime
-import os
-import re
 from typing import NoReturn
-import logging
-import traceback
 
 db_logger = logging.getLogger('parser')
 
@@ -22,16 +18,13 @@ class GisConfig:
     @check_error
     def __init__(self, filename: str):
         self._is_init = False
-        if not self.is_exist(filename):
+        if not os.path.exists(filename):
             logging.warning('file not found {}. skip'.format(filename))
             return
 
         self._config = configparser.ConfigParser()
         self._config.read(filename)
         self.configuration_initialize()
-
-    def is_exist(self, filename: str) -> bool:
-        return os.path.exists(filename)
 
     @check_error
     def configuration_initialize(self) -> NoReturn:
