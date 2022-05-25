@@ -43,7 +43,7 @@ def get_inn(filename: str) -> str:
 def get_files():
     list_files = list()
     inn = ''
-    if len(sys.argv) == 2:
+    if len(sys.argv) in (2,3):
         file_name = sys.argv[1]
         inn = get_inn(filename=file_name)
         if file_name.find('.zip') != -1:
@@ -56,8 +56,9 @@ def get_files():
             print('run with parameters:  <file.xsl> <inn> [<config.ini>]')
             exit()
         inn = sys.argv[2]
+        list_files.append({'name': sys.argv[1], 'config': ''})
         if len(sys.argv) >= 4:
-            list_files.append({'name': sys.argv[1], 'config': sys.argv[3]})
+            list_files[-1]['config'] = sys.argv[3]
     return list_files, inn
 
 
@@ -75,7 +76,7 @@ def get_file_config(list_files: list) -> str:
                     exit()
                 else:
                     if rep.check(is_warning=False):
-                        ls_new.append[-1]['config'] = file_config
+                        ls_new[-1]['config'] = file_config
                         file[1] = True
                         break
     return ls_new

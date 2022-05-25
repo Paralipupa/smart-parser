@@ -15,6 +15,7 @@ db_logger = logging.getLogger('parser')
 
 def _hashit(s): return hashlib.sha1(s).hexdigest()
 
+
 class ExcelBaseImporter:
 
     @check_error
@@ -113,10 +114,19 @@ class ExcelBaseImporter:
             index += 1
             if index > rows[-1]:
                 break
-        for row, col in product(rows, cols):
-            match = re.search(pattern, headers[row][col], re.IGNORECASE)
-            if match:
-                return True
+        for row in rows:
+            if row < len(headers):
+                s = (' '.join(headers[row])).strip()
+                if s:
+                    match = re.search(pattern, s, re.IGNORECASE)
+                    if match:
+                        return True
+
+        # for row, col in product(rows, cols):
+        #     if row < len(headers) and col < len(headers[row]):
+        #         match = re.search(pattern, headers[row][col], re.IGNORECASE)
+        #         if match:
+        #             return True
         if is_warning:
             logging.warning('файл "{0}" не сооответствует шаблону "{1}". skip'.format(
                 self._parameters['filename']['value'][0], self._parameters['config']['value'][0]))
@@ -273,11 +283,13 @@ class ExcelBaseImporter:
             cols = dic['col']
             row_count = len(self.colontitul['head'])
             for row, col in product(rows, cols):
-                match = re.search(
-                    dic['pattern'], self.colontitul['head'][(row_count-1)+row][index+col], re.IGNORECASE)
-                if match:
-                    return True, (((item['group_name'] if item['group_name'] else dic['pattern']) +
-                                  ' ' + item['name']) if dic['is_include'] else item['name'])
+                if (row_count-1)+row < len(self.colontitul['head']) and \
+                        index+col < len(self.colontitul['head'][(row_count-1)+row]):
+                    match = re.search(
+                        dic['pattern'], self.colontitul['head'][(row_count-1)+row][index+col], re.IGNORECASE)
+                    if match:
+                        return True, (((item['group_name'] if item['group_name'] else dic['pattern']) +
+                                       ' ' + item['name']) if dic['is_include'] else item['name'])
             return False, item['name']
         return True, item['name']
 
@@ -538,7 +550,7 @@ class ExcelBaseImporter:
             i = 0
             file_output = f'{path}/{self._parameters["inn"]["value"][0]}{id}_{name}'
             while os.path.exists(f'{file_output}{"("+str(i)+")" if i != 0 else ""}.csv'):
-                i+=1
+                i += 1
             file_output = f'{file_output}{"("+str(i)+")" if i != 0 else ""}.csv'
             with open(file_output, 'w') as file:
                 file.write(f'{{')
@@ -569,6 +581,7 @@ class ExcelBaseImporter:
 
 
 # ---------- Параметры конфигурации --------------------
+
 
     def is_init(self) -> bool:
         return self._config._is_init
@@ -654,6 +667,7 @@ class ExcelBaseImporter:
 
 
 # ---------- Функции --------------------
+
 
     def func(self, team: dict, fld_param, data: str, row: int, col: int):
         dic_f = {
