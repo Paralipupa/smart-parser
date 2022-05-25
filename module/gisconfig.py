@@ -31,8 +31,6 @@ class GisConfig:
 
         self._config = configparser.ConfigParser()
         self._config.read(filename)
-        self._parameters = dict()
-        self._parameters['config'] = filename
         self.configuration_initialize()
 
     @check_error
@@ -43,7 +41,7 @@ class GisConfig:
         # регул.выражение колонки начала области (иерархии)
         self._condition_team_column = ''
         # колонка в которой просматривается условие окончания таблицы
-        self._condition_end_table_column: int = ''
+        self._condition_end_table_column: str = ''
         # список заголовков колонок таблицы
         self._columns_heading: list[dict] = []
         self._row_start, _ = self.read_config(
@@ -65,8 +63,6 @@ class GisConfig:
 
     def set_header(self):
         self._header = {'row': [0], 'col': [0], 'pattern': ''}
-        self._header['row'], _ = self.read_config(
-            'header', 'rows_count', isNumeric=True)
         self._header['col'], _ = self.read_config(
             'header', 'column', isNumeric=True)
         self._header['pattern'] = self.read_config('header', 'pattern')
@@ -81,6 +77,7 @@ class GisConfig:
 
     @check_error
     def set_parameters(self):
+        self._parameters = dict()
         self.set_param_headers()
         self.set_param_footers()
         self._parameters.setdefault(
@@ -132,6 +129,7 @@ class GisConfig:
         while self.read_config(f'col_{i}', 'pattern'):
             heading = {'name': self.read_config(f'col_{i}', 'pattern'),
                        'index': -1,
+                       'indexes': [],
                        'row': -1,
                        'col': i,
                        'group_name': self.read_config(f'col_{i}', 'group'),
@@ -152,8 +150,9 @@ class GisConfig:
         if not self._condition_end_table:
             self._condition_end_table = self.read_config(
                 f'col_{i}', 'condition_end_table')
-            self._condition_end_table_column = self.read_config(
-                f'col_{i}', 'pattern')
+            self._condition_end_table_column = self._columns_heading[i]['group_name'] \
+                if self._columns_heading[i]['group_name'] \
+                else self._columns_heading[i]['name']
 
     def set_column_offset(self, i: int):
         ref = self.read_config(f'col_{i}', 'offset')
@@ -281,9 +280,9 @@ class GisConfig:
                           + str(i) for i in range(int(n_start), int(n_end)+1)])
             x = x.replace(result, y)
 
-        rows = [int(i) for i in x.split(',')]
-        # rows = [(int(i), False if not i or (
-        #     i[0] == '+' or i[0] == '-') else True) for i in x.split(',')]
+        # rows = [int(i) for i in x.split(',')]
+        rows = [(int(i), False if not i or (
+            i[0] == '+' or i[0] == '-') else True) for i in x.split(',')]
 
         # False=относительная адресация, True=абсолютная
         marks = [False if not i or (
