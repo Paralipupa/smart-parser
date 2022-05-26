@@ -124,18 +124,19 @@ class GisConfig:
             i += 1
 
     def set_table_columns(self) -> NoReturn:
-        num_cols, _ = self.read_config('main', 'columns_count', isNumeric=True)
         i = 0
         while self.read_config(f'col_{i}', 'pattern'):
-            heading = {'name': self.read_config(f'col_{i}', 'pattern'),
-                       'index': -1,
-                       'indexes': [],
-                       'row': -1,
-                       'col': i,
-                       'group_name': self.read_config(f'col_{i}', 'group'),
-                       'active': False,
-                       'offset': dict(),
-                       }
+            heading = {
+                'name': self.read_config(f'col_{i}', 'name'),
+                'pattern': self.read_config(f'col_{i}', 'pattern'),
+                'index': -1,
+                'indexes': [],
+                'row': -1,
+                'col': i,
+                'active': False,
+                'offset': dict(),
+            }
+            if not heading['name']: heading['name'] = f'col_{i}'
             self._columns_heading.append(heading)
             self.set_column_conditions(i)
             self.set_column_offset(i)
@@ -145,14 +146,11 @@ class GisConfig:
         if not self._condition_team:
             self._condition_team = self.read_config(
                 f'col_{i}', 'condition_begin_team')
-            self._condition_team_column = self.read_config(
-                f'col_{i}', 'pattern')
+            self._condition_team_column = self._columns_heading[i]['name']
         if not self._condition_end_table:
             self._condition_end_table = self.read_config(
                 f'col_{i}', 'condition_end_table')
-            self._condition_end_table_column = self._columns_heading[i]['group_name'] \
-                if self._columns_heading[i]['group_name'] \
-                else self._columns_heading[i]['name']
+            self._condition_end_table_column = self._columns_heading[i]['name']
 
     def set_column_offset(self, i: int):
         ref = self.read_config(f'col_{i}', 'offset')

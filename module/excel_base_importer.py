@@ -131,12 +131,12 @@ class ExcelBaseImporter:
             s1, s2 = '', ''
             for item in self.get_columns_heading():
                 if not item['active']:
-                    s1 += f"{item['group_name'] if item['group_name'] else item['offset']['pattern']} {item['name']},\n"
+                    s1 += f"{item['name']},\n"
                 else:
                     c = ''
                     for i in item['indexes']:
                         c += f"({item['row']},{i}) "
-                    s2 += f"{item['group_name'] if item['group_name'] else item['offset']['pattern']} {item['name']} {c}\n"
+                    s2 += f"{item['name']} {c}\n"
             logging.warning('В загружаемом файле "{}" не все колонки найдены \n'.format(
                 self._parameters['filename']['value'][0]))
             if s2:
@@ -192,20 +192,19 @@ class ExcelBaseImporter:
 
     def check_column(self, item: dict, names: list, row: int, cols_exclude: list = []) -> dict:
         is_find = False
-        if (not item['active'] or item['group_name']) and item['name']:
+        if not item['active'] and item['pattern']:
             search_names = self.get_search_names(
-                names, item['name'], cols_exclude)  # колонки в таблице Excel
+                names, item['pattern'], cols_exclude)  # колонки в таблице Excel
             if search_names:
                 for name in search_names:
-                    b, c = True, item['name']
+                    b = True
                     if item['offset']['pattern']:
-                        b, c = self.check_column_offset(item, name['col'])
+                        b = self.check_column_offset(item, name['col'])
                     if b:
-                        key = item['group_name'] if item['group_name'] else item['name']
+                        key = item['name']
                         self._names.setdefault(key, {'col': item['col'],
-                                                   'active': True, 
-                                                   'description': c,
-                                                   'indexes': []})
+                                                     'active': True,
+                                                     'indexes': []})
                         self._names[key]['active'] = True
                         self._names[key]['indexes'].append(name['col'])
                         item['active'] = True
@@ -214,10 +213,26 @@ class ExcelBaseImporter:
                         item['row'] = row
                         is_find = True
                         cols_exclude.append(name['col'])
-
-                        if not item['group_name']:
-                            break
         return is_find
+    # Проверка на наличие 'якоря' (текста, смещенного относительно позиции текущего заголовка)
+
+    def check_column_offset(self, item: dict, index: int) -> bool:
+        offset = item['offset']
+        if offset and offset['pattern']:
+            rows = [i for i in offset['row']]
+            cols = offset['col']
+            row_count = len(self.colontitul['head'])
+            for row, col in product(rows, cols):
+                r = row[0] if row[1] else (row_count-1)+row[0]
+                c = col[0] if col[1] else index+col[0]
+                if 0 <= r < len(self.colontitul['head']) and \
+                        0 <= c < len(self.colontitul['head'][r]):
+                    match = re.search(
+                        offset['pattern'], self.colontitul['head'][r][c], re.IGNORECASE)
+                    if match:
+                        return True
+            return False
+        return True
 
     def check_end_table(self, mapped_record) -> bool:
         if not self.get_condition_end_table():
@@ -273,26 +288,6 @@ class ExcelBaseImporter:
                 self.colontitul['status'] = 1
         return (self.colontitul['status'] == 1)
 
-    # Проверка на наличие 'якоря' (текста, смещенного относительно позиции текущего заголовка)
-    def check_column_offset(self, item: dict, index: int) -> bool:
-        dic = item['offset']
-        if dic and dic['pattern']:
-            rows = [i for i in dic['row']]
-            cols = dic['col']
-            row_count = len(self.colontitul['head'])
-            for row, col in product(rows, cols):
-                r = row[0] if row[1] else (row_count-1)+row[0]
-                c = col[0] if col[1] else index+col[0]
-                if 0 <= r < len(self.colontitul['head']) and \
-                        0 <= c < len(self.colontitul['head'][r]):
-                    match = re.search(
-                        dic['pattern'], self.colontitul['head'][r][c], re.IGNORECASE)
-                    if match:
-                        return True, (((item['group_name'] if item['group_name'] else dic['pattern']) +
-                                       ' ' + item['name']) if dic['is_include'] else item['name'])
-            return False, item['name']
-        return True, item['name']
-
     def get_data(self):
         ReaderClass = get_file_reader(self._parameters['filename']['value'][0])
         data_reader = ReaderClass(self._parameters['filename']['value'][0], self.get_page_name(
@@ -327,10 +322,10 @@ class ExcelBaseImporter:
             index += 1
         return names
 
-    def get_search_names(self, names: list, col_name: str, cols_exclude: list = []) -> list:
+    def get_search_names(self, names: list, pattern: str, cols_exclude: list = []) -> list:
         results = []
         for name in names:
-            if not (name['col'] in cols_exclude) and re.search(f'{col_name}', name['name'], re.IGNORECASE):
+            if not (name['col'] in cols_exclude) and re.search(f'{pattern}', name['name'], re.IGNORECASE):
                 results.append(name)
         return results
 
@@ -568,6 +563,30 @@ class ExcelBaseImporter:
                         file.write(f'",\n')
                     file.write(f'}},\n')
 
+    def write_logs(self) -> NoReturn:
+        if not self.is_init() or len(self._collections) == 0:
+            return
+        path = 'logs'
+
+        os.makedirs(path, exist_ok=True)
+
+        id = self.func_id()
+
+        i = 0
+        file_output = f'{path}/{self._parameters["inn"]["value"][0]}{id}'
+        while os.path.exists(f'{file_output}{"("+str(i)+")" if i != 0 else ""}.log'):
+            i += 1
+        file_output = f'{file_output}{"("+str(i)+")" if i != 0 else ""}.log'
+        with open(file_output, 'w') as file:
+            file.write(f'{{')
+            for item in self._config._columns_heading:
+                file.write(
+                    f"\t{item['name']}:  row={item['row']} col=")
+                for val in item["indexes"]:
+                    file.write(f'{val},')
+                file.write(f'",\n')
+            file.write(f'}},\n')
+
     def __get_required_rows(self, name, doc) -> set:
         s = set()
         d = next(
@@ -580,7 +599,6 @@ class ExcelBaseImporter:
 
 
 # ---------- Параметры конфигурации --------------------
-
 
     def is_init(self) -> bool:
         return self._config._is_init
@@ -648,6 +666,7 @@ class ExcelBaseImporter:
 
 # -------------------------------------------------------------------------------------------------
 
+
     def get_sub_value(self, item_fld, team, name_field, row, col):
         if item_fld['sub']:
             for item_sub in item_fld['sub']:
@@ -696,6 +715,7 @@ class ExcelBaseImporter:
 
 
 # ---------- Функции --------------------
+
 
     def func(self, team: dict, fld_param, data: str, row: int, col: int):
         dic_f = {
@@ -781,10 +801,7 @@ class ExcelBaseImporter:
 
     def func_column_name(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
         if col != -1:
-            return self.get_columns_heading(col, 'group_name') \
-                if self.get_columns_heading_config._columns_heading[col]['group_name'] \
-                else ((self._config._columns_heading[col]['offset']['pattern']
-                       if self._config._columns_heading[col]['offset'] else '') + (self._config._columns_heading[col]['name']))
+            return self.get_columns_heading(col, 'name')
         return ''
 
     def func_column_value(self, data: str = '', row: int = -1, col: int = 0, team: dict = {}):

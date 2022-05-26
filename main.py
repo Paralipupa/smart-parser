@@ -15,6 +15,7 @@ if __name__ == "__main__":
                                 inn=inn, config_file=file_name['config'])
             if rep.read():
                 rep.write_collections()
+                rep.write_logs()
         else:
             logging.warning(
                 'не найден файл конфигурации для "{}". skip'.format(file_name['name']))
