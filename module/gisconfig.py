@@ -44,15 +44,15 @@ class GisConfig:
         self._condition_end_table_column: str = ''
         # список заголовков колонок таблицы
         self._columns_heading: list[dict] = []
-        self._row_start, _ = self.read_config(
+        self._row_start = self.read_config(
             'main', 'row_start', isNumeric=True)    #
         self._page_name = self.read_config('main', 'page_name')         #
-        self._page_index, _ = self.read_config(
+        self._page_index = self.read_config(
             'main', 'page_index', isNumeric=True)  #
         # максимальное кол-во просматриваемых колонок
-        self._max_cols, _ = self.read_config(
+        self._max_cols = self.read_config(
             'main', 'max_columns', isNumeric=True)
-        self._max_rows_heading, _ = self.read_config(
+        self._max_rows_heading = self.read_config(
             'main', 'max_rows_heading', isNumeric=True)  # максимальное кол-во строк до таблицы
         self.set_check()
         self.set_header()
@@ -63,15 +63,15 @@ class GisConfig:
 
     def set_header(self):
         self._header = {'row': [0], 'col': [0], 'pattern': ''}
-        self._header['col'], _ = self.read_config(
+        self._header['col'] = self.read_config(
             'header', 'column', isNumeric=True)
         self._header['pattern'] = self.read_config('header', 'pattern')
 
     def set_check(self):
         self._check = {'row': [0], 'col': [0], 'pattern': ''}
-        self._check['row'], _ = self.read_config(
+        self._check['row'] = self.read_config(
             'check', 'row', isNumeric=True)
-        self._check['col'], _ = self.read_config(
+        self._check['col'] = self.read_config(
             'check', 'column', isNumeric=True)
         self._check['pattern'] = self.read_config('check', 'pattern')
 
@@ -92,8 +92,8 @@ class GisConfig:
         while self.read_config(f'headers_{i}', 'name'):
             self._parameters.setdefault(
                 self.read_config(f'headers_{i}', 'name'), [])
-            rows, _ = self.read_config(f'headers_{i}', 'row', isNumeric=True)
-            cols, _ = self.read_config(
+            rows = self.read_config(f'headers_{i}', 'row', isNumeric=True)
+            cols = self.read_config(
                 f'headers_{i}', 'column', isNumeric=True)
             self._parameters[self.read_config(f'headers_{i}', 'name')].append(
                 {
@@ -110,8 +110,8 @@ class GisConfig:
         while self.read_config(f'footers_{i}', 'name'):
             self._parameters.setdefault(
                 self.read_config(f'footers_{i}', 'name'), [])
-            rows, _ = self.read_config(f'footers_{i}', 'row', isNumeric=True)
-            cols, _ = self.read_config(
+            rows = self.read_config(f'footers_{i}', 'row', isNumeric=True)
+            cols = self.read_config(
                 f'footers_{i}', 'column', isNumeric=True)
             self._parameters[self.read_config(f'footers_{i}', 'name')].append(
                 {
@@ -126,6 +126,7 @@ class GisConfig:
     def set_table_columns(self) -> NoReturn:
         i = 0
         while self.read_config(f'col_{i}', 'pattern'):
+            b = True if self.read_config(f'col_{i}', 'is_duplicate')=='1' else False
             heading = {
                 'name': self.read_config(f'col_{i}', 'name'),
                 'pattern': self.read_config(f'col_{i}', 'pattern'),
@@ -134,6 +135,7 @@ class GisConfig:
                 'row': -1,
                 'col': i,
                 'active': False,
+                'duplicate': b,
                 'offset': dict(),
             }
             if not heading['name']: heading['name'] = f'col_{i}'
@@ -158,25 +160,20 @@ class GisConfig:
         if ref and len(ref) > 1 and ref[0] == '@':
             index = int(ref[1:])
 
-        self._columns_heading[i]['offset']['row'], _ = self.read_config(
-            f'col_{i}', 'row_offset', isNumeric=True)
+        self._columns_heading[i]['offset']['row'] = self.read_config(
+            f'col_{i}', 'offset_row', isNumeric=True)
         if not self._columns_heading[i]['offset']['row'] and index != -1 and index < len(self._columns_heading):
             self._columns_heading[i]['offset']['row'] = self._columns_heading[index]['offset']['row']
 
-        self._columns_heading[i]['offset']['col'], _ = self.read_config(
-            f'col_{i}', 'col_offset', isNumeric=True)
+        self._columns_heading[i]['offset']['col'] = self.read_config(
+            f'col_{i}', 'offset_col', isNumeric=True)
         if not self._columns_heading[i]['offset']['col'] and index != -1 and index < len(self._columns_heading):
             self._columns_heading[i]['offset']['col'] = self._columns_heading[index]['offset']['col']
 
         self._columns_heading[i]['offset']['pattern'] = self.read_config(
-            f'col_{i}', 'pattern_offset')
+            f'col_{i}', 'offset_pattern')
         if not self._columns_heading[i]['offset']['pattern'] and index != -1 and index < len(self._columns_heading):
             self._columns_heading[i]['offset']['pattern'] = self._columns_heading[index]['offset']['pattern']
-
-        self._columns_heading[i]['offset']['is_include'] = False if self.read_config(f'col_{i}', 'is_include_offset') == '0' \
-            else True
-        if not self._columns_heading[i]['offset']['is_include'] and index != -1 and index < len(self._columns_heading):
-            self._columns_heading[i]['offset']['is_include'] = self._columns_heading[index]['offset']['is_include']
 
     @check_error
     def set_documents(self) -> NoReturn:
@@ -185,7 +182,7 @@ class GisConfig:
         while self.read_config(f'doc_{k}', 'name'):
             doc = dict()
             doc['name'] = self.read_config(f'doc_{k}', 'name')
-            doc['rows_exclude'], _ = self.read_config(
+            doc['rows_exclude'] = self.read_config(
                 f'doc_{k}', 'rows_exclude', isNumeric=True)
             doc['required_fields'] = self.read_config(
                 f'doc_{k}', 'required_fields')
@@ -203,27 +200,30 @@ class GisConfig:
             # шаблон поиска (регулярное выражение)
             fld['pattern'] = self.read_config(f'{doc["name"]}_{i}', 'pattern')
             # колонка для поиска данных аттрибут
-            fld['column'], _ = self.read_config(
+            fld['column'] = self.read_config(
                 f'{doc["name"]}_{i}', 'col_config', isNumeric=True)
             # тип данных в колонке
             fld['type'] = self.read_config(
                 f'{doc["name"]}_{i}', 'type')
             # запись (в области) для поиска данных атрибутта
-            fld['row'], _ = self.read_config(
+            fld['row'] = self.read_config(
                 f'{doc["name"]}_{i}', 'row_data', isNumeric=True)
             # запись (в области) для исключения поиска данных атрибутта
-            fld['row_exclude'], _ = self.read_config(
+            fld['row_exclude'] = self.read_config(
                 f'{doc["name"]}_{i}', 'row_data_exclude', isNumeric=True)
             # номер записи в области(иерархии) для поиска данных аттрибут
             # признак смещения по строкам области (иерархии) True=абсолютное,
-            fld['row_offset'], fld['row_offset_mark'] = self.read_config(
-                f'{doc["name"]}_{i}', 'row_data_offset', isNumeric=True)
+            fld['offset_row'] = self.read_config(
+                f'{doc["name"]}_{i}', 'offset_row_data', isNumeric=True)
             # колонка для поиска данных аттрибут
-            fld['column_offset'], _ = self.read_config(
-                f'{doc["name"]}_{i}', 'col_config_offset', isNumeric=True)
+            fld['offset_column'] = self.read_config(
+                f'{doc["name"]}_{i}', 'offset_col_config', isNumeric=True)
             # шаблон поиска (регулярное выражение)
-            fld['pattern_offset'] = self.read_config(
-                f'{doc["name"]}_{i}', 'pattern_offset')
+            fld['offset_pattern'] = self.read_config(
+                f'{doc["name"]}_{i}', 'offset_pattern')
+            # тип данных в колонке смещения
+            fld['offset_type'] = self.read_config(
+                f'{doc["name"]}_{i}', 'offset_type')
             # запись (в области) для поиска данных атрибутта
             fld['func'] = self.read_config(f'{doc["name"]}_{i}', 'func')
             # шаблон поиска (регулярное выражение)
@@ -242,23 +242,22 @@ class GisConfig:
     def set_field_sub(self, fld, name, i: int):
         j = 0
         while self.read_config(f'{name}_{i}_{j}', 'pattern'):
-            rows, _ = self.read_config(
+            rows = self.read_config(
                 f'{name}_{i}_{j}', 'row', isNumeric=True)
-            cols, _ = self.read_config(
+            cols = self.read_config(
                 f'{name}_{i}_{j}', 'column', isNumeric=True)
-            cols_offset, _ = self.read_config(
-                f'{name}_{i}_{j}', 'col_config_offset', isNumeric=True)
-            rows_offset, rows_offset_mark = self.read_config(
-                f'{name}_{i}_{j}', 'row_data_offset', isNumeric=True)
+            cols_offset = self.read_config(
+                f'{name}_{i}_{j}', 'offset_col_config', isNumeric=True)
+            rows_offset = self.read_config(
+                f'{name}_{i}_{j}', 'offset_row_data', isNumeric=True)
             fld.append(
                 {
                     'row': rows,
                     'column': cols,
                     'pattern': self.read_config(f'{name}_{i}_{j}', 'pattern'),
-                    'column_offset': cols_offset,
-                    'row_offset': rows_offset,
-                    'row_offset_mark': rows_offset_mark,
-                    'pattern_offset': self.read_config(f'{name}_{i}_{j}', 'pattern_offset'),
+                    'offset_column': cols_offset,
+                    'offset_row': rows_offset,
+                    'offset_pattern': self.read_config(f'{name}_{i}_{j}', 'offset_pattern'),
                     'func': self.read_config(f'{name}_{i}_{j}', 'func'),
                     'func_pattern': self.read_config(f'{name}_{i}_{j}', 'func_pattern'),
                 }
@@ -268,7 +267,7 @@ class GisConfig:
     @check_error
     def get_range(self, x: str) -> list:
         if not x:
-            return [], []
+            return []
         pattern = re.compile('[-0-9+]+<[-0-9+]+')
         results = pattern.findall(x)
         for result in results:
@@ -281,11 +280,7 @@ class GisConfig:
         # rows = [int(i) for i in x.split(',')]
         rows = [(int(i), False if not i or (
             i[0] == '+' or i[0] == '-') else True) for i in x.split(',')]
-
-        # False=относительная адресация, True=абсолютная
-        marks = [False if not i or (
-            i[0] == '+' or i[0] == '-') else True for i in x.split(',')]
-        return rows, marks
+        return rows
 
     def read_config(self, name_section: str, name_param: str, isNumeric: bool = False):
         try:
@@ -295,6 +290,6 @@ class GisConfig:
             return result
         except:
             if isNumeric:
-                return [], []
+                return []
             else:
                 return ''
