@@ -139,9 +139,11 @@ class GisConfig:
         i = 0
         while self.read_config(f'col_{i}', 'pattern'):
             b = True if self.read_config(f'col_{i}', 'is_duplicate')=='1' else False
+            b2 = True if self.read_config(f'col_{i}', 'is_optional')=='1' else False
             heading = {
                 'name': self.read_config(f'col_{i}', 'name'),
                 'pattern': self.read_config(f'col_{i}', 'pattern'),
+                'optional': b2,
                 'index': -1,
                 'indexes': [],
                 'row': -1,
@@ -247,9 +249,12 @@ class GisConfig:
             self.set_field_sub(fld['sub'], doc["name"], i)
             i += 1
         for fld in doc['fields']:
-            if fld['pattern'][0:1] == "@":
-                fld['pattern'] = doc['fields'][int(
-                    fld['pattern'][1:])]['pattern']
+            if fld['pattern'][0:1] == '@':
+                if fld['pattern'][1:]:
+                    fld['pattern'] = doc['fields'][int(
+                        fld['pattern'][1:])]['pattern']
+                else:
+                    fld['pattern'] = self._condition_team 
 
     def set_field_sub(self, fld, name, i: int):
         j = 0

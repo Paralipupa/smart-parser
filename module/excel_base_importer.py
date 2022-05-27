@@ -1,4 +1,5 @@
 from ast import Return
+from asyncio.log import logger
 import logging
 from operator import is_
 import re
@@ -107,11 +108,17 @@ class ExcelBaseImporter:
         headers = list()
         rows: list[int] = self.get_check('row')
         patts = list()
-        patts.append({'pattern': self.get_check('pattern'), 'find': False})
+        patts.append({'pattern': self.get_check(
+            'pattern'), 'full': True, 'find': False})
         for i in range(5):
-            p =self.get_check(f'pattern_{i}')
-            if not p : break
-            patts.append({'pattern': p, 'find': False})
+            p = self.get_check(f'pattern_{i}')
+            if not p:
+                break
+            patts.append({'pattern': p, 'full': True, 'find': False})
+
+        for item in self._config._columns_heading:
+            patts.append(
+                {'pattern': item['pattern'], 'full': False, 'find': item['optional']})
 
         index = 0
         data_reader = self.get_data()
@@ -120,22 +127,40 @@ class ExcelBaseImporter:
             index += 1
             if index > rows[-1][0]:
                 break
+
         for row in rows:
             if row[0] < len(headers):
-                s = (' '.join(headers[row[0]])).strip()
-                if s:
-                    is_find = True
-                    for pattern in patts:
-                        match = re.search(pattern['pattern'], s, re.IGNORECASE)
-                        if match:
-                            pattern['find'] = True
-                        is_find &= pattern['find']
-                    if is_find: 
-                        return True
+                for pattern in patts:
+                    if pattern['full']:
+                        s = (' '.join(headers[row[0]])).strip()
+                        if s:
+                            match = re.search(
+                                pattern['pattern'], s, re.IGNORECASE)
+                            if match:
+                                pattern['find'] = True
+                    else:
+                        for s in headers[row[0]]:
+                            if s:
+                                match = re.search(
+                                    pattern['pattern'], s, re.IGNORECASE)
+                                if match:
+                                    pattern['find'] = True
+        i = 0
+        s = ''
+        for pattern in patts:
+            if not pattern['find']:
+                s += f"  {pattern['pattern']}\n"
+                i += 1
+        if i == 0:
+            return True
 
+        if (100 - round(i/len(patts) * 100, 0)) > 80:
+            logging.warning('файл "{0}" сооответствует шаблону "{1}" более, чем на 80%\nНе найдены:\n{2}'.format(
+                self._parameters['filename']['value'][0], self._parameters['config']['value'][0], s))
         if is_warning:
             logging.warning('файл "{0}" не сооответствует шаблону "{1}". skip'.format(
                 self._parameters['filename']['value'][0], self._parameters['config']['value'][0]))
+
         return False
 
     def check_bound_row(self, row: int) -> bool:
@@ -169,8 +194,11 @@ class ExcelBaseImporter:
                     self._team = list()
         if self.check_columns(names, row):
             self._row_start = row
-        if self.colontitul['status'] == 1 and (len(self.get_columns_heading()) <= len(self._names)):
-            self.colontitul['status'] = 2
+        if self.colontitul['status'] == 1:
+            b = next(
+                (x['active'] for x in self.get_columns_heading() if not x['active'] and not x['optional']), True)
+            if b or (len(self.get_columns_heading()) <= len(self._names)):
+                self.colontitul['status'] = 2
 
     def check_body(self, record: list, row: int):
         mapped_record = self.map_record(record)
@@ -552,6 +580,8 @@ class ExcelBaseImporter:
 
     def write_collections(self, num: int = 0) -> NoReturn:
         if not self.is_init() or len(self._collections) == 0:
+            logging.warning('Не удалось проситать данные из файла "{0}" '.format(
+                self._parameters['filename']['value'][0]))
             return
         path = self._parameters['path']['value'][0]
 
@@ -573,7 +603,7 @@ class ExcelBaseImporter:
                         file.write(f'",\n')
                     file.write(f'}},\n')
 
-    def write_logs(self, num:int=0) -> NoReturn:
+    def write_logs(self, num: int = 0) -> NoReturn:
         if not self.is_init() or len(self._collections) == 0:
             return
         path = 'logs'
@@ -617,6 +647,7 @@ class ExcelBaseImporter:
 
 
 # ---------- Параметры конфигурации --------------------
+
 
     def is_init(self) -> bool:
         return self._config._is_init
@@ -682,7 +713,6 @@ class ExcelBaseImporter:
 
 # -------------------------------------------------------------------------------------------------
 
-
     def get_sub_value(self, item_fld, team, name_field, row, col, value):
         if item_fld['sub']:
             for item_sub in item_fld['sub']:
@@ -731,7 +761,6 @@ class ExcelBaseImporter:
 
 
 # ---------- Функции --------------------
-
 
     def func(self, team: dict, fld_param, data: str, row: int, col: int):
         dic_f = {

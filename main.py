@@ -20,3 +20,5 @@ if __name__ == "__main__":
         else:
             logging.warning(
                 'не найден файл конфигурации для "{}". skip'.format(file_name['name']))
+    if not list_files:
+        logging.warning('не найден файл "{}". skip'.format(sys.argv[1]))
