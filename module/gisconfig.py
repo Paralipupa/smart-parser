@@ -10,7 +10,7 @@ from typing import NoReturn
 db_logger = logging.getLogger('parser')
 
 
-def check_error(func):
+def fatal_error(func):
     def wrapper(*args):
         try:
             return func(*args)
@@ -19,10 +19,18 @@ def check_error(func):
             exit()
     return wrapper
 
+def warning_error(func):
+    def wrapper(*args):
+        try:
+            return func(*args)
+        except Exception as ex:
+            return None
+    return wrapper
+
 
 class GisConfig:
 
-    @check_error
+    @fatal_error
     def __init__(self, filename: str):
         self._is_init = False
         if not os.path.exists(filename):
@@ -33,7 +41,7 @@ class GisConfig:
         self._config.read(filename)
         self.configuration_initialize()
 
-    @check_error
+    @fatal_error
     def configuration_initialize(self) -> NoReturn:
         # регул.выражение начала новой области (иерархии)
         self._condition_team = ''
@@ -74,8 +82,12 @@ class GisConfig:
         self._check['col'] = self.read_config(
             'check', 'column', isNumeric=True)
         self._check['pattern'] = self.read_config('check', 'pattern')
+        i = 0
+        while self.read_config('check', f'pattern_{i}'):
+            self._check[f'pattern_{i}'] = self.read_config('check', f'pattern_{i}')
+            i += 1
 
-    @check_error
+    @fatal_error
     def set_parameters(self):
         self._parameters = dict()
         self.set_param_headers()
@@ -175,7 +187,7 @@ class GisConfig:
         if not self._columns_heading[i]['offset']['pattern'] and index != -1 and index < len(self._columns_heading):
             self._columns_heading[i]['offset']['pattern'] = self._columns_heading[index]['offset']['pattern']
 
-    @check_error
+    @fatal_error
     def set_documents(self) -> NoReturn:
         self._documents = list()  # список документов
         k = 0
@@ -264,7 +276,7 @@ class GisConfig:
             )
             j += 1
 
-    @check_error
+    @fatal_error
     def get_range(self, x: str) -> list:
         if not x:
             return []

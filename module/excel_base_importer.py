@@ -1,3 +1,4 @@
+from ast import Return
 import logging
 from operator import is_
 import re
@@ -7,7 +8,7 @@ import datetime
 from typing import NoReturn, Union
 from itertools import product
 import uuid
-from .gisconfig import GisConfig, check_error
+from .gisconfig import GisConfig, fatal_error, warning_error
 from .file_readers import get_file_reader
 
 db_logger = logging.getLogger('parser')
@@ -18,7 +19,7 @@ def _hashit(s): return hashlib.sha1(s).hexdigest()
 
 class ExcelBaseImporter:
 
-    @check_error
+    @fatal_error
     def __init__(self, file_name: str, config_file: str, inn: str):
         self.is_file_exists = True
         self._team = list()  # список областей с данными
@@ -32,7 +33,7 @@ class ExcelBaseImporter:
         self._collections = dict()  # коллекция выходных таблиц
         self._config = GisConfig(config_file)
 
-    @check_error
+    @fatal_error
     def is_verify(self, file_name: str) -> bool:
         if not self.is_init():
             return False
@@ -43,7 +44,7 @@ class ExcelBaseImporter:
             return False
         return True
 
-    @check_error
+    @fatal_error
     def read(self) -> bool:
         if not self.is_verify(self._parameters['filename']['value'][0]):
             return False
@@ -105,7 +106,13 @@ class ExcelBaseImporter:
             return False
         headers = list()
         rows: list[int] = self.get_check('row')
-        pattern: str = self.get_check('pattern')
+        patts = list()
+        patts.append({'pattern': self.get_check('pattern'), 'find': False})
+        for i in range(5):
+            p =self.get_check(f'pattern_{i}')
+            if not p : break
+            patts.append({'pattern': p, 'find': False})
+
         index = 0
         data_reader = self.get_data()
         for record in data_reader:
@@ -117,8 +124,13 @@ class ExcelBaseImporter:
             if row[0] < len(headers):
                 s = (' '.join(headers[row[0]])).strip()
                 if s:
-                    match = re.search(pattern, s, re.IGNORECASE)
-                    if match:
+                    is_find = True
+                    for pattern in patts:
+                        match = re.search(pattern['pattern'], s, re.IGNORECASE)
+                        if match:
+                            pattern['find'] = True
+                        is_find &= pattern['find']
+                    if is_find: 
                         return True
 
         if is_warning:
@@ -244,13 +256,13 @@ class ExcelBaseImporter:
         return False
 
     def check_period_value(self):
-        patts=['%d-%m-%Y','%d.%m.%Y','%d/%m/%Y','%Y-%m-%d', '%B %Y']
+        patts = ['%d-%m-%Y', '%d.%m.%Y', '%d/%m/%Y', '%Y-%m-%d', '%B %Y']
         d = None
         for item in self._parameters['period']['value']:
             if item:
                 for p in patts:
                     try:
-                        d = datetime.datetime.strptime(item,p)
+                        d = datetime.datetime.strptime(item, p)
                         break
                     except:
                         pass
@@ -296,7 +308,7 @@ class ExcelBaseImporter:
 
     def get_value_after_validation(self, pattern: str, name: str, row: int, col: int) -> str:
         try:
-            if row<len(self.colontitul[name]) and col<len(self.colontitul[name][row]):
+            if row < len(self.colontitul[name]) and col < len(self.colontitul[name][row]):
                 match = re.search(
                     pattern, self.colontitul[name][row][col], re.IGNORECASE)
                 if match:
@@ -538,7 +550,7 @@ class ExcelBaseImporter:
             if not is_empty and not (i in rows_exclude) and (not doc_param['required_fields'] or i in rows_required):
                 self.append_to_collection(name, elem)
 
-    def write_collections(self) -> NoReturn:
+    def write_collections(self, num: int = 0) -> NoReturn:
         if not self.is_init() or len(self._collections) == 0:
             return
         path = self._parameters['path']['value'][0]
@@ -548,9 +560,9 @@ class ExcelBaseImporter:
         id = self.func_id()
         for name, records in self._collections.items():
             i = 0
-            file_output = f'{path}/{self._parameters["inn"]["value"][0]}{id}_{name}'
-            while os.path.exists(f'{file_output}{"("+str(i)+")" if i != 0 else ""}.csv'):
-                i += 1
+            file_output = f'{path}/{self._parameters["inn"]["value"][0]}{"_"+str(num) if num != 0 else ""}{id}_{name}'
+            # while os.path.exists(f'{file_output}{"("+str(i)+")" if i != 0 else ""}.csv'):
+            #     i += 1
             file_output = f'{file_output}{"("+str(i)+")" if i != 0 else ""}.csv'
             with open(file_output, 'w') as file:
                 for rec in records:
@@ -561,7 +573,7 @@ class ExcelBaseImporter:
                         file.write(f'",\n')
                     file.write(f'}},\n')
 
-    def write_logs(self) -> NoReturn:
+    def write_logs(self, num:int=0) -> NoReturn:
         if not self.is_init() or len(self._collections) == 0:
             return
         path = 'logs'
@@ -571,9 +583,9 @@ class ExcelBaseImporter:
         id = self.func_id()
 
         i = 0
-        file_output = f'{path}/{self._parameters["inn"]["value"][0]}{id}'
-        while os.path.exists(f'{file_output}{"("+str(i)+")" if i != 0 else ""}.log'):
-            i += 1
+        file_output = f'{path}/{self._parameters["inn"]["value"][0]}{"_"+str(num) if num != 0 else ""}{id}'
+        # while os.path.exists(f'{file_output}{"("+str(i)+")" if i != 0 else ""}.log'):
+        #     i += 1
         file_output = f'{file_output}{"("+str(i)+")" if i != 0 else ""}.log'
         with open(file_output, 'w') as file:
             file.write(f'{{')
@@ -651,11 +663,9 @@ class ExcelBaseImporter:
     def get_header(self, name: str):
         return self._config._header[name]
 
+    @warning_error
     def get_check(self, name: str):
-        if name == 'row' or name == 'col':
-            return self._config._check[name]
-        else:
-            return self._config._check[name]
+        return self._config._check[name]
 
     def get_config_parameters(self, name: str = ''):
         if name:
@@ -702,12 +712,14 @@ class ExcelBaseImporter:
                     value, float) else value
         return value
 
-    def get_value_offset(self, team, item_fld, item_type, row_curr, col_curr, value, rank : int = 0):
+    def get_value_offset(self, team, item_fld, item_type, row_curr, col_curr, value, rank: int = 0):
         # если есть смещение, то берем данные от туда
         rows = item_fld['offset_row']
         cols = item_fld['offset_column']
-        if not rows: rows = [(0, False)]
-        if not cols: cols = [(col_curr, False)]
+        if not rows:
+            rows = [(0, False)]
+        if not cols:
+            cols = [(col_curr, False)]
         if rank < len(cols):
             col = cols[rank]
             for r in rows:
