@@ -43,7 +43,7 @@ def get_inn(filename: str) -> str:
 def get_files():
     list_files = list()
     inn = ''
-    if len(sys.argv) in (2,3):
+    if len(sys.argv) in (2,3,4):
         file_name = sys.argv[1]
         inn = get_inn(filename=file_name)
         if file_name.lower().find('.zip') != -1:
@@ -51,6 +51,9 @@ def get_files():
         else:
             list_files.append(file_name)
         list_files = get_file_config(list_files)
+        if len(sys.argv) == 4:
+            for item in list_files:
+                item['config'] = sys.argv[3]
     else:
         if len(sys.argv) < 3:
             print('run with parameters:  <file.xsl>|<file.zip> [<inn>] [<config.ini>]')
@@ -68,7 +71,7 @@ def get_file_config(list_files: list) -> str:
     for file_name in list_files:
         ls_new.append({'name': file_name, 'config': ''})
         for file in config_files:
-            if not file[1] and file[0].find('.ini') != -1:
+            if file[0].find('.ini') != -1:
                 file_config = f'{path_config}/{file[0]}'
                 rep = Report_001_00(file_name=file_name,
                                     config_file=file_config)
@@ -77,6 +80,5 @@ def get_file_config(list_files: list) -> str:
                 else:
                     if rep.check(is_warning=False):
                         ls_new[-1]['config'] = file_config
-                        file[1] = True
                         break
     return ls_new

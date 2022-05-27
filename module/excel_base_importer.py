@@ -261,16 +261,26 @@ class ExcelBaseImporter:
             rows = [i for i in offset['row']]
             cols = offset['col']
             row_count = len(self.colontitul['head'])
-            for row, col in product(rows, cols):
-                r = row[0] if row[1] else (row_count-1)+row[0]
-                c = col[0] if col[1] else index+col[0]
-                if not (r == 0 and c == 0) and \
-                    0 <= r < len(self.colontitul['head']) and \
-                        0 <= c < len(self.colontitul['head'][r]):
-                    match = re.search(
-                        offset['pattern'], self.colontitul['head'][r][c], re.IGNORECASE)
-                    if match:
-                        return True
+            col_left = 0
+            col_right = index
+            if item['column_left']:
+                name_field = self.get_key(item['column_left'][0][0])
+                if name_field:
+                    col_left = self._names(name_field)['indexes'][0]
+            if item['column_right']:
+                name_field = self.get_key(item['column_right'][0][0])
+                if name_field:
+                    col_right = self._names[name_field]['indexes'][0]
+            if col_left <= index <= col_right:
+                for row, col in product(rows, cols):
+                    r = row[0] if row[1] else (row_count-1)+row[0]
+                    c = col[0] if col[1] else index+col[0]
+                    if not (r == 0 and c == 0) and 0 <= r < len(self.colontitul['head']) \
+                            and 0 <= c < len(self.colontitul['head'][r]):
+                        match = re.search(
+                            offset['pattern'], self.colontitul['head'][r][c], re.IGNORECASE)
+                        if match:
+                            return True
             return False
         return True
 
@@ -648,7 +658,6 @@ class ExcelBaseImporter:
 
 # ---------- Параметры конфигурации --------------------
 
-
     def is_init(self) -> bool:
         return self._config._is_init
 
@@ -713,6 +722,7 @@ class ExcelBaseImporter:
 
 # -------------------------------------------------------------------------------------------------
 
+
     def get_sub_value(self, item_fld, team, name_field, row, col, value):
         if item_fld['sub']:
             for item_sub in item_fld['sub']:
@@ -761,6 +771,7 @@ class ExcelBaseImporter:
 
 
 # ---------- Функции --------------------
+
 
     def func(self, team: dict, fld_param, data: str, row: int, col: int):
         dic_f = {

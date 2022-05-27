@@ -150,6 +150,8 @@ class GisConfig:
                 'col': i,
                 'active': False,
                 'duplicate': b,
+                'column_left': self.read_config(f'col_{i}', 'column_left', isNumeric=True),
+                'column_right': self.read_config(f'col_{i}', 'column_right', isNumeric=True),
                 'offset': dict(),
             }
             if not heading['name']: heading['name'] = f'col_{i}'
