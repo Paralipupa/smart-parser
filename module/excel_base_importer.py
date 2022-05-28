@@ -9,7 +9,7 @@ import datetime
 from typing import NoReturn, Union
 from itertools import product
 import uuid
-from .gisconfig import GisConfig, fatal_error, warning_error
+from .gisconfig import GisConfig, fatal_error, warning_error, regular_calc
 from .file_readers import get_file_reader
 
 db_logger = logging.getLogger('parser')
@@ -86,11 +86,12 @@ class ExcelBaseImporter:
 
     def append_team(self, mapped_record: list) -> bool:
         if not self.get_condition_team():
-            match = True
+            b = True
         else:
-            match = re.search(self.get_condition_team(),
-                              mapped_record[self.get_condition_column()][0]['value'], re.IGNORECASE)
-        if match:
+            result = regular_calc(self.get_condition_team(
+            ), mapped_record[self.get_condition_column()][0]['value'])
+            b = False if not result or result.find('error') != -1 else True
+        if b:
             self._team.append(mapped_record)
             return True
         elif len(self._team) != 0:
@@ -134,16 +135,14 @@ class ExcelBaseImporter:
                     if pattern['full']:
                         s = (' '.join(headers[row[0]])).strip()
                         if s:
-                            match = re.search(
-                                pattern['pattern'], s, re.IGNORECASE)
-                            if match:
+                            result = regular_calc(pattern['pattern'], s)
+                            if result and result.find('error') == -1:
                                 pattern['find'] = True
                     else:
                         for s in headers[row[0]]:
                             if s:
-                                match = re.search(
-                                    pattern['pattern'], s, re.IGNORECASE)
-                                if match:
+                                result = regular_calc(pattern['pattern'], s)
+                                if result and result.find('error') == -1:
                                     pattern['find'] = True
         i = 0
         s = ''
@@ -263,12 +262,12 @@ class ExcelBaseImporter:
             row_count = len(self.colontitul['head'])
             col_left = 0
             col_right = index
-            if item['column_left']:
-                name_field = self.get_key(item['column_left'][0][0])
+            if item['left']:
+                name_field = self.get_key(item['left'][0][0])
                 if name_field:
                     col_left = self._names(name_field)['indexes'][0]
-            if item['column_right']:
-                name_field = self.get_key(item['column_right'][0][0])
+            if item['right']:
+                name_field = self.get_key(item['right'][0][0])
                 if name_field:
                     col_right = self._names[name_field]['indexes'][0]
             if col_left <= index <= col_right:
@@ -277,20 +276,22 @@ class ExcelBaseImporter:
                     c = col[0] if col[1] else index+col[0]
                     if not (r == 0 and c == 0) and 0 <= r < len(self.colontitul['head']) \
                             and 0 <= c < len(self.colontitul['head'][r]):
-                        match = re.search(
-                            offset['pattern'], self.colontitul['head'][r][c], re.IGNORECASE)
-                        if match:
+                        result = regular_calc(
+                            offset['pattern'], self.colontitul['head'][r][c])
+                        if result and result.find('error') == -1:
                             return True
+
             return False
         return True
 
     def check_end_table(self, mapped_record) -> bool:
         if not self.get_condition_end_table():
             return False
-        match = re.search(self.get_condition_end_table(),
-                          mapped_record[self.get_condition_end_table_column()][0]['value'], re.IGNORECASE)
-        if match:
+        result = regular_calc(self.get_condition_end_table(
+        ), mapped_record[self.get_condition_end_table_column()][0]['value'])
+        if result and result.find('error') == -1:
             return True
+
         return False
 
     def check_period_value(self):
@@ -309,10 +310,9 @@ class ExcelBaseImporter:
             ls.append(d.date().replace(day=1).strftime('%d.%m.%Y'))
             ls.append(d.date().strftime('%d.%m.%Y'))
         else:
-            result = re.search(
-                '19[89][0-9]|20[0-3][0-9]', item, re.IGNORECASE)
-            if result:
-                year = result.group(0)
+            result = regular_calc('19[89][0-9]|20[0-3][0-9]', item)
+            if result and result.find('error') == -1:
+                year = result
                 month = next((val for key, val in self.get_months().items() if re.search(
                     key+'[а-я]+\s', item, re.IGNORECASE)), None)
                 if month:
@@ -347,10 +347,9 @@ class ExcelBaseImporter:
     def get_value_after_validation(self, pattern: str, name: str, row: int, col: int) -> str:
         try:
             if row < len(self.colontitul[name]) and col < len(self.colontitul[name][row]):
-                match = re.search(
-                    pattern, self.colontitul[name][row][col], re.IGNORECASE)
-                if match:
-                    return match.group(0).strip()
+                result = regular_calc(pattern, self.colontitul[name][row][col])
+                if result:
+                    return result
                 else:
                     return ''
         except Exception as ex:
@@ -376,8 +375,10 @@ class ExcelBaseImporter:
     def get_search_names(self, names: list, pattern: str, cols_exclude: list = []) -> list:
         results = []
         for name in names:
-            if not (name['col'] in cols_exclude) and re.search(f'{pattern}', name['name'], re.IGNORECASE):
-                results.append(name)
+            if not (name['col'] in cols_exclude):
+                result = regular_calc(f'{pattern}', name['name'])
+                if result and result.find('error') == -1:
+                    results.append(name)
         return results
 
     def get_key(self, col: int) -> str:
@@ -387,11 +388,7 @@ class ExcelBaseImporter:
         return ''
 
     def get_value(self, value: str = '', pattern: str = '', type_value: str = '') -> Union[str, int, float]:
-        result = re.search(pattern, value.strip(), re.IGNORECASE)
-        if not result:
-            result = ''
-        else:
-            result = result.group(0)
+        result = regular_calc(pattern, value)
         try:
             if type_value == 'int':
                 result = int(result.replace(',', '.'))
@@ -402,10 +399,7 @@ class ExcelBaseImporter:
         return result
 
     def get_value_str(self, value: str, pattern: str) -> str:
-        result = re.search(pattern, value.strip(), re.IGNORECASE)
-        if result:
-            return result.group(0)
-        return ''
+        return regular_calc(pattern, value)
 
     def get_value_int(self, value: list) -> int:
         if value and isinstance(value, list):
@@ -542,8 +536,13 @@ class ExcelBaseImporter:
                         # формируем документ
                         if (item_fld['offset_row'] or item_fld['offset_column']):
                             value = value_off
+                        depends = item_fld['depends']
+                        if depends:
+                            if not doc[depends][0]['value']:
+                                value = ''
                         doc[item_fld['name']].append(
-                            {'row': len(doc[item_fld['name']]), 'col': col[0], 'value': str(value)})
+                            {'row': len(doc[item_fld['name']]), 'col': col[0], 'value': ''
+                             if (isinstance(value, int) or isinstance(value, float)) and value == 0 else str(value)})
                 else:
                     # все равно заносим в документ чтобы не сбивать порядок записей
                     doc[item_fld['name']].append(
@@ -590,7 +589,7 @@ class ExcelBaseImporter:
 
     def write_collections(self, num: int = 0) -> NoReturn:
         if not self.is_init() or len(self._collections) == 0:
-            logging.warning('Не удалось проситать данные из файла "{0}" '.format(
+            logging.warning('Не удалось прочитать данные из файла "{0}" '.format(
                 self._parameters['filename']['value'][0]))
             return
         path = self._parameters['path']['value'][0]
@@ -803,12 +802,8 @@ class ExcelBaseImporter:
                         value += f(data_calc, row, col, team) + ' '
                 data = value.strip()
                 if pattern:
-                    match = re.search(pattern, data, re.IGNORECASE)
+                    data = regular_calc(pattern, data, re.IGNORECASE)
                     pattern = ''  # шаблон проверки применятся только один раз
-                    if match:
-                        data = match.group(0)
-                    else:
-                        data = ''
             return data.strip()
         except Exception as ex:
             return f'error {name_func}: {str(ex)}'
@@ -817,10 +812,10 @@ class ExcelBaseImporter:
         is_check = False
         if name_func.find('(') != -1:
             # если функция с параметром, то заменяем входные данные (data) на этот параметр
-            param = re.search(
+            result = regular_calc(
                 r'(?<=\()[a-z_0-9-]+(?=\))', name_func, re.IGNORECASE)
-            if param:
-                data = param.group(0)
+            if result and result.find('error') == -1:
+                data = result
             name_func = name_func[:name_func.find('(')]
         if name_func.find('check_') != -1:
             name_func = name_func.replace('check_', '')

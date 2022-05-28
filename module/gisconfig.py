@@ -27,6 +27,16 @@ def warning_error(func):
             return None
     return wrapper
 
+def regular_calc(pattern, value):
+    try:
+        result = re.search(pattern, value.strip(), re.IGNORECASE)
+        if not result:
+            return  ''
+        else:
+            return result.group(0).strip()
+    except Exception as ex:
+        return f"error in regular: '{pattern}' ({str(ex)})"
+
 
 class GisConfig:
 
@@ -150,8 +160,8 @@ class GisConfig:
                 'col': i,
                 'active': False,
                 'duplicate': b,
-                'column_left': self.read_config(f'col_{i}', 'column_left', isNumeric=True),
-                'column_right': self.read_config(f'col_{i}', 'column_right', isNumeric=True),
+                'left': self.read_config(f'col_{i}', 'column_left', isNumeric=True),
+                'right': self.read_config(f'col_{i}', 'column_right', isNumeric=True),
                 'offset': dict(),
             }
             if not heading['name']: heading['name'] = f'col_{i}'
@@ -240,6 +250,9 @@ class GisConfig:
             # тип данных в колонке смещения
             fld['offset_type'] = self.read_config(
                 f'{doc["name"]}_{i}', 'offset_type')
+            # Зависимость от колонки
+            fld['depends'] = self.read_config(
+                f'{doc["name"]}_{i}', 'depends_on')
             # запись (в области) для поиска данных атрибутта
             fld['func'] = self.read_config(f'{doc["name"]}_{i}', 'func')
             # шаблон поиска (регулярное выражение)
