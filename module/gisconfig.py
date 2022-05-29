@@ -77,6 +77,7 @@ class GisConfig:
         self.set_parameters()
         self.set_table_columns()
         self.set_documents()
+        self._warning = list()
         self._is_init = True
 
     def set_header(self):
@@ -152,7 +153,7 @@ class GisConfig:
             b2 = True if self.read_config(f'col_{i}', 'is_optional')=='1' else False
             heading = {
                 'name': self.read_config(f'col_{i}', 'name'),
-                'pattern': self.read_config(f'col_{i}', 'pattern'),
+                'pattern': list(),
                 'optional': b2,
                 'index': -1,
                 'indexes': [],
@@ -160,10 +161,15 @@ class GisConfig:
                 'col': i,
                 'active': False,
                 'duplicate': b,
-                'left': self.read_config(f'col_{i}', 'column_left', isNumeric=True),
-                'right': self.read_config(f'col_{i}', 'column_right', isNumeric=True),
+                'left': self.read_config(f'col_{i}', 'border_column_left', isNumeric=True),
+                'right': self.read_config(f'col_{i}', 'border_column_right', isNumeric=True),
                 'offset': dict(),
             }
+            heading['pattern'].append(self.read_config(f'col_{i}', 'pattern'))
+            j = 0
+            while self.read_config(f'col_{i}', f'pattern_{j}'):
+                heading['pattern'].append(self.read_config(f'col_{i}', f'pattern_{j}') )
+                j +=1
             if not heading['name']: heading['name'] = f'col_{i}'
             self._columns_heading.append(heading)
             self.set_column_conditions(i)

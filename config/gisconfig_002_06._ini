@@ -56,28 +56,28 @@ offset=@0
 [col_2]
 name=Всего
 pattern=Всего
-column_right=6
+border_column_right=6
 offset=@0
 offset_row=-1
 
 [col_3]
 name=ГВС
 pattern=^Горячая вода$
-column_right=6
+border_column_right=6
 offset=@0
 offset_row=-1
 
 [col_4]
 name=ХВС
 pattern=^Холодная вода$
-column_right=6
+border_column_right=6
 offset=@0
 offset_row=-1
 
 [col_5]
 name=Электричество
 pattern=^Электроэнергия$
-column_right=6
+border_column_right=6
 offset=@0
 offset_row=-1
 
@@ -109,7 +109,7 @@ pattern=Итоговая сумма на конец месяца
 [col_11]
 name=Услуги (начисление)
 pattern=^((?!холодн|горяч|электр).)+$
-column_right=6
+border_column_right=6
 offset=@0
 offset_row=-1
 

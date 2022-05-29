@@ -42,6 +42,7 @@ def get_inn(filename: str) -> str:
 
 def get_files():
     list_files = list()
+    warning = list()
     inn = ''
     if len(sys.argv) in (2,3,4):
         file_name = sys.argv[1]
@@ -50,7 +51,7 @@ def get_files():
             list_files = get_extract_files(archive_file=file_name)
         else:
             list_files.append(file_name)
-        list_files = get_file_config(list_files)
+        list_files, warning = get_file_config(list_files)
         if len(sys.argv) == 4:
             for item in list_files:
                 item['config'] = sys.argv[3]
@@ -62,10 +63,11 @@ def get_files():
         list_files.append({'name': sys.argv[1], 'config': ''})
         if len(sys.argv) >= 4:
             list_files[-1]['config'] = sys.argv[3]
-    return list_files, inn
+    return list_files, inn, warning
 
 
 def get_file_config(list_files: list) -> str:
+    warning = list()
     ls_new = list()
     config_files = [[x, False] for x in os.listdir(path_config)]
     for file_name in list_files:
@@ -81,4 +83,8 @@ def get_file_config(list_files: list) -> str:
                     if rep.check(is_warning=False):
                         ls_new[-1]['config'] = file_config
                         break
-    return ls_new
+                    elif rep._config._warning:
+                        for w in rep._config._warning:
+                            warning.append(w)
+
+    return ls_new, warning
