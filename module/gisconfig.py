@@ -9,6 +9,10 @@ from typing import NoReturn
 
 db_logger = logging.getLogger('parser')
 
+PATH_LOG = 'logs'
+PATH_OUTPUT = 'output'
+PATH_CONFIG = 'config'
+PATH_TMP = 'tmp'
 
 def fatal_error(func):
     def wrapper(*args):
@@ -19,6 +23,7 @@ def fatal_error(func):
             exit()
     return wrapper
 
+
 def warning_error(func):
     def wrapper(*args):
         try:
@@ -27,11 +32,12 @@ def warning_error(func):
             return None
     return wrapper
 
+
 def regular_calc(pattern, value):
     try:
         result = re.search(pattern, value.strip(), re.IGNORECASE)
         if not result:
-            return  ''
+            return ''
         else:
             return result.group(0).strip()
     except Exception as ex:
@@ -95,72 +101,83 @@ class GisConfig:
         self._check['pattern'] = self.read_config('check', 'pattern')
         i = 0
         while self.read_config('check', f'pattern_{i}'):
-            self._check[f'pattern_{i}'] = self.read_config('check', f'pattern_{i}')
+            self._check[f'pattern_{i}'] = self.read_config(
+                'check', f'pattern_{i}')
             i += 1
 
     @fatal_error
     def set_parameters(self):
         self._parameters = dict()
-        self.set_param_headers()
-        self.set_param_footers()
+        self.set_param_colontitul('headers')
+        self.set_param_colontitul('footers', False)
         self._parameters.setdefault(
-            'period', [{'row': 0, 'col': 0, 'pattern': '', 'ishead': True}])
+            'period', [{'row': 0, 'col': 0, 'pattern': [''], 'ishead': True}])
         self._parameters.setdefault(
-            'address', [{'row': 0, 'col': 0, 'pattern': '', 'ishead': True}])
+            'address', [{'row': 0, 'col': 0, 'pattern': [''], 'ishead': True}])
         self._parameters.setdefault(
-            'path', [{'row': 0, 'col': 0, 'pattern': '@output', 'ishead': True}])
+            'path', [{'row': 0, 'col': 0, 'pattern': ['@output'], 'ishead': True}])
 
-    def set_param_headers(self) -> NoReturn:
+    def set_param_colontitul(self, name: str, is_head: bool = True) -> NoReturn:
         i = 0
-        while self.read_config(f'headers_{i}', 'name'):
+        while self.read_config(f'{name}_{i}', 'name'):
             self._parameters.setdefault(
-                self.read_config(f'headers_{i}', 'name'), [])
-            rows = self.read_config(f'headers_{i}', 'row', isNumeric=True)
+                self.read_config(f'{name}_{i}', 'name'), [])
+            rows = self.read_config(f'{name}_{i}', 'row', isNumeric=True)
             cols = self.read_config(
-                f'headers_{i}', 'column', isNumeric=True)
-            self._parameters[self.read_config(f'headers_{i}', 'name')].append(
+                f'{name}_{i}', 'column', isNumeric=True)
+            self._parameters[self.read_config(f'{name}_{i}', 'name')].append(
                 {
                     'row': rows,
                     'col': cols,
-                    'pattern': self.read_config(f'headers_{i}', 'pattern'),
-                    'ishead': True,
+                    'pattern': [self.read_config(f'{name}_{i}', 'pattern')],
+                    'ishead': is_head,
                 }
             )
+            j = 0
+            while self.read_config(f'{name}_{i}', f'pattern_{j}'):
+                self._parameters[self.read_config(
+                    f'{name}_{i}', 'name')][0]['pattern'].append(self.read_config(f'{name}_{i}', f'pattern_{j}'))
+                j += 1
             i += 1
 
-    def set_param_footers(self) -> NoReturn:
-        i = 0
-        while self.read_config(f'footers_{i}', 'name'):
-            self._parameters.setdefault(
-                self.read_config(f'footers_{i}', 'name'), [])
-            rows = self.read_config(f'footers_{i}', 'row', isNumeric=True)
-            cols = self.read_config(
-                f'footers_{i}', 'column', isNumeric=True)
-            self._parameters[self.read_config(f'footers_{i}', 'name')].append(
-                {
-                    'row': rows,
-                    'col': cols,
-                    'pattern': self.read_config(f'footers_{i}', 'pattern'),
-                    'ishead': False,
-                }
-            )
-            i += 1
+    # def set_param_footers(self) -> NoReturn:
+    #     i = 0
+    #     while self.read_config(f'footers_{i}', 'name'):
+    #         self._parameters.setdefault(
+    #             self.read_config(f'footers_{i}', 'name'), [])
+    #         rows = self.read_config(f'footers_{i}', 'row', isNumeric=True)
+    #         cols = self.read_config(
+    #             f'footers_{i}', 'column', isNumeric=True)
+    #         self._parameters[self.read_config(f'footers_{i}', 'name')].append(
+    #             {
+    #                 'row': rows,
+    #                 'col': cols,
+    #                 'pattern': self.read_config(f'footers_{i}', 'pattern'),
+    #                 'ishead': False,
+    #             }
+    #         )
+    #         i += 1
 
     def set_table_columns(self) -> NoReturn:
         i = 0
-        while self.read_config(f'col_{i}', 'pattern'):
-            b = True if self.read_config(f'col_{i}', 'is_duplicate')=='1' else False
-            b2 = True if self.read_config(f'col_{i}', 'is_optional')=='1' else False
+        while self.read_config(f'col_{i}', 'pattern') or self.read_config(f'col_{i}', 'name'):
+            b1 = True if self.read_config(
+                f'col_{i}', 'is_duplicate') == '1' else False
+            b2 = True if self.read_config(
+                f'col_{i}', 'is_optional') == '1' else False
+            b3 = True if self.read_config(
+                f'col_{i}', 'is_unique') == '1' else False
             heading = {
                 'name': self.read_config(f'col_{i}', 'name'),
                 'pattern': list(),
-                'optional': b2,
                 'index': -1,
                 'indexes': [],
                 'row': -1,
                 'col': i,
                 'active': False,
-                'duplicate': b,
+                'duplicate': b1,
+                'optional': b2,
+                'unique': b3,
                 'left': self.read_config(f'col_{i}', 'border_column_left', isNumeric=True),
                 'right': self.read_config(f'col_{i}', 'border_column_right', isNumeric=True),
                 'offset': dict(),
@@ -168,9 +185,11 @@ class GisConfig:
             heading['pattern'].append(self.read_config(f'col_{i}', 'pattern'))
             j = 0
             while self.read_config(f'col_{i}', f'pattern_{j}'):
-                heading['pattern'].append(self.read_config(f'col_{i}', f'pattern_{j}') )
-                j +=1
-            if not heading['name']: heading['name'] = f'col_{i}'
+                heading['pattern'].append(
+                    self.read_config(f'col_{i}', f'pattern_{j}'))
+                j += 1
+            if not heading['name']:
+                heading['name'] = f'col_{i}'
             self._columns_heading.append(heading)
             self.set_column_conditions(i)
             self.set_column_offset(i)
@@ -275,7 +294,7 @@ class GisConfig:
                     fld['pattern'] = doc['fields'][int(
                         fld['pattern'][1:])]['pattern']
                 else:
-                    fld['pattern'] = self._condition_team 
+                    fld['pattern'] = self._condition_team
 
     def set_field_sub(self, fld, name, i: int):
         j = 0

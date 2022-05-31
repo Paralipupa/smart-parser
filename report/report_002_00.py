@@ -41,8 +41,13 @@ class Report_002_00(ExcelBaseImporter):
                                         team, item_fld, item_fld['type'], row[0], col[0], value_off, len(doc[item_fld['name']]))
                                 if value and item_fld['func']:
                                     # запускаем функцию и передаем в нее полученное значение
-                                    value = self.func(
-                                        team=team, fld_param=item_fld, data=value_off if item_fld['offset_row'] or item_fld['offset_column'] else value, row=row[0], col=col[0])
+                                    if item_fld['offset_row'] or item_fld['offset_column']:
+                                        value_off = self.func(
+                                            team=team, fld_param=item_fld, data=value_off, row=row[0], col=col[0])
+                                    else:
+                                        value = self.func(
+                                            team=team, fld_param=item_fld, data=value, row=row[0], col=col[0])
+                                    
                     if value_off or value:
                         # формируем документ
                         if (item_fld['offset_row'] or item_fld['offset_column']):

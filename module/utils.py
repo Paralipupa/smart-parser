@@ -2,33 +2,94 @@ import zipfile
 import os
 import re
 import sys
+from datetime import datetime
 from report.report_001_00 import Report_001_00
-from .gisconfig import GisConfig
-
+from .gisconfig import PATH_OUTPUT, PATH_LOG, PATH_TMP, PATH_CONFIG
+import pathlib
 import logging
-import traceback
 
 db_logger = logging.getLogger('parser')
-
-path_config = 'config'
-path_tmp = 'config'
-
 
 def remove_files(path: str):
     os.remove(path=path)
 
+def get_files():
+    if len(sys.argv)<=1: 
+            logging.warning('run with parameters:  <file.xsl>|<file.zip> [<inn>] [<config.ini>]')
+            exit()
+    inn = ''
+    file_conf = ''
+    if len(sys.argv)>2: inn = sys.argv[2]
+    if len(sys.argv)>3: file_conf = sys.argv[3]
+
+    file_name = sys.argv[1]
+    list_files = list()
+    zip_files = list()
+
+    if file_name.find('.lst') != -1:
+        zip_files = get_list_files(sys.argv[1])
+    elif file_name.lower().find('.zip') != -1:
+        zip_files.append({'file': file_name, 'inn':inn})
+    
+    if zip_files:
+        for file_name in zip_files:
+            inn = get_inn(filename=file_name['file'])
+            file_name['inn'] = inn if inn else file_name['inn']
+            list_files += get_extract_files(archive_file=file_name)
+
+        list_files = get_file_config(list_files)
+    else:
+        list_files.append({'name': file_name, 'config': file_conf, 'inn': inn, 'warning':list()})
+
+    return list_files
+
+def get_list_files(name: str) ->list:
+    l = list()
+    with open(name, "r") as f:
+        lines = f.readlines()
+        for line in lines:
+            if line:
+                l.append({'file':line.strip(),'inn':''})
+    return l
+
+def get_file_config(list_files: list) -> str:
+    ls_new = list()
+    config_files = [x for x in os.listdir(PATH_CONFIG)]
+    config_files.sort()
+    i=0
+    for item in list_files:
+        ls_new.append({'name': item['name'], 'config': '', 'inn': item['inn'], 'warning':list()})
+        for conf_file in config_files:
+            if conf_file.find('.ini') != -1:
+                file_config = f'{PATH_CONFIG}/{conf_file}'
+                rep = Report_001_00(file_name=item['name'],
+                                    config_file=file_config)
+                if not rep.is_file_exists:
+                    ls_new[-1]['warrning'].append('ФАЙЛ НЕ НАЙДЕН "{}". skip'.format(item['name']))
+                else:
+                    if rep.check(is_warning=False):
+                        ls_new[-1]['config'] = file_config
+                        break
+                    elif rep._config._warning:
+                        for w in rep._config._warning:
+                            ls_new[-1]['warning'].append(w)
+        i+=1
+        print('Поиск конфигураций: {}   \r'.format(round(i/len(list_files)*100,0)), end='', flush=True)
+
+    return ls_new
 
 def get_extract_files(archive_file: str, extract_dir: str = 'tmp') -> list:
-    if not os.path.exists(archive_file):
+    if not os.path.exists(archive_file['file']):
         return []
-    z = zipfile.ZipFile(archive_file, 'r')
+    z = zipfile.ZipFile(archive_file['file'], 'r')
     z.extractall(extract_dir)
     list_files = list()
     for name in z.namelist():
         new_name = '{}/{}'.format(extract_dir,
                                   name.encode('cp437').decode('cp866'))
         os.rename(f'{extract_dir}/{name}', new_name)
-        list_files.append(new_name)
+        list_files.append({'name': new_name, 'config': '', 'inn': archive_file['inn'], 'warning':list()})
+        
     return list_files
 
 
@@ -39,52 +100,11 @@ def get_inn(filename: str) -> str:
         return match.group(0)
     return ''
 
+def write_list(files):
 
-def get_files():
-    list_files = list()
-    warning = list()
-    inn = ''
-    if len(sys.argv) in (2,3,4):
-        file_name = sys.argv[1]
-        inn = get_inn(filename=file_name)
-        if file_name.lower().find('.zip') != -1:
-            list_files = get_extract_files(archive_file=file_name)
-        else:
-            list_files.append(file_name)
-        list_files, warning = get_file_config(list_files)
-        if len(sys.argv) == 4:
-            for item in list_files:
-                item['config'] = sys.argv[3]
-    else:
-        if len(sys.argv) < 3:
-            print('run with parameters:  <file.xsl>|<file.zip> [<inn>] [<config.ini>]')
-            exit()
-        inn = sys.argv[2]
-        list_files.append({'name': sys.argv[1], 'config': ''})
-        if len(sys.argv) >= 4:
-            list_files[-1]['config'] = sys.argv[3]
-    return list_files, inn, warning
+    os.makedirs(PATH_LOG, exist_ok=True)
 
-
-def get_file_config(list_files: list) -> str:
-    warning = list()
-    ls_new = list()
-    config_files = [[x, False] for x in os.listdir(path_config)]
-    for file_name in list_files:
-        ls_new.append({'name': file_name, 'config': ''})
-        for file in config_files:
-            if file[0].find('.ini') != -1:
-                file_config = f'{path_config}/{file[0]}'
-                rep = Report_001_00(file_name=file_name,
-                                    config_file=file_config)
-                if not rep.is_file_exists:
-                    exit()
-                else:
-                    if rep.check(is_warning=False):
-                        ls_new[-1]['config'] = file_config
-                        break
-                    elif rep._config._warning:
-                        for w in rep._config._warning:
-                            warning.append(w)
-
-    return ls_new, warning
+    file_output = pathlib.Path(PATH_LOG, f'session{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log')
+    with open(file_output, 'w') as file:
+        for item in files:
+            file.write(f"{item['inn']} \t {item['name']} \t {item['config']}\n")
