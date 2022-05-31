@@ -48,7 +48,7 @@ def get_list_files(name: str) ->list:
     with open(name, "r") as f:
         lines = f.readlines()
         for line in lines:
-            if line:
+            if line.strip() and line.strip()[0] != ';':
                 l.append({'file':line.strip(),'inn':''})
     return l
 
@@ -61,20 +61,21 @@ def get_file_config(list_files: list) -> str:
         ls_new.append({'name': item['name'], 'config': '', 'inn': item['inn'], 'warning':list()})
         for conf_file in config_files:
             if conf_file.find('.ini') != -1:
-                file_config = f'{PATH_CONFIG}/{conf_file}'
+                file_config = pathlib.Path(PATH_CONFIG, f'{conf_file}') 
                 rep = Report_001_00(file_name=item['name'],
-                                    config_file=file_config)
-                if not rep.is_file_exists:
-                    ls_new[-1]['warrning'].append('ФАЙЛ НЕ НАЙДЕН "{}". skip'.format(item['name']))
-                else:
+                                    config_file=str(file_config))
+                if  rep.is_file_exists:
                     if rep.check(is_warning=False):
                         ls_new[-1]['config'] = file_config
                         break
                     elif rep._config._warning:
                         for w in rep._config._warning:
                             ls_new[-1]['warning'].append(w)
+                if not rep.is_file_exists: 
+                    ls_new[-1]['warning'].append('ФАЙЛ НЕ НАЙДЕН или ПОВРЕЖДЕН "{}". skip'.format(item['name']))
+                    break
         i+=1
-        print('Поиск конфигураций: {}   \r'.format(round(i/len(list_files)*100,0)), end='', flush=True)
+        print('Поиск конфигураций: {}%   \r'.format(round(i/len(list_files)*100,0)), end='', flush=True)
 
     return ls_new
 
@@ -107,4 +108,11 @@ def write_list(files):
     file_output = pathlib.Path(PATH_LOG, f'session{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log')
     with open(file_output, 'w') as file:
         for item in files:
-            file.write(f"{item['inn']} \t {item['name']} \t {item['config']}\n")
+            if item['config']:
+                file.write(f"{item['inn']} \t {item['name']} \t {item['config']}\n")
+        file.write('\n\n')
+        for item in files:
+            if item['warning']:
+                s = ' '.join([x for x in item['warning']]).strip()
+                file.write(f"{item['inn']} \t {item['name']} \t {s}\n")
+                file.write('\n')

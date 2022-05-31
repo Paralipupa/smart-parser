@@ -55,7 +55,7 @@ class CsvFile(DataFile):
 class XlsFile(DataFile):
     def __init__(self, fname, sheet_name, first_line, address_columns, page_index=None):
         super(XlsFile, self).__init__(fname, sheet_name, first_line, address_columns)
-        self._book = xlrd.open_workbook(fname)
+        self._book = xlrd.open_workbook(fname, ignore_workbook_corruption=True)
         if page_index is not None:
             sheet = self._book.sheets()[page_index]
         else:

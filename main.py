@@ -21,20 +21,23 @@ if __name__ == "__main__":
         list( map( os.unlink, (os.path.join(PATH_LOG,f) for f in os.listdir(PATH_LOG)) ) )
 
     list_files = get_files()
-    if list_files:
-        write_list(list_files)
-
     i = 0
-    for file_name in list_files:
-        i += 1
-        if file_name['config']:
-            t = regular_calc('[0-9]{3}(?=_)', file_name['config'])
-            rep = report[t](file_name=file_name['name'],
-                                inn=file_name['inn'], config_file=file_name['config'])
-            if rep.read():
-                rep.write_collections(i)
-                rep.write_logs(i)
-        else:
-            s = ' '.join([x for x in file_name['warning']]).strip()
-            if s:
-                logging.warning(s)
+    if list_files:
+        for file_name in list_files:
+            i += 1
+            if file_name['config']:
+                t = regular_calc('[0-9]{3}(?=_)', str(file_name['config']))
+                rep = report[t](file_name=file_name['name'],
+                                    inn=file_name['inn'], config_file=str(file_name['config']))
+                if rep.read():
+                    rep.write_collections(i)
+                    rep.write_logs(i)
+                else:
+                    if rep._config._warning:
+                        print('error')
+                file_name['warning'] += rep._config._warning
+            else:
+                s = ' '.join([x for x in file_name['warning']]).strip()
+                if s:
+                    logging.warning(s)
+        write_list(list_files)

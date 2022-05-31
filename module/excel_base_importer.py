@@ -133,6 +133,11 @@ class ExcelBaseImporter:
 
         index = 0
         data_reader = self.get_data()
+        if not data_reader:
+            self.is_file_exists = False
+            self._config._warning.append(f"ОШИБКА чтения файла {self._parameters['filename']['value'][0]}")
+            return False
+
         for record in data_reader:
             headers.append(record)
             index += 1
@@ -158,13 +163,13 @@ class ExcelBaseImporter:
         s = ''
         for pattern in patts:
             if not pattern['find']:
-                s += f"  {pattern['pattern']}\n"
+                s += f"\t{pattern['pattern']}\n"
                 i += 1
         if i == 0:
             return True
 
         if (100 - round(i/len(patts) * 100, 0)) > 80:
-            self._config._warning.append('файл "{0}" сооответствует шаблону "{1}" более, чем на 80%\nНе найдены:\n{2}'.format(
+            self._config._warning.append('\nфайл "{0}"\nсооответствует шаблону "{1}"\nболее, чем на 80%\nНе найдены:\n{2}'.format(
                 self._parameters['filename']['value'][0], self._parameters['config']['value'][0], s))
         if is_warning:
             self._config._warning.append('файл "{0}" не сооответствует шаблону "{1}". skip'.format(
@@ -183,12 +188,13 @@ class ExcelBaseImporter:
                     for i in item['indexes']:
                         c += f"({item['row']},{i}) "
                     s2 += f"{item['name']} {c}\n"
-            logging.warning('В загружаемом файле "{}" не все колонки найдены \n'.format(
+
+            self._config._warning.append('\nВ загружаемом файле "{}"\nне все колонки найдены \n'.format(
                 self._parameters['filename']['value'][0]))
             if s2:
-                logging.warning('Найдены колонки:\n{}\n'.format(s2.strip()))
+                self._config._warning.append('Найдены колонки:\n{}\n'.format(s2.strip()))
             if s1:
-                logging.warning('Не найдены колонки:\n{}\n'.format(s1.strip()))
+                self._config._warning.append('Не найдены колонки:\n{}\n'.format(s1.strip()))
             return False
         return True
 
@@ -367,6 +373,7 @@ class ExcelBaseImporter:
                 self.colontitul['status'] = 1
         return (self.colontitul['status'] == 1)
 
+    @warning_error
     def get_data(self):
         ReaderClass = get_file_reader(self._parameters['filename']['value'][0])
         data_reader = ReaderClass(self._parameters['filename']['value'][0], self.get_page_name(
