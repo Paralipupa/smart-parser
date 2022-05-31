@@ -19,7 +19,7 @@ class Report_002_00(ExcelBaseImporter):
             cols = self.get_value_range(item_fld['column'])
             for col in cols:
                 name_field = self.get_key(col[0])
-                if name_field and item_fld['pattern']:
+                if name_field and item_fld['pattern'][0]:
                     rows = self.get_value_range(
                         item_fld['row'], len(team[name_field]))
                     value = self.get_value(type_value=item_fld['type'])
@@ -27,26 +27,29 @@ class Report_002_00(ExcelBaseImporter):
                         type_value=item_fld['offset_type'])
                     for row in rows:
                         if len(team[name_field]) > row[0]:
-                            value += self.get_fld_value(
-                                team=team[name_field], type_fld=item_fld['type'],
-                                pattern=item_fld['pattern'], row=row[0])
-                            if not value:
-                                # если значение пустое, то проверяем под-поля (col_x_y если они заданы)
-                                value = self.get_sub_value(
-                                    item_fld, team, name_field, row[0], col[0], value)
-                            else:
-                                if item_fld['offset_row'] or item_fld['offset_column']:
-                                    # если есть смещение, то берем данные от туда
-                                    value_off += self.get_value_offset(
-                                        team, item_fld, item_fld['type'], row[0], col[0], value_off, len(doc[item_fld['name']]))
-                                if value and item_fld['func']:
-                                    # запускаем функцию и передаем в нее полученное значение
+                            for patt in item_fld['pattern']:
+                                value += self.get_fld_value(
+                                    team=team[name_field], type_fld=item_fld['type'],
+                                    pattern=patt, row=row[0])
+                                if not value:
+                                    # если значение пустое, то проверяем под-поля (col_x_y если они заданы)
+                                    value = self.get_sub_value(
+                                        item_fld, team, name_field, row[0], col[0], value)
+                                else:
                                     if item_fld['offset_row'] or item_fld['offset_column']:
-                                        value_off = self.func(
-                                            team=team, fld_param=item_fld, data=value_off, row=row[0], col=col[0])
-                                    else:
-                                        value = self.func(
-                                            team=team, fld_param=item_fld, data=value, row=row[0], col=col[0])
+                                        # если есть смещение, то берем данные от туда
+                                        value_off += self.get_value_offset(
+                                            team, item_fld, item_fld['type'], row[0], col[0], value_off, len(doc[item_fld['name']]))
+                                    if value and item_fld['func']:
+                                        # запускаем функцию и передаем в нее полученное значение
+                                        if item_fld['offset_row'] or item_fld['offset_column']:
+                                            value_off = self.func(
+                                                team=team, fld_param=item_fld, data=value_off, row=row[0], col=col[0])
+                                        else:
+                                            value = self.func(
+                                                team=team, fld_param=item_fld, data=value, row=row[0], col=col[0])
+                                if value_off or value:
+                                    break
                                     
                     if value_off or value:
                         # формируем документ

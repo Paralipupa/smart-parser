@@ -14,6 +14,7 @@ PATH_OUTPUT = 'output'
 PATH_CONFIG = 'config'
 PATH_TMP = 'tmp'
 
+
 def fatal_error(func):
     def wrapper(*args):
         try:
@@ -55,12 +56,13 @@ class GisConfig:
 
         self._config = configparser.ConfigParser()
         self._config.read(filename)
+        self._config_name = filename
         self.configuration_initialize()
 
     @fatal_error
     def configuration_initialize(self) -> NoReturn:
         # регул.выражение начала новой области (иерархии)
-        self._condition_team = ''
+        self._condition_team = list()
         self._condition_end_table = ''  # регул.выражение окончания табличных данных
         # регул.выражение колонки начала области (иерархии)
         self._condition_team_column = ''
@@ -140,24 +142,6 @@ class GisConfig:
                 j += 1
             i += 1
 
-    # def set_param_footers(self) -> NoReturn:
-    #     i = 0
-    #     while self.read_config(f'footers_{i}', 'name'):
-    #         self._parameters.setdefault(
-    #             self.read_config(f'footers_{i}', 'name'), [])
-    #         rows = self.read_config(f'footers_{i}', 'row', isNumeric=True)
-    #         cols = self.read_config(
-    #             f'footers_{i}', 'column', isNumeric=True)
-    #         self._parameters[self.read_config(f'footers_{i}', 'name')].append(
-    #             {
-    #                 'row': rows,
-    #                 'col': cols,
-    #                 'pattern': self.read_config(f'footers_{i}', 'pattern'),
-    #                 'ishead': False,
-    #             }
-    #         )
-    #         i += 1
-
     def set_table_columns(self) -> NoReturn:
         i = 0
         while self.read_config(f'col_{i}', 'pattern') or self.read_config(f'col_{i}', 'name'):
@@ -196,9 +180,14 @@ class GisConfig:
             i += 1
 
     def set_column_conditions(self, i: int) -> NoReturn:
-        if not self._condition_team:
-            self._condition_team = self.read_config(
-                f'col_{i}', 'condition_begin_team')
+        patt = self.read_config(f'col_{i}', 'condition_begin_team')
+        if len(self._condition_team) == 0 and patt:
+            self._condition_team.append(patt)
+            j = 0
+            while self.read_config(f'col_{i}', f'condition_begin_team_{j}'):
+                self._condition_team.append(self.read_config(
+                    f'col_{i}', f'condition_begin_team_{j}'))
+                j += 1
             self._condition_team_column = self._columns_heading[i]['name']
         if not self._condition_end_table:
             self._condition_end_table = self.read_config(
@@ -221,9 +210,9 @@ class GisConfig:
         if not self._columns_heading[i]['offset']['col'] and index != -1 and index < len(self._columns_heading):
             self._columns_heading[i]['offset']['col'] = self._columns_heading[index]['offset']['col']
 
-        self._columns_heading[i]['offset']['pattern'] = self.read_config(
-            f'col_{i}', 'offset_pattern')
-        if not self._columns_heading[i]['offset']['pattern'] and index != -1 and index < len(self._columns_heading):
+        self._columns_heading[i]['offset']['pattern'] = [self.read_config(
+            f'col_{i}', 'offset_pattern')]
+        if not self._columns_heading[i]['offset']['pattern'][0] and index != -1 and index < len(self._columns_heading):
             self._columns_heading[i]['offset']['pattern'] = self._columns_heading[index]['offset']['pattern']
 
     @fatal_error
@@ -249,7 +238,13 @@ class GisConfig:
             fld['name'] = self.read_config(
                 f'{doc["name"]}_{i}', 'name')  # имя аттрибута
             # шаблон поиска (регулярное выражение)
-            fld['pattern'] = self.read_config(f'{doc["name"]}_{i}', 'pattern')
+            fld['pattern'] = [self.read_config(
+                f'{doc["name"]}_{i}', 'pattern')]
+            j = 0
+            while self.read_config(f'{doc["name"]}_{i}', f'pattern_{j}'):
+                fld['pattern'].append(self.read_config(
+                    f'{doc["name"]}_{i}', f'pattern_{j}'))
+                j += 1
             # колонка для поиска данных аттрибут
             fld['column'] = self.read_config(
                 f'{doc["name"]}_{i}', 'col_config', isNumeric=True)
@@ -281,20 +276,21 @@ class GisConfig:
             # запись (в области) для поиска данных атрибутта
             fld['func'] = self.read_config(f'{doc["name"]}_{i}', 'func')
             # шаблон поиска (регулярное выражение)
-            fld['func_pattern'] = self.read_config(
-                f'{doc["name"]}_{i}', 'func_pattern')
+            fld['func_pattern'] = [self.read_config(
+                f'{doc["name"]}_{i}', 'func_pattern')]
             fld['sub'] = []
 
             doc['fields'].append(fld)
             self.set_field_sub(fld['sub'], doc["name"], i)
             i += 1
         for fld in doc['fields']:
-            if fld['pattern'][0:1] == '@':
-                if fld['pattern'][1:]:
+            if fld['pattern'][0][0:1] == '@':
+                if fld['pattern'][0][1:]:
                     fld['pattern'] = doc['fields'][int(
-                        fld['pattern'][1:])]['pattern']
+                        fld['pattern'][0][1:])]['pattern']
                 else:
-                    fld['pattern'] = self._condition_team
+                    fld['pattern'] = self._condition_team if self._condition_team else [
+                        '']
 
     def set_field_sub(self, fld, name, i: int):
         j = 0
@@ -311,12 +307,14 @@ class GisConfig:
                 {
                     'row': rows,
                     'column': cols,
-                    'pattern': self.read_config(f'{name}_{i}_{j}', 'pattern'),
+                    'pattern': [self.read_config(f'{name}_{i}_{j}', 'pattern')],
+                    'type': '',
+                    'offset_type': '',
                     'offset_column': cols_offset,
                     'offset_row': rows_offset,
-                    'offset_pattern': self.read_config(f'{name}_{i}_{j}', 'offset_pattern'),
+                    'offset_pattern': [self.read_config(f'{name}_{i}_{j}', 'offset_pattern')],
                     'func': self.read_config(f'{name}_{i}_{j}', 'func'),
-                    'func_pattern': self.read_config(f'{name}_{i}_{j}', 'func_pattern'),
+                    'func_pattern': [self.read_config(f'{name}_{i}_{j}', 'func_pattern')],
                 }
             )
             j += 1
