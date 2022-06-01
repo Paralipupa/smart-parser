@@ -109,12 +109,15 @@ class ExcelBaseImporter:
             rows.append((0, False))
         patts = list()
         p = self.get_check('pattern')
-        patts.append({'pattern': p, 'full': True, 'find': p == ''})
-        for i in range(5):
+        patts.append({'pattern': p, 'full': True, 'find': p == '', 'maxrow': rows[-1][0]})
+        i = 0
+        p = self.get_check(f'pattern_{i}')
+        while p:
             p = self.get_check(f'pattern_{i}')
-            if not p:
-                break
-            patts.append({'pattern': p, 'full': True, 'find': False})
+            patts.append({'pattern': p, 'full': True,
+                         'find': False, 'maxrow': rows[-1][0]})
+            i += 1
+            p = self.get_check(f'pattern_{i}')
 
         for item in self._config._columns_heading:
             s = ''
@@ -122,7 +125,8 @@ class ExcelBaseImporter:
                 s += patt + '|'
             s = s.strip('|')
             patts.append(
-                {'pattern': s, 'full': False, 'find': item['optional']})
+                {'pattern': s, 'full': False, 'find': item['optional'] or not s,
+                 'maxrow': self._config._max_rows_heading[0][0]})
 
         index = 0
         data_reader = self.get_data()
@@ -135,24 +139,25 @@ class ExcelBaseImporter:
         for record in data_reader:
             headers.append(record)
             index += 1
-            if index > rows[-1][0]:
+            if index > self._config._max_rows_heading[0][0]:
                 break
 
-        for row in rows:
-            if row[0] < len(headers):
+        for row in range(self._config._max_rows_heading[0][0]):
+            if row < len(headers):
                 for pattern in patts:
-                    if pattern['full']:
-                        s = (' '.join(headers[row[0]])).strip()
-                        if s:
-                            result = regular_calc(pattern['pattern'], s)
-                            if result and result.find('error') == -1:
-                                pattern['find'] = True
-                    else:
-                        for s in headers[row[0]]:
+                    if pattern['maxrow'] > row and pattern['pattern']:
+                        if pattern['full']:
+                            s = (' '.join(headers[row])).strip()
                             if s:
                                 result = regular_calc(pattern['pattern'], s)
                                 if result and result.find('error') == -1:
                                     pattern['find'] = True
+                        else:
+                            for s in headers[row]:
+                                if s:
+                                    result = regular_calc(pattern['pattern'], s)
+                                    if result and result.find('error') == -1:
+                                        pattern['find'] = True
         i = 0
         s = ''
         for pattern in patts:
@@ -174,6 +179,8 @@ class ExcelBaseImporter:
     def check_condition_team(self, mapped_record: list) -> bool:
         if not self.get_condition_team():
             return True
+        if not mapped_record:
+            return False
         b = False
         for patt in self.get_condition_team():
             result = regular_calc(
@@ -192,24 +199,43 @@ class ExcelBaseImporter:
 
     def check_bound_row(self, row: int) -> bool:
         if self.get_row_start() + self.get_max_rows_heading() < row:
-            s1, s2 = '', ''
+            s1, s2, is_active_find = '', '', False
             for item in self.get_columns_heading():
                 if not item['active']:
                     s1 += f"{item['name']} {'не обязат.' if item['optional'] else ''},\n"
+                    if not item['optional']:
+                        is_active_find = True
                 else:
                     c = ''
                     for i in item['indexes']:
                         c += f"({item['row']},{i}) "
                     s2 += f"{item['name']} {c}\n"
 
-            self._config._warning.append('\nВ загружаемом файле "{}"\nне все колонки найдены \n'.format(
-                self._parameters['filename']['value'][0]))
-            if s2:
-                self._config._warning.append(
-                    'Найдены колонки:\n{}\n'.format(s2.strip()))
-            if s1:
-                self._config._warning.append(
-                    'Не найдены колонки:\n{}\n'.format(s1.strip()))
+            if is_active_find:
+                self._config._warning.append('\n{}:\nВ загружаемом файле "{}"\nне все колонки найдены \n'.format(
+                    self._config._config_name,
+                    self._parameters['filename']['value'][0]))
+                if s2:
+                    self._config._warning.append(
+                        'Найдены колонки:\n{}\n'.format(s2.strip()))
+                if s1:
+                    self._config._warning.append(
+                        'Не найдены колонки:\n{}\n'.format(s1.strip()))
+            else:
+                s = 'Найдены колонки:'
+                for key, value in self._names.items():
+                    s += f"\n{key} - {value['indexes'][0]}"
+                self._config._warning.append('\n{0}:\nВ загружаемом файле "{1}" \
+                \nне верен шаблон нахождения начала области данных(({3})condition_begin_team({2}))\n{4}\n'
+                .format(
+                    self._config._config_name,
+                    self._parameters['filename']['value'][0],
+                    self.get_condition_team(),
+                    self.get_condition_column(),
+                    s
+                    ))
+
+
             return False
         return True
 
@@ -233,14 +259,19 @@ class ExcelBaseImporter:
                     self._config._parameters.setdefault(
                         'table_start',
                         [{'row': [row], 'col': [0],
-                          'pattern':[f"@{len(self.colontitul['head'])}"], 'ishead':True}
+                          'pattern':[f"@{row}"], 'ishead':True}
                          ]
                     )
 
     def check_body(self, record: list, row: int):
+
+        if self._config._rows_exclude:
+            if row in [x[0]+self._config._parameters['table_start'][0]['row'][0] for x in self._config._rows_exclude]:
+                self.colontitul['head'].append(record)
+                return
         mapped_record = self.map_record(record)
         if mapped_record:  # строка не пустая
-            # проверяем условие конеца таблицы
+            # проверяем условие конца таблицы
             if self.check_end_table(mapped_record):
                 self.colontitul['status'] = 0
                 self.colontitul['is_parameters'] = False
@@ -450,12 +481,21 @@ class ExcelBaseImporter:
         return ''
 
     def get_value(self, value: str = '', pattern: str = '', type_value: str = '') -> Union[str, int, float]:
+        try:
+            value = str(value)
+            if type_value == 'int':
+                value = str(int(value.replace(',', '.').replace(' ', '')))
+            elif type_value == 'double' or type_value == 'float':
+                value = str(
+                    round(float(value.replace(',', '.').replace(' ', '')), 2))
+        except:
+            pass
         result = regular_calc(pattern, value)
         try:
             if type_value == 'int':
                 result = int(result.replace(',', '.').replace(' ', ''))
             elif type_value == 'double' or type_value == 'float':
-                result = float(result.replace(',', '.').replace(' ', ''))
+                result = round(float(result.replace(',', '.').replace(' ', '')),2)
         except:
             result = 0
         return result
@@ -511,6 +551,14 @@ class ExcelBaseImporter:
                 'ноябр': '11',
                 'декабр': '12'
                 }
+
+    def get_doc_param_fld(self, name: str, fld_name:str):        
+        doc = next((x for x in self.get_config_documents() if x['name'] == name), None)
+        if doc:
+            fld = next((x for x in doc['fields'] if x['name']==fld_name), None)
+            return fld
+        return None
+
 
     def done(self):
         if len(self._team) != 0:
@@ -605,7 +653,7 @@ class ExcelBaseImporter:
                                     if item_fld['offset_row'] or item_fld['offset_column']:
                                         # если есть смещение, то берем данные от туда
                                         value = self.get_value_offset(
-                                            team, item_fld, item_fld['type'], row[0], col[0], value)
+                                            team, item_fld, item_fld['offset_type'], row[0], col[0], '')
                                     if value and item_fld['func']:
                                         # запускаем функцию и передаем в нее полученное значение
                                         value = self.func(
@@ -677,7 +725,7 @@ class ExcelBaseImporter:
                 f'{self._parameters["inn"]["value"][0]}{"_"+str(num) if num != 0 else ""}{id}_{name}')
             if not output_format or output_format == 'json':
                 with open(f'{file_output}.json', mode='w', encoding='utf-8') as file:
-                    jstr = json.dumps(records, indent=4)
+                    jstr = json.dumps(records, indent=4, ensure_ascii=False)
                     file.write(jstr)
             if not output_format or output_format == 'csv':
                 with open(f'{file_output}.csv', mode='w', encoding='utf-8') as file:
@@ -711,11 +759,12 @@ class ExcelBaseImporter:
 
             file.write(f'\n{{')
             for item in self._config._columns_heading:
-                file.write(
-                    f"\t{item['name']}:  row={item['row']} col=")
-                for val in item["indexes"]:
-                    file.write(f'{val},')
-                file.write(f'",\n')
+                if item['row'] != -1:
+                    file.write(
+                        f"\t({item['col']}){item['name']}:  row={item['row']} col=")
+                    for val in item["indexes"]:
+                        file.write(f'{val},')
+                    file.write(f'",\n')
             file.write(f'}},\n\n')
 
             file.write('\nself._parameters\n')
@@ -734,8 +783,11 @@ class ExcelBaseImporter:
             (x for x in self.get_config_documents() if x['name'] == name), None)
         if d and d['required_fields']:
             for name_field in d['required_fields'].split(','):
+                fld_type = next((x['type']+x['offset_type']
+                                for x in d['fields'] if x['name'] == name_field), '')
                 for item in doc[name_field]:
-                    if item['value']:
+                    val = self.get_value(str(item['value']), '.+', fld_type)
+                    if val:
                         s.add(item['row'])
         return s
 
@@ -832,7 +884,7 @@ class ExcelBaseImporter:
             if value == 0:
                 value = 0
             else:
-                value = round(value, 4) if isinstance(
+                value = round(value, 2) if isinstance(
                     value, float) else value
         return value
 
@@ -879,6 +931,7 @@ class ExcelBaseImporter:
             'spacerem': self.func_spacerem,
             'spacerepl': self.func_spacerepl,
             'round2': self.func_round2,
+            'opposite': self.func_opposite,
             'param': self.func_param,
             'id': self.func_id,
         }
@@ -897,10 +950,13 @@ class ExcelBaseImporter:
                         x = f(data_calc, row, col, team)
                         if isinstance(value, float) or isinstance(value, int):
                             value += self.get_value(x, '.+', 'float')
+                            value = round(value, 2)
                         else:
                             value += x + ' '
                 data = str(value).strip()
                 if pattern:
+                    if isinstance(value, float):
+                        data = data.replace(' ', '').replace(',', '.')
                     data = regular_calc(pattern, data)
                     pattern = ''  # шаблон проверки применятся только один раз
             return data.strip()
@@ -956,7 +1012,9 @@ class ExcelBaseImporter:
 
     def func_column_value(self, data: str = '', row: int = -1, col: int = 0, team: dict = {}):
         value = next((x[row]['value']
-                     for x in team.values() if x[row]['col'] == col+int(data)), '')
+                     for x in team.values() if x[row]['col'] == int(data)), '')
+        # value = next((x[row]['value']
+        #              for x in team.values() if x[row]['col'] == col+int(data)), '')
         return value
 
     def func_param(self, key: str = '', row: int = -1, col: int = -1, team: dict = {}):
@@ -973,3 +1031,6 @@ class ExcelBaseImporter:
 
     def func_round2(self, data: str = '', row: int = -1, col: int = 0, team: dict = {}):
         return str(round(data, 2)) if isinstance(data, float) else data
+
+    def func_opposite(self, data: str = '', row: int = -1, col: int = 0, team: dict = {}):
+        return str(-data) if isinstance(data, float) else data

@@ -39,8 +39,8 @@ class Report_002_00(ExcelBaseImporter):
                                     if item_fld['offset_row'] or item_fld['offset_column']:
                                         # если есть смещение, то берем данные от туда
                                         value_off += self.get_value_offset(
-                                            team, item_fld, item_fld['type'], row[0], col[0], value_off, len(doc[item_fld['name']]))
-                                    if value and item_fld['func']:
+                                            team, item_fld, item_fld['offset_type'], row[0], col[0], value_off, len(doc[item_fld['name']]))
+                                    if (value or value_off) and item_fld['func']:
                                         # запускаем функцию и передаем в нее полученное значение
                                         if item_fld['offset_row'] or item_fld['offset_column']:
                                             value_off = self.func(
@@ -57,11 +57,22 @@ class Report_002_00(ExcelBaseImporter):
                             value = value_off
                         depends = item_fld['depends']
                         if depends:
-                            if not doc[depends][0]['value']:
+                            if doc[depends] and doc[depends][0]['value']:
+                                fld_param = self.get_doc_param_fld(doc_param['name'], depends)
+                                x = self.get_value(doc[depends][0]['value'], '.+', fld_param['type'] + fld_param['offset_type'])
+                            else:
+                                x = ''
+                            if not x:
                                 value = ''
-                        doc[item_fld['name']].append(
-                            {'row': len(doc[item_fld['name']]), 'col': col[0], 'value': ''
-                             if (isinstance(value, int) or isinstance(value, float)) and value == 0 else str(value)})
+                        if value:
+                            fld_param = self.get_doc_param_fld(doc_param['name'], item_fld['name'])
+                            x = self.get_value(value, '.+', fld_param['type'] + fld_param['offset_type'])
+                            if not x:
+                                value = ''
+                        if value:
+                            doc[item_fld['name']].append(
+                                {'row': len(doc[item_fld['name']]), 'col': col[0], 'value': ''
+                                if (isinstance(value, int) or isinstance(value, float)) and value == 0 else str(value)})
                 else:
                     # все равно заносим в документ чтобы не сбивать порядок записей
                     doc[item_fld['name']].append(

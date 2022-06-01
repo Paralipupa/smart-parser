@@ -78,8 +78,12 @@ class GisConfig:
         # максимальное кол-во просматриваемых колонок
         self._max_cols = self.read_config(
             'main', 'max_columns', isNumeric=True)
+        # максимальное кол-во строк до таблицы
         self._max_rows_heading = self.read_config(
-            'main', 'max_rows_heading', isNumeric=True)  # максимальное кол-во строк до таблицы
+            'main', 'max_rows_heading', isNumeric=True)  
+        # необрабатываемые строки таблицы
+        self._rows_exclude = self.read_config(
+            'main', 'rows_exclude', isNumeric=True)  
         self.set_check()
         self.set_header()
         self.set_parameters()
@@ -144,7 +148,9 @@ class GisConfig:
 
     def set_table_columns(self) -> NoReturn:
         i = 0
-        while self.read_config(f'col_{i}', 'pattern') or self.read_config(f'col_{i}', 'name'):
+        pattern = self.read_config(f'col_{i}', 'pattern')
+        name = self.read_config(f'col_{i}', 'name')
+        while pattern or name:
             b1 = True if self.read_config(
                 f'col_{i}', 'is_duplicate') in ('-1', '1', 'True', 'true') else False
             b2 = True if self.read_config(
@@ -153,9 +159,9 @@ class GisConfig:
                 f'col_{i}', 'is_unique') in ('-1', '1', 'True', 'true') else False
             b4 = True if self.read_config(
                 f'col_{i}', 'is_only_after_stable') in ('-1', '1', 'True', 'true') else False
-            b2 = b2 or b4
+            b2 = b2 or b4 or not pattern
             heading = {
-                'name': self.read_config(f'col_{i}', 'name'),
+                'name': name if name else f'col_{i}',
                 'pattern': list(),
                 'index': -1,
                 'indexes': [],
@@ -170,18 +176,19 @@ class GisConfig:
                 'right': self.read_config(f'col_{i}', 'border_column_right', isNumeric=True),
                 'offset': dict(),
             }
-            heading['pattern'].append(self.read_config(f'col_{i}', 'pattern'))
+            heading['pattern'].append(pattern)
             j = 0
-            while self.read_config(f'col_{i}', f'pattern_{j}'):
-                heading['pattern'].append(
-                    self.read_config(f'col_{i}', f'pattern_{j}'))
+            pattern_dop = self.read_config(f'col_{i}', f'pattern_{j}')
+            while pattern_dop:
+                heading['pattern'].append(pattern_dop)
                 j += 1
-            if not heading['name']:
-                heading['name'] = f'col_{i}'
+                pattern_dop = self.read_config(f'col_{i}', f'pattern_{j}')
             self._columns_heading.append(heading)
             self.set_column_conditions(i)
             self.set_column_offset(i)
             i += 1
+            pattern = self.read_config(f'col_{i}', 'pattern')
+            name = self.read_config(f'col_{i}', 'name')
 
     def set_column_conditions(self, i: int) -> NoReturn:
         patt = self.read_config(f'col_{i}', 'condition_begin_team')
@@ -290,6 +297,7 @@ class GisConfig:
         for fld in doc['fields']:
             if fld['pattern'][0][0:1] == '@':
                 if fld['pattern'][0][1:]:
+                    fld['column'] = doc['fields'][int(fld['pattern'][0][1:])]['column']
                     fld['pattern'] = doc['fields'][int(
                         fld['pattern'][0][1:])]['pattern']
                 else:

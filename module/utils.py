@@ -55,7 +55,7 @@ def get_list_files(name: str) ->list:
 def get_file_config(list_files: list) -> str:
     ls_new = list()
     config_files = [x for x in os.listdir(PATH_CONFIG)]
-    config_files.sort()
+    config_files.sort(reverse=True)
     i=0
     for item in list_files:
         ls_new.append({'name': item['name'], 'config': '', 'inn': item['inn'], 'warning':list()})
@@ -86,9 +86,13 @@ def get_extract_files(archive_file: str, extract_dir: str = 'tmp') -> list:
     z.extractall(extract_dir)
     list_files = list()
     for name in z.namelist():
-        new_name = '{}/{}'.format(extract_dir,
-                                  name.encode('cp437').decode('cp866'))
-        os.rename(f'{extract_dir}/{name}', new_name)
+        try:
+            new_name = str(pathlib.Path(extract_dir, name) )
+            new_name = new_name.encode('cp437').decode('cp866')
+            os.rename(pathlib.Path(extract_dir, name), new_name)
+            # os.rename(f'{extract_dir}/{name}', new_name)
+        except Exception as ex:
+            pass
         list_files.append({'name': new_name, 'config': '', 'inn': archive_file['inn'], 'warning':list()})
         
     return list_files
