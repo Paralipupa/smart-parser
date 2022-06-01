@@ -15,7 +15,7 @@ def remove_files(path: str):
 
 def get_files():
     if len(sys.argv)<=1: 
-            logging.warning('run with parameters:  <file.xsl>|<file.zip> [<inn>] [<config.ini>]')
+            logging.warning('run with parameters:  <file.lst>|<file.xsl>|<file.zip> [<inn>] [<config.ini>]')
             exit()
     inn = ''
     file_conf = ''

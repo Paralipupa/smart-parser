@@ -35,12 +35,12 @@ condition_begin_team=^(?!000)[0-9\/]{1,6}$|н\/п.+|.+(?=№).+|оф.+|пар.+|
 [col_1]
 name=Площадь
 pattern=^S$
-is_optional=1
+is_optional=true
 
 [col_2]
 name=Проживает
 pattern=^K$
-is_optional=1
+is_optional=true
 
 [col_3]
 name=Всего начислено|итого начислено
@@ -49,44 +49,44 @@ pattern=начислено
 [col_4]
 name=Оплачено
 pattern=оплачено
-is_optional=1
+is_optional=true
 
 [col_5]
 name=К оплате
 pattern=сумма к оплате
-is_optional=1
+is_optional=true
 
 [col_6]
 name=Сальдо начальное
 pattern=сальдо|(?:долг|долж).+(нач)
-is_optional=1
+is_optional=true
 border_column_right=3
 
 [col_7]
 name=Сальдо конечное
 pattern=сальдо|(?:долг|кон).+(кон)
-is_optional=1
+is_optional=true
 border_column_left=3
 
 [col_8]
 name=ГВС
 pattern=ГВС
-is_optional=1
+is_optional=true
 
 [col_9]
 name=ХВС
 pattern=ХВС
-is_optional=1
+is_optional=true
 
 [col_10]
 name=Электричество
 pattern=э\/э|э\/эн
-is_optional=1
+is_optional=true
 
 [col_11]
 name=Услуги
 pattern=^((?!ФИО|снято).)+$
-is_optional=1
+is_optional=true
 offset_pattern=начислено
 offset_row=+0
 

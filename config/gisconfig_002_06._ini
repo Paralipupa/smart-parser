@@ -89,7 +89,7 @@ offset=@0
 [col_7]
 name=Всего(оплачено)
 pattern=Всего
-is_optional=1
+is_optional=true
 offset_row=-1
 offset_col=+0
 offset_pattern=О\s?П\s?Л\s?А\s?Т\s?Ы

@@ -33,7 +33,7 @@ condition_begin_team=(?<=л\/с №)\s*[0-9]+.*$
 [col_1] 
 name=Задолженность на начало
 pattern=Долг.+нач|сальдо.+нач
-is_unique=1
+is_unique=true
 
 [col_2]
 name=Итого начислено
@@ -42,15 +42,15 @@ pattern=начисление
 [col_3]
 name=Всего начислено
 pattern=Всего
-is_unique=1
-is_duplicate=1
-is_optional=1
+is_unique=true
+is_duplicate=true
+is_optional=true
 border_column_right=2
 
 [col_4] 
 name=Оплачено
 pattern=
-is_optional=1
+is_optional=true
 
 
 [col_5] 
@@ -60,32 +60,32 @@ pattern=Итого к оплате
 [col_6] 
 name=Пени
 pattern=Задолженность на начало
-is_unique=1
-is_duplicate=1
-is_optional=1
+is_unique=true
+is_duplicate=true
+is_optional=true
 border_column_right=2
 
 [col_7]
 name=Квартира
 pattern=Кв\. №
-is_duplicate=1
-is_optional=1
+is_duplicate=true
+is_optional=true
 
 [col_8] 
 name=Площадь
 pattern=Площ|^S
-is_optional=1
+is_optional=true
 
 [col_9] 
 name=Кол-во проживающих
 pattern=Площ|^K
-is_optional=1
+is_optional=true
 
 [col_10] 
 name=ХВС
 pattern=^Холодное водоснабжение$
 pattern_0=^ХВС
-is_optional=1
+is_optional=true
 border_column_right=2
 
 
@@ -96,43 +96,42 @@ pattern_0=(?:горяч).+(?:счетчик)
 pattern_1=^Горячее водоснабжение$
 pattern_2=Содер\.ГВС
 pattern_3=^ГВС
-is_optional=1
+is_optional=true
 border_column_right=2
 
 [col_12] 
 name=Электроэнергия  (начислено)
 pattern=^Электроэнергия МОП$
 pattern_0=^эл.энергия ОДН$
-is_optional=1
+is_optional=true
 border_column_right=2
 
 [col_13]
  name=ХВС (показания)
-is_optional=1
+is_optional=true
 
 [col_14]
  name=ГВС(показания)
-is_optional=1
+is_optional=true
 
 [col_15]
 name=Электро энергия (дневное)
-is_optional=1
+is_optional=true
 
 [col_16] 
 name=Электроэнергия (ночное)
-is_optional=1
+is_optional=true
 
 [col_17] 
 name=Электроэнергия (пиковое)
-is_optional=1
+is_optional=true
 
 [col_18] 
 name=Услуги
 pattern=
-is_optional=1
+is_optional=true
 border_column_right=2
-offset_pattern=начислено|итого
-offset_row=+0,-1
+is_only_after_stable=true
 
 ;---------------  Документы -------------------------
 ; --------- accounts -----------
@@ -179,7 +178,7 @@ func=param(address)
 [accounts_5]
 ; Номер помещения (если есть)
 name=room_number
-pattern=(?:(?<=Кв.)|(?<=Оф.)).+[0-9]+\s*(?=,)
+pattern=(?:(?<=Кв.)|(?<=Оф.)).+[0-9]+[а-яА-Я()-\/]*?\s*(?=,)
 col_config=7
 row_data=0
 

@@ -5,6 +5,8 @@ import hashlib
 import datetime
 import pathlib
 import uuid
+import csv
+import json
 from operator import is_
 from ast import Return
 from asyncio.log import logger
@@ -58,13 +60,13 @@ class ExcelBaseImporter:
         for record in data_reader:
             self.on_read_line(row, record)
             if self.colontitul['status'] != 2:
+                # Область до или после таблицы
                 if not self.check_bound_row(row):
                     return (len(self._collections) > 0)
                 names = self.get_names(record)
-                self.check_colontitul(names, row)
-            else:
-                self._config._parameters.setdefault('table_start', [{'row': [0], 'col': [0],
-                                                                     'pattern':[f"@{len(self.colontitul['head'])}"], 'ishead':True}])
+                self.check_colontitul(names, row, record)
+            if self.colontitul['status'] == 2:
+                # Табличная область данных
                 self.check_body(record, row)
             row += 1
             if row % 100 == 0:
@@ -86,31 +88,17 @@ class ExcelBaseImporter:
         return result_record if not is_empty else None
 
     def append_team(self, mapped_record: list) -> bool:
-        if not self.get_condition_team():
-            b = True
-        else:
-            for patt in self.get_condition_team():
-                result = regular_calc(
-                    patt, mapped_record[self.get_condition_column()][0]['value'])
-                b = False if not result or result.find('error') != -1 else True
-                if b:
-                    if len(self._team) != 0:
-                        pred = regular_calc(
-                            patt, self._team[-1][self.get_condition_column()][0]['value'])
-                        b = (result != pred)
-                    if b:
-                        break
-        if b:
+        if self.check_condition_team(mapped_record):
             self._team.append(mapped_record)
             return True
         elif len(self._team) != 0:
-            for key, value in mapped_record.items():
+            for key in mapped_record.keys():
                 size = len(self._team[-1][key])
                 self._team[-1][key].append({'row': size,
                                             'col': self._team[-1][key][0]['col'],
                                             'index': self._team[-1][key][0]['index'],
                                             'value': mapped_record[key][0]['value']})
-            return False
+        return False
 
     def check(self, is_warning: bool = True) -> bool:
         if not self.is_verify(self._parameters['filename']['value'][0]):
@@ -183,6 +171,25 @@ class ExcelBaseImporter:
 
         return False
 
+    def check_condition_team(self, mapped_record: list) -> bool:
+        if not self.get_condition_team():
+            return True
+        b = False
+        for patt in self.get_condition_team():
+            result = regular_calc(
+                patt, mapped_record[self.get_condition_column()][0]['value'])
+            b = False if not result or result.find('error') != -1 else True
+            if b:
+                if len(self._team) != 0:
+                    # Проверяем значение со значением из предыдущей области (иерархии)
+                    # если не совпадает, то фиксируем начало новой области (иерархии)
+                    pred = regular_calc(
+                        patt, self._team[-1][self.get_condition_column()][0]['value'])
+                    b = (result != pred)
+                if b:
+                    break
+        return b
+
     def check_bound_row(self, row: int) -> bool:
         if self.get_row_start() + self.get_max_rows_heading() < row:
             s1, s2 = '', ''
@@ -206,7 +213,7 @@ class ExcelBaseImporter:
             return False
         return True
 
-    def check_colontitul(self, names: list, row: int):
+    def check_colontitul(self, names: list, row: int, record: list):
         if self.colontitul['status'] == 0:
             if self.check_headers_status(names):
                 if len(self._team) != 0:
@@ -218,10 +225,17 @@ class ExcelBaseImporter:
         if self.check_columns(names, row):
             self._row_start = row
         if self.colontitul['status'] == 1:
-            b = next(
-                (x['active'] for x in self.get_columns_heading() if not x['active'] and not x['optional']), True)
-            if b or (len(self.get_columns_heading()) <= len(self._names)):
-                self.colontitul['status'] = 2
+            if self.check_stable_columns():
+                if (len(self.get_columns_heading()) <= len(self._names)) or \
+                        self.check_condition_team(self.map_record(record)):
+                    # переход в табличную область данных
+                    self.colontitul['status'] = 2
+                    self._config._parameters.setdefault(
+                        'table_start',
+                        [{'row': [row], 'col': [0],
+                          'pattern':[f"@{len(self.colontitul['head'])}"], 'ishead':True}
+                         ]
+                    )
 
     def check_body(self, record: list, row: int):
         mapped_record = self.map_record(record)
@@ -234,8 +248,9 @@ class ExcelBaseImporter:
                 for item in self.get_columns_heading():
                     item['active'] = False
                 self.colontitul['foot'].append(record)
-            elif self.append_team(mapped_record):  # добавили новую область
-                if len(self._team) > 1:  # если больше одной области, то добавляем предпоследнюю в документ
+            elif self.append_team(mapped_record):  # добавляем новую область
+                # если уже нашли более одной области, то добавляем предпоследнюю в документ
+                if len(self._team) > 1:
                     self.process_record(self._team[-2])
         if len(self._team) < 2:
             self.colontitul['head'].append(record)
@@ -250,12 +265,13 @@ class ExcelBaseImporter:
             # сначала проверяем обязательные колонки
             for item in self.get_columns_heading():
                 if (not item['active'] or item['duplicate']) and not item['optional'] and item['pattern'][0]:
-                    if not item['optional'] and self.check_column(item, names, row, cols_exclude):
+                    if self.check_column(item, names, row, cols_exclude):
                         is_find = True
             # потом проверяем не обязательные колонки
             for item in self.get_columns_heading():
                 if (not item['active'] or item['duplicate']) and item['optional'] and item['pattern'][0]:
-                    if item['optional'] and self.check_column(item, names, row, cols_exclude):
+                    b = not item['after_stable'] or self.check_stable_columns()
+                    if b and self.check_column(item, names, row, cols_exclude):
                         is_find = True
         return is_find
 
@@ -290,8 +306,11 @@ class ExcelBaseImporter:
                         cols_exclude.append(search_name['col'])
                         if item['unique']:
                             break
-
         return is_find
+
+    # Проверка нахождения всех обязательных колонок
+    def check_stable_columns(self) -> bool:
+        return all([x['active'] for x in self.get_columns_heading() if not x['optional']])
 
     # Проверка на наличие 'якоря' (текста, смещенного относительно позиции текущего заголовка)
     def check_column_offset(self, item: dict, index: int) -> bool:
@@ -315,7 +334,6 @@ class ExcelBaseImporter:
                             offset['pattern'][0], self.colontitul['head'][r][c])
                         if result and result.find('error') == -1:
                             return True
-
             return False
         return True
 
@@ -333,7 +351,6 @@ class ExcelBaseImporter:
         ), mapped_record[self.get_condition_end_table_column()][0]['value'])
         if result and result.find('error') == -1:
             return True
-
         return False
 
     def check_period_value(self):
@@ -462,7 +479,7 @@ class ExcelBaseImporter:
         try:
             if value:
                 if isinstance(value, str):
-                    return float(value.replace(',','.').replace(' ',''))
+                    return float(value.replace(',', '.').replace(' ', ''))
                 else:
                     return 0
             else:
@@ -641,7 +658,7 @@ class ExcelBaseImporter:
             if not is_empty and not (i in rows_exclude) and (not doc_param['required_fields'] or i in rows_required):
                 self.append_to_collection(name, elem)
 
-    def write_collections(self, num: int = 0) -> NoReturn:
+    def write_collections(self, num: int = 0, output_format: str = '') -> NoReturn:
         if not self.is_init() or len(self._collections) == 0:
             logging.warning('Не удалось прочитать данные из файла "{0}"\n'
                             'проверьте параметр "condition_begin_team": "{1}" '
@@ -649,26 +666,27 @@ class ExcelBaseImporter:
                                 self._parameters['filename']['value'][0], self._config._condition_team[0]
                                 if self._config._condition_team else ''))
             return
-        path = self._parameters['path']['value'][0]
 
-        os.makedirs(path, exist_ok=True)
+        os.makedirs(self._parameters['path']['value'][0], exist_ok=True)
 
         id = self.func_id()
         for name, records in self._collections.items():
             i = 0
             file_output = pathlib.Path(
-                path, f'{self._parameters["inn"]["value"][0]}{"_"+str(num) if num != 0 else ""}{id}_{name}')
-            # while os.path.exists(f'{file_output}{"("+str(i)+")" if i != 0 else ""}.csv'):
-            #     i += 1
-            file_output = f'{file_output}{"("+str(i)+")" if i != 0 else ""}.csv'
-            with open(file_output, 'w') as file:
-                for rec in records:
-                    file.write(f'{{\n')
-                    for fld_name, val in rec.items():
-                        file.write(f'\t{fld_name}:"')
-                        file.write(f'{val}')
-                        file.write(f'",\n')
-                    file.write(f'}},\n')
+                self._parameters['path']['value'][0],
+                f'{self._parameters["inn"]["value"][0]}{"_"+str(num) if num != 0 else ""}{id}_{name}')
+            if not output_format or output_format == 'json':
+                with open(f'{file_output}.json', mode='w', encoding='utf-8') as file:
+                    jstr = json.dumps(records, indent=4)
+                    file.write(jstr)
+            if not output_format or output_format == 'csv':
+                with open(f'{file_output}.csv', mode='w', encoding='utf-8') as file:
+                    names = [x for x in records[0].keys()]
+                    file_writer = csv.DictWriter(file, delimiter=";",
+                                                 lineterminator="\r", fieldnames=names)
+                    file_writer.writeheader()
+                    for rec in records:
+                        file_writer.writerow(rec)
 
     def write_logs(self, num: int = 0) -> NoReturn:
         if not self.is_init() or len(self._collections) == 0:
@@ -681,10 +699,8 @@ class ExcelBaseImporter:
         i = 0
         file_output = pathlib.Path(
             PATH_LOG, f'{self._parameters["inn"]["value"][0]}{"_"+str(num) if num != 0 else ""}{id}')
-        # while os.path.exists(f'{file_output}{"("+str(i)+")" if i != 0 else ""}.log'):
-        #     i += 1
-        file_output = f'{file_output}{"("+str(i)+")" if i != 0 else ""}.log'
-        with open(file_output, 'w') as file:
+        with open(f'{file_output}.log', 'w') as file:
+
             file.write(f'{{')
             for key, value in self._parameters.items():
                 file.write(f'\t{key}:"')
@@ -693,14 +709,24 @@ class ExcelBaseImporter:
                 file.write(f'",\n')
             file.write(f'}},\n')
 
-            file.write(f'{{')
+            file.write(f'\n{{')
             for item in self._config._columns_heading:
                 file.write(
                     f"\t{item['name']}:  row={item['row']} col=")
                 for val in item["indexes"]:
                     file.write(f'{val},')
                 file.write(f'",\n')
-            file.write(f'}},\n')
+            file.write(f'}},\n\n')
+
+            file.write('\nself._parameters\n')
+            jstr = json.dumps(self._parameters, indent=4)
+            file.write(jstr)
+            file.write('\nself._config._parameters\n')
+            jstr = json.dumps(self._config._parameters, indent=4)
+            file.write(jstr)
+            file.write('\nself._config._columns_heading\n')
+            jstr = json.dumps(self._config._columns_heading, indent=4)
+            file.write(jstr)
 
     def __get_required_rows(self, name, doc) -> set:
         s = set()
@@ -715,6 +741,7 @@ class ExcelBaseImporter:
 
 
 # ---------- Параметры конфигурации --------------------
+
 
     def is_init(self) -> bool:
         return self._config._is_init
@@ -780,7 +807,6 @@ class ExcelBaseImporter:
 
 # -------------------------------------------------------------------------------------------------
 
-
     def get_sub_value(self, item_fld, team, name_field, row, col, value):
         if item_fld['sub']:
             for item_sub in item_fld['sub']:
@@ -821,20 +847,21 @@ class ExcelBaseImporter:
             rows = [(0, False)]
         if not cols:
             cols = [(col_curr, False)]
-        if len(cols) == 0:
-            rank = 0  # если задано только одно значение смещения, то выбираем его
+        if len(cols) == 1:
+            rank = 0  # если задано только одно значение смещения, то выбираем первую выходную запись
         if rank < len(cols):
             col = cols[rank]
             for r in rows:
                 m_key = self.get_key(col[0])
                 if m_key:
                     value = self.get_fld_value(
-                        team=team[m_key], type_fld=item_fld['offset_type'], pattern=item_fld['offset_pattern'], row=r[0]+row_curr if not r[1] else r[0])
+                        team=team[m_key], type_fld=item_fld['offset_type'], pattern=item_fld['offset_pattern'],
+                        row=r[0]+row_curr if not r[1] else r[0]
+                    )
         return value
 
 
 # ---------- Функции --------------------
-
 
     def func(self, team: dict, fld_param, data: str, row: int, col: int):
         dic_f = {
@@ -869,7 +896,7 @@ class ExcelBaseImporter:
                     else:
                         x = f(data_calc, row, col, team)
                         if isinstance(value, float) or isinstance(value, int):
-                            value += self.get_value(x,'.+','float')
+                            value += self.get_value(x, '.+', 'float')
                         else:
                             value += x + ' '
                 data = str(value).strip()

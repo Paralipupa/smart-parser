@@ -146,11 +146,14 @@ class GisConfig:
         i = 0
         while self.read_config(f'col_{i}', 'pattern') or self.read_config(f'col_{i}', 'name'):
             b1 = True if self.read_config(
-                f'col_{i}', 'is_duplicate') == '1' else False
+                f'col_{i}', 'is_duplicate') in ('-1', '1', 'True', 'true') else False
             b2 = True if self.read_config(
-                f'col_{i}', 'is_optional') == '1' else False
+                f'col_{i}', 'is_optional') in ('-1', '1', 'True', 'true') else False
             b3 = True if self.read_config(
-                f'col_{i}', 'is_unique') == '1' else False
+                f'col_{i}', 'is_unique') in ('-1', '1', 'True', 'true') else False
+            b4 = True if self.read_config(
+                f'col_{i}', 'is_only_after_stable') in ('-1', '1', 'True', 'true') else False
+            b2 = b2 or b4
             heading = {
                 'name': self.read_config(f'col_{i}', 'name'),
                 'pattern': list(),
@@ -162,6 +165,7 @@ class GisConfig:
                 'duplicate': b1,
                 'optional': b2,
                 'unique': b3,
+                'after_stable': b4,
                 'left': self.read_config(f'col_{i}', 'border_column_left', isNumeric=True),
                 'right': self.read_config(f'col_{i}', 'border_column_right', isNumeric=True),
                 'offset': dict(),

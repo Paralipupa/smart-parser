@@ -93,24 +93,24 @@ name=Услуги
 
 [col_1]
 name=Кв-ра
-is_optional=1
+is_optional=true
 pattern=Кв-ра
 
 [col_2]
 name=Площадь
-is_optional=1
+is_optional=true
 pattern=Площ
 
 [col_3]
 name=Кол-во прож.
-is_optional=1
+is_optional=true
 pattern=прож
 
 
 
 [col_4]
 name=Сальдо на начало периода
-is_optional=1
+is_optional=true
 pattern=Сальдо на начало периода
 
 [col_5]
@@ -127,7 +127,7 @@ offset=@0
 
 [col_7]
 name=Сальдо на конец периода
-is_optional=1
+is_optional=true
 pattern=Сальдо на конец периода
 
 
@@ -161,7 +161,7 @@ offset_row=-1
 
 [col_3]
 name=ГВС
-is_optional=1
+is_optional=true
 pattern=^\s*Горячая вода\s*$
 pattern_0=(?:горяч).+(?:счетчик)
 pattern_1=^Горячее водоснабжение$
@@ -172,7 +172,7 @@ offset_row=-1
 
 [col_4]
 name=ХВС
-is_optional=1
+is_optional=true
 pattern=^Холодная вода$
 pattern_0=ХВС
 pattern_1=(?:холод).+(?:счетчик)
@@ -183,7 +183,7 @@ offset_row=-1
 
 [col_5]
 name=Электричество
-is_optional=1
+is_optional=true
 pattern=^\s*$Электроэнергия\s*$
 pattern_0=(?:электр).+(?:счетчик)
 pattern_1=^\s*Электроэнергия\s*$
@@ -199,7 +199,7 @@ offset=@0
 
 [col_7]
 name=Всего(оплачено)
-is_optional=1
+is_optional=true
 pattern=Всего
 border_column_left=6
 offset_row=-1
@@ -208,7 +208,7 @@ offset_pattern=О\s?П\s?Л\s?А\s?Т\s?Ы
 
 [col_8]
 name=Оплата
-is_optional=1
+is_optional=true
 pattern=Оплата
 border_column_left=6
 
@@ -222,7 +222,7 @@ pattern=Итоговая сумма на конец месяца
 
 [col_11]
 name=Услуги
-is_optional=1
+is_optional=true
 pattern=^((?!холодн|горяч|электр|всего|итого|долг|задолж|№|н а ч|о п л).)+$
 border_column_right=6
 offset=@0

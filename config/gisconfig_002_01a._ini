@@ -136,21 +136,21 @@ name=Льготы
 pattern=Всего
 offset=@0
 offset_row=-1
-is_duplicate=1
+is_duplicate=true
 
 [col_16] 
 name=Перерасчет
 pattern=Всего
 offset=@0
 offset_row=-1
-is_duplicate=1
+is_duplicate=true
 
 [col_17]
 name=Пени
 pattern=Всего
 offset=@0
 offset_row=-1
-is_duplicate=1
+is_duplicate=true
 
 ;---------------  Документы -------------------------
 ; --------- accounts -----------
