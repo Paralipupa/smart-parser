@@ -35,10 +35,9 @@ if __name__ == "__main__":
                     rep.write_logs(i)
                 else:
                     if rep._config._warning:
-                        print('error: не все поля найдены см.logs/')
+                        logging.warning('не все поля найдены см.logs/')
                 file_name['warning'] += rep._config._warning
             else:
-                s = ' '.join([x for x in file_name['warning']]).strip()
-                if s:
-                    logging.warning(s)
+                if len(file_name['warning']) != 0:
+                    logging.warning(f"{file_name['name']}")
         write_list(list_files)

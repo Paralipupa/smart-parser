@@ -1,16 +1,13 @@
 ; accounts, pp, pp_changes
 ; Обязательные колонки:
 ; ЛС(0), 
-; 
-; Начислено (2)
-; Оплачено  (4)
-; Конечный остаток (5)
-
+; Итого начислено (2)
 [check]
 ; Поиск ключевого значения по строке(ам) для определения совместимости
 ; входных данных и конфигурации
-
 row=0<10
+col=0<3
+pattern=Свод начислений 
 
 [main]
 path_output=output
@@ -19,6 +16,7 @@ page_name=
 page_index=0
 max_columns=150
 max_rows_heading=15
+rows_exclude=0<3
 
 [headers_0]
 name=period
@@ -38,12 +36,8 @@ pattern_1=.+,[0-9]{1,3}
 
 [col_0]
 name=ЛС
-pattern=^Лицевой
-pattern_0=^Организация$
-pattern_1=^л\/с$
-condition_begin_team=(?<=л\/с №)\s*[0-9]+.*$
-condition_begin_team_0=(?<=,)\s*[0-9]{1,4}.*$
-condition_begin_team_1=^(?!000)[0-9-]+$
+pattern=^Кв. №$
+condition_begin_team=.+
 is_unique=true
 
 [col_1] 
@@ -70,16 +64,17 @@ border_column_right=2
 
 [col_4] 
 name=Оплачено
-pattern=оплачено
+pattern=Итого оплачено|оплачено
+is_optional=true
 
 [col_5] 
 name=Конечный остаток
-pattern=Итоговая сумма на конец месяца|задолж|Кон\.сальдо|сальдо.+кон
-pattern_0=Итоговая сумма к оплате на конец месяца
+pattern=Итоговая сумма на конец месяца|задолж|Кон\.сальдо|сальдо.+конеч
+is_optional=true
 
 [col_6] 
 name=Пени
-pattern=Пени
+pattern=Задолженность на начало
 is_unique=true
 is_duplicate=true
 is_optional=true
@@ -87,9 +82,8 @@ border_column_right=2
 
 [col_7]
 name=Квартира
-pattern=^Номер квартиры
+pattern=Лицевой счет
 pattern_0=Кв\. №
-pattern_1=
 is_duplicate=true
 is_optional=true
 
@@ -97,13 +91,11 @@ is_optional=true
 name=Площадь
 pattern=Площ|^S
 is_optional=true
-is_unique=true
 
 [col_9] 
 name=Кол-во проживающих
-pattern=прож|пропис|^K
+pattern=Площ|^K
 is_optional=true
-is_unique=true
 
 [col_10] 
 name=ХВС
@@ -268,7 +260,7 @@ name=not_residential
 ; --------- pp -----------
 [doc_1]
 name=pp
-; required_fields=bill_value
+required_fields=bill_value
 
 [pp_0]
 ;ИНН, ОГРН или OrgID
@@ -362,6 +354,7 @@ row_data=0
 offset_col_config=2
 offset_type=float
 offset_pattern=^-?\d{1,5}(?:[\.,]\d{1,3})?$
+func=round2
 
 [pp_10]
 ; Номер расчетного счета

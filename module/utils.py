@@ -36,8 +36,7 @@ def get_files():
             inn = get_inn(filename=file_name['file'])
             file_name['inn'] = inn if inn else file_name['inn']
             list_files += get_extract_files(archive_file=file_name)
-
-        list_files = get_file_config(list_files)
+        list_files = get_file_config(list_files, file_conf)
     else:
         list_files.append({'name': file_name, 'config': file_conf, 'inn': inn, 'warning':list()})
 
@@ -48,36 +47,53 @@ def get_list_files(name: str) ->list:
     with open(name, "r") as f:
         lines = f.readlines()
         for line in lines:
+            index = line.find('|')
+            if index != -1:
+                line = line[:index]
             if line.strip() and line.strip()[0] != ';':
                 l.append({'file':line.strip(),'inn':''})
     return l
 
-def get_file_config(list_files: list) -> str:
+def get_file_config(list_files: list, config_file : str = '') -> str:
     ls_new = list()
-    config_files = [x for x in os.listdir(PATH_CONFIG)]
-    config_files.sort(reverse=True)
+    if not config_file:
+        config_files = [x for x in os.listdir(PATH_CONFIG)]
+        config_files.sort()
     i=0
     for item in list_files:
-        ls_new.append({'name': item['name'], 'config': '', 'inn': item['inn'], 'warning':list()})
-        for conf_file in config_files:
-            if conf_file.find('.ini') != -1:
-                file_config = pathlib.Path(PATH_CONFIG, f'{conf_file}') 
-                rep = Report_001_00(file_name=item['name'],
-                                    config_file=str(file_config))
-                if  rep.is_file_exists:
-                    if rep.check(is_warning=False):
-                        ls_new[-1]['config'] = file_config
-                        break
-                    elif rep._config._warning:
-                        for w in rep._config._warning:
-                            ls_new[-1]['warning'].append(w)
-                if not rep.is_file_exists: 
-                    ls_new[-1]['warning'].append('ФАЙЛ НЕ НАЙДЕН или ПОВРЕЖДЕН "{}". skip'.format(item['name']))
-                    break
+        data_file = {'name': item['name'], 'config': config_file, 'inn': item['inn'], 'warning':list()}
+        if config_file:
+            ls_new.append(data_file) 
+        else:
+            ls_new.append(get_data_file(data_file, config_files)) 
         i+=1
         print('Поиск конфигураций: {}%   \r'.format(round(i/len(list_files)*100,0)), end='', flush=True)
-
     return ls_new
+
+def get_data_file(data_file:dict, config_files: list) -> dict:
+    ls = list()
+    for conf_file in config_files:
+        data_file = __check_config(data_file, conf_file)
+        if data_file['config']:
+            break
+    return data_file
+
+def __check_config(data_file, conf_file):
+    if conf_file.find('.ini') != -1:
+        file_config = pathlib.Path(PATH_CONFIG, f'{conf_file}') 
+        rep = Report_001_00(file_name=data_file['name'],
+                            config_file=str(file_config))
+        if  rep.is_file_exists:
+            if rep.check(is_warning=False):
+                data_file['config'] = file_config
+                return data_file
+            elif rep._config._warning:
+                for w in rep._config._warning:
+                    data_file['warning'].append(w)
+        if not rep.is_file_exists: 
+            data_file['warning'].append('ФАЙЛ НЕ НАЙДЕН или ПОВРЕЖДЕН "{}". skip'.format(data_file['name']))
+            return data_file
+    return data_file
 
 def get_extract_files(archive_file: str, extract_dir: str = 'tmp') -> list:
     if not os.path.exists(archive_file['file']):

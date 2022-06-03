@@ -167,8 +167,8 @@ class ExcelBaseImporter:
         if i == 0:
             return True
 
-        if (100 - round(i/len(patts) * 100, 0)) > 80:
-            self._config._warning.append('\nфайл "{0}"\nсооответствует шаблону "{1}"\nболее, чем на 80%\nНе найдены:\n{2}'.format(
+        if (100 - round(i/len(patts) * 100, 0)) > 95:
+            self._config._warning.append('\nфайл "{0}"\nсооответствует шаблону "{1}"\nболее, чем на 95%\nНе найдены:\n{2}'.format(
                 self._parameters['filename']['value'][0], self._parameters['config']['value'][0], s))
         if is_warning:
             self._config._warning.append('файл "{0}" не сооответствует шаблону "{1}". skip'.format(

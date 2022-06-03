@@ -1,23 +1,37 @@
-/home/chip/work/polaris/input/0001/2722039995 ТСЖ Сибирская,32.zip
-/home/chip/work/polaris/input/0001/2901184942 Гайдаровец тсж.zip
-/home/chip/work/polaris/input/0001/5024214314 ПЕРВЫЙ долг.zip
-/home/chip/work/polaris/input/0001/5408182388 ТСЖ Академ-Уют.zip
-/home/chip/work/polaris/input/0001/5904376408 ТСЖ ВИЖАЙСКАЯ 20.ZIP
-/home/chip/work/polaris/input/0001/5905240015 ТСЖ Мира,45.zip
-/home/chip/work/polaris/input/0001/5914007720 ТСЖ НАШ ДВОР.zip
-/home/chip/work/polaris/input/0001/5948047471 ТСН Нижнемуллинская 3.zip
-/home/chip/work/polaris/input/0001/6449035426 Терем тсж.zip
-/home/chip/work/polaris/input/0001/7704318554 ТСН ЕРОПКИНСКИЙ 16.ZIP
-/home/chip/work/polaris/input/0001/7728463920 Беляево тсж.zip
-/home/chip/work/polaris/input/0001/7838413520 Резиденция на Крестовском.zip
-/home/chip/work/polaris/input/0000/0721021631 ТСЖ Комфорт.zip
-/home/chip/work/polaris/input/0000/5906147690 Камский Берег тсж.zip
-/home/chip/work/polaris/input/0000/5907037241 ЖК Высотка.zip
-/home/chip/work/polaris/input/0000/5933008141 ТСЖ ЖК Карагайский.zip
-/home/chip/work/polaris/input/0000/7801394857 ТСЖ УЮТ.ZIP
-/home/chip/work/polaris/input/0011/0323401948 МУП ЖКХ ОНОХОЙ.ZIP
-/home/chip/work/polaris/input/44/6168011973 Галс тсж.zip
-/home/chip/work/polaris/input/0200/7816014138 656 жск.zip
-/home/chip/work/polaris/input/0300/6450090460 ООО КОМФОРТСИТИ.ZIP
-/home/chip/work/polaris/input/0300/6903005402 106 жск.zip
-/home/chip/work/polaris/input/0300/7604140807 ТСН ТСЖ СОЮЗ-1.ZIP
+; 002_00  - ЛС(0);Задолженность на начало (1);Итого начислено(2);Итого оплачено(4);Конечный остаток(5)
+; 002_01  - ЛС(0);Задолженность на начало (1);Итого начислено(2);                  Конечный остаток(5)
+; 002_02  - ЛС(0);                            Итого начислено(2);Итого оплачено(4);Конечный остаток(5)
+;
+;
+;
+;
+;
+;
+; 002_10  - ЛС(0);Задолженность на начало (1);Итого начислено(2);                  
+;
+;
+;
+;
+;/home/chip/work/polaris/input/0001/2722039995 ТСЖ Сибирская,32.zip          |001_02; 002_00;
+;/home/chip/work/polaris/input/0001/2901184942 Гайдаровец тсж.zip            |002_00;
+/home/chip/work/polaris/input/0001/5024214314 ПЕРВЫЙ долг.zip                |002_01; 002_10;
+;/home/chip/work/polaris/input/0001/5408182388 ТСЖ Академ-Уют.zip            |002_00; 002_00;
+;/home/chip/work/polaris/input/0001/5904376408 ТСЖ ВИЖАЙСКАЯ 20.ZIP          |002_00; 002_00;
+;/home/chip/work/polaris/input/0001/5905240015 ТСЖ Мира,45.zip               |002_00; 002_00; 002_02;
+;/home/chip/work/polaris/input/0001/5914007720 ТСЖ НАШ ДВОР.zip              |002_00;
+;/home/chip/work/polaris/input/0001/5948047471 ТСН Нижнемуллинская 3.zip     |001_01; 003_00; 002_00;
+;/home/chip/work/polaris/input/0001/6449035426 Терем тсж.zip                 |002_00; 002_00;
+;/home/chip/work/polaris/input/0001/7704318554 ТСН ЕРОПКИНСКИЙ 16.ZIP        |002_00; 002_00;
+;/home/chip/work/polaris/input/0001/7728463920 Беляево тсж.zip               |002_00;
+;/home/chip/work/polaris/input/0001/7838413520 Резиденция на Крестовском.zip |002_00; 001_03; 002_00;
+;/home/chip/work/polaris/input/0000/0721021631 ТСЖ Комфорт.zip               |002_00; 002_00;
+;/home/chip/work/polaris/input/0000/5906147690 Камский Берег тсж.zip         |002_00;
+;/home/chip/work/polaris/input/0000/5907037241 ЖК Высотка.zip                 |002_03; 002_03;
+;/home/chip/work/polaris/input/0000/5933008141 ТСЖ ЖК Карагайский.zip        |002_00;
+;/home/chip/work/polaris/input/0000/7801394857 ТСЖ УЮТ.ZIP                   |002_04; 002_03; 001_04
+;/home/chip/work/polaris/input/0011/0323401948 МУП ЖКХ ОНОХОЙ.ZIP            |002_06; 002_06; 001_00; 001_00;
+;/home/chip/work/polaris/input/0044/6168011973 Галс тсж.zip                  |002_07;
+;/home/chip/work/polaris/input/0200/7816014138 656 жск.zip                   |002_08; 002_07;
+;/home/chip/work/polaris/input/0300/6450090460 ООО КОМФОРТСИТИ.ZIP           |001_05; 001_05; 001_05; 001_05; 001_05; 001_05;
+;/home/chip/work/polaris/input/0300/6903005402 106 жск.zip                   |002_01; 002_00;
+;/home/chip/work/polaris/input/0300/7604140807 ТСН ТСЖ СОЮЗ-1.ZIP            |002_09; 002_01; 002_01;
