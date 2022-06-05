@@ -57,8 +57,9 @@ def get_list_files(name: str) ->list:
 def get_file_config(list_files: list, config_file : str = '') -> str:
     ls_new = list()
     if not config_file:
-        config_files = [x for x in os.listdir(PATH_CONFIG)]
-        config_files.sort()
+        config_files = [x for x in os.listdir(PATH_CONFIG) if re.search('\.ini',x)]
+        # сортировка: 002_05a.ini раньше чем 002_05.ini 
+        config_files = sorted(config_files, key=lambda x:(x[10:13],x[14:17] if x[16:17] != '.' else x[14:16]+'я') )
     i=0
     for item in list_files:
         data_file = {'name': item['name'], 'config': config_file, 'inn': item['inn'], 'warning':list()}

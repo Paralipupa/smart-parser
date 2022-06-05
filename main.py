@@ -40,4 +40,6 @@ if __name__ == "__main__":
             else:
                 if len(file_name['warning']) != 0:
                     logging.warning(f"{file_name['name']}")
+                else:
+                    logging.warning(f"{file_name['name']} не найден файл конфигурации.")
         write_list(list_files)
