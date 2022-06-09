@@ -22,9 +22,12 @@ def _hashit(s): return hashlib.sha1(s).hexdigest()
 class ExcelBaseImporter:
 
     @fatal_error
-    def __init__(self, file_name: str, config_file: str, inn: str):
+    def __init__(self, file_name: str, config_file: str, inn: str, data: list = None):
         self.is_file_exists = True
-        self._team = list()  # список областей с данными
+        self._teams = list()  # список областей с данными
+        self._page_index = 0
+        self._page_name = ''
+        self._headers = data
         self.colontitul = {'status': 0, 'is_parameters': False, 'head': list(
         ), 'foot': list()}  # список  записей до и после табличных данных
         self._names = dict()  # колонки таблицы
@@ -40,8 +43,8 @@ class ExcelBaseImporter:
         if not self.is_init():
             return False
         if not os.path.exists(self._parameters['filename']['value'][0]):
-            logging.warning('file not found {}. skip'.format(
-                self._parameters['filename']['value'][0]))
+            self._config._warning.append(
+                f"ОШИБКА чтения файла {self._parameters['filename']['value'][0]}")
             self.is_file_exists = False
             return False
         return True
@@ -52,26 +55,43 @@ class ExcelBaseImporter:
             return False
         print('Файл {} ({})'.format(
             self._parameters['filename']['value'][0], self._parameters['config']['value'][0]))
-        names = None
-        row = 0
-        if not self.get_header('pattern'):
-            self.colontitul['status'] = 1
-        data_reader = self.get_data()
-        for record in data_reader:
-            self.on_read_line(row, record)
-            if self.colontitul['status'] != 2:
-                # Область до или после таблицы
-                if not self.check_bound_row(row):
-                    return (len(self._collections) > 0)
-                names = self.get_names(record)
-                self.check_colontitul(names, row, record)
-            if self.colontitul['status'] == 2:
-                # Табличная область данных
-                self.check_body(record, row)
-            row += 1
-            if row % 100 == 0:
-                print('Обработано: {}   \r'.format(row), end='', flush=True)
-        self.done()
+        pages = list()
+        page_indexes = self.get_page_index()
+        page_names = self.get_page_name().split(',')
+        if page_names:
+            pages = [(x, False) for x in page_names]
+        else:
+            pages += page_indexes
+
+        for page in pages:
+            self._page_name = page[0] if not page[1] else ''
+            self._page_index = page[0] if page[1] else 0
+            names = None
+            row = 0
+            if not self.get_header('pattern'):
+                self.colontitul['status'] = 1
+            data_reader = self.get_data()
+            if not data_reader:
+                self._config._warning.append(
+                    f"\nОШИБКА чтения файла {self._parameters['filename']['value'][0]}")
+                continue
+            for record in data_reader:
+                self.on_read_line(row, record)
+                if self.colontitul['status'] != 2:
+                    # Область до или после таблицы
+                    if not self.check_bound_row(row):
+                        return (len(self._collections) > 0)
+                    names = self.get_names(record)
+                    self.check_colontitul(names, row, record)
+                if self.colontitul['status'] == 2:
+                    # Табличная область данных
+                    self.check_body(record, row)
+                row += 1
+                if row % 100 == 0:
+                    print('Обработано: {}   \r'.format(
+                        row), end='', flush=True)
+            self.done()
+            self._page_index += 1
         return True
 
     def map_record(self, record):
@@ -89,94 +109,25 @@ class ExcelBaseImporter:
 
     def append_team(self, mapped_record: list) -> bool:
         if self.check_condition_team(mapped_record):
-            self._team.append(mapped_record)
+            self._teams.append(mapped_record)
             return True
-        elif len(self._team) != 0:
+        elif len(self._teams) != 0:
             for key in mapped_record.keys():
-                size = len(self._team[-1][key])
-                self._team[-1][key].append({'row': size,
-                                            'col': self._team[-1][key][0]['col'],
-                                            'index': self._team[-1][key][0]['index'],
-                                            'value': mapped_record[key][0]['value']})
+                size = len(self._teams[-1][key])
+                self._teams[-1][key].append({'row': size,
+                                            'col': self._teams[-1][key][0]['col'],
+                                             'index': self._teams[-1][key][0]['index'],
+                                             'value': mapped_record[key][0]['value']})
         return False
 
-    def check(self, is_warning: bool = True) -> bool:
+    def check(self, is_warning: bool = False) -> bool:
         if not self.is_verify(self._parameters['filename']['value'][0]):
             return False
-        headers = list()
-        rows: list[int] = self.get_check('row')
-        if not rows:
-            rows.append((0, False))
-        patts = list()
-        p = self.get_check('pattern')
-        patts.append({'pattern': p, 'full': True,
-                     'find': p == '', 'maxrow': rows[-1][0]})
-        i = 0
-        p = self.get_check(f'pattern_{i}')
-        while p:
-            p = self.get_check(f'pattern_{i}')
-            patts.append({'pattern': p, 'full': True,
-                         'find': False, 'maxrow': rows[-1][0]})
-            i += 1
-            p = self.get_check(f'pattern_{i}')
-
-        for item in self._config._columns_heading:
-            s = ''
-            for patt in item['pattern']:
-                s += patt + '|'
-            s = s.strip('|')
-            patts.append(
-                {'pattern': s, 'full': False, 'find': item['optional'] or not s,
-                 'maxrow': self._config._max_rows_heading[0][0]})
-
-        index = 0
-        data_reader = self.get_data()
-        if not data_reader:
-            self.is_file_exists = False
-            self._config._warning.append(
-                f"ОШИБКА чтения файла {self._parameters['filename']['value'][0]}")
+        patts = self._get_check_pattern()
+        self._headers = self._get_headers()
+        if not self._headers:
             return False
-
-        for record in data_reader:
-            headers.append(record)
-            index += 1
-            if index > self._config._max_rows_heading[0][0]:
-                break
-
-        for row in range(self._config._max_rows_heading[0][0]):
-            if row < len(headers):
-                for pattern in patts:
-                    if pattern['maxrow'] > row and pattern['pattern']:
-                        if pattern['full']:
-                            s = (' '.join(headers[row])).strip()
-                            if s:
-                                result = regular_calc(pattern['pattern'], s)
-                                if result and result.find('error') == -1:
-                                    pattern['find'] = True
-                        else:
-                            for s in headers[row]:
-                                if s:
-                                    result = regular_calc(
-                                        pattern['pattern'], s)
-                                    if result and result.find('error') == -1:
-                                        pattern['find'] = True
-        i = 0
-        s = ''
-        for pattern in patts:
-            if not pattern['find']:
-                s += f"\t{pattern['pattern']}\n"
-                i += 1
-        if i == 0:
-            return True
-
-        if (100 - round(i/len(patts) * 100, 0)) > 95:
-            self._config._warning.append('\nфайл "{0}"\nсооответствует шаблону "{1}"\nболее, чем на 95%\nНе найдены:\n{2}'.format(
-                self._parameters['filename']['value'][0], self._parameters['config']['value'][0], s))
-        if is_warning:
-            self._config._warning.append('файл "{0}" не сооответствует шаблону "{1}". skip'.format(
-                self._parameters['filename']['value'][0], self._parameters['config']['value'][0]))
-
-        return False
+        return self._check_controll(self._headers, patts, is_warning)
 
     def check_condition_team(self, mapped_record: list) -> bool:
         if not self.get_condition_team():
@@ -189,11 +140,11 @@ class ExcelBaseImporter:
                 patt, mapped_record[self.get_condition_column()][0]['value'])
             b = False if not result or result.find('error') != -1 else True
             if b:
-                if len(self._team) != 0:
+                if len(self._teams) != 0:
                     # Проверяем значение со значением из предыдущей области (иерархии)
                     # если не совпадает, то фиксируем начало новой области (иерархии)
                     pred = regular_calc(
-                        patt, self._team[-1][self.get_condition_column()][0]['value'])
+                        patt, self._teams[-1][self.get_condition_column()][0]['value'])
                     b = (result != pred)
                 if b:
                     break
@@ -204,8 +155,8 @@ class ExcelBaseImporter:
             s1, s2, is_active_find = '', '', False
             for item in self.get_columns_heading():
                 if not item['active']:
-                    s1 += f"{item['name']} {'не обязат.' if item['optional'] else ''},\n"
                     if not item['optional']:
+                        s1 += f"{item['name']} {'не обязат.' if item['optional'] else ''},\n"
                         is_active_find = True
                 else:
                     c = ''
@@ -243,12 +194,12 @@ class ExcelBaseImporter:
     def check_colontitul(self, names: list, row: int, record: list):
         if self.colontitul['status'] == 0:
             if self.check_headers_status(names):
-                if len(self._team) != 0:
-                    self.process_record(self._team[-1])
+                if len(self._teams) != 0:
+                    self.process_record(self._teams[-1])
                     self.colontitul['head'] = list()
                     self.colontitul['foot'] = list()
                     self._names = dict()
-                    self._team = list()
+                    self._teams = list()
         if self.check_columns(names, row):
             self._row_start = row
         if self.colontitul['status'] == 1:
@@ -282,9 +233,9 @@ class ExcelBaseImporter:
                 self.colontitul['foot'].append(record)
             elif self.append_team(mapped_record):  # добавляем новую область
                 # если уже нашли более одной области, то добавляем предпоследнюю в документ
-                if len(self._team) > 1:
-                    self.process_record(self._team[-2])
-        if len(self._team) < 2:
+                if len(self._teams) > 1:
+                    self.process_record(self._teams[-2])
+        if len(self._teams) < 2:
             self.colontitul['head'].append(record)
 
     def check_columns(self, names: list, row: int) -> bool:
@@ -303,7 +254,7 @@ class ExcelBaseImporter:
             for item in self.get_columns_heading():
                 if (not item['active'] or item['duplicate']) and item['optional'] and item['pattern'][0]:
                     b = not item['after_stable']
-                    if not b and self.check_stable_columns() and (row in self._get_rows_header()):
+                    if not b and self.check_stable_columns() and (row in self._get_rows_header() or item['duplicate']):
                         b = True
                     if b and self.check_column(item, names, row, cols_exclude):
                         is_find = True
@@ -332,10 +283,15 @@ class ExcelBaseImporter:
                                                      'active': True,
                                                      'indexes': []})
                         self._names[key]['active'] = True
-                        self._names[key]['indexes'].append(search_name['col'])
                         item['active'] = True
-                        item['index'] = search_name['col']
-                        item['indexes'].append(search_name['col'])
+                        if item['col_data']:
+                            for ind in item['col_data']:
+                                index = ind[0] + search_name['col'] if not ind[1] else 0
+                                item['indexes'].append(index)
+                                self._names[key]['indexes'].append(index)
+                        else:
+                            item['indexes'].append(search_name['col'])
+                            self._names[key]['indexes'].append(search_name['col'])
                         item['row'] = row
                         is_find = True
                         cols_exclude.append(search_name['col'])
@@ -371,16 +327,6 @@ class ExcelBaseImporter:
                             return True
             return False
         return True
-
-    def _get_border(self, item, name: str, col: int = 0) -> int:
-        if item[name]:
-            name_field = self.get_key(item[name][0][0])
-            if name_field:
-                col = self._names[name_field]['indexes'][0]
-        return col
-
-    def _get_rows_header(self) -> set:
-        return {x['row'] for x in self._names.values()}
 
     def check_end_table(self, mapped_record) -> bool:
         if not self.get_condition_end_table():
@@ -439,9 +385,112 @@ class ExcelBaseImporter:
     @warning_error
     def get_data(self):
         ReaderClass = get_file_reader(self._parameters['filename']['value'][0])
-        data_reader = ReaderClass(self._parameters['filename']['value'][0], self.get_page_name(
-        ), 0, range(self.get_max_cols()), self.get_page_index())
+        data_reader = ReaderClass(self._parameters['filename']['value'][0], self._page_name, 0,
+                                  range(self.get_max_cols()), self._page_index)
+        if not data_reader:
+            self.is_file_exists = False
+            self._config._warning.append(
+                f"\nОШИБКА чтения файла {self._parameters['filename']['value'][0]}")
+            return None
         return data_reader
+
+    def _get_border(self, item, name: str, col: int = 0) -> int:
+        if item[name]:
+            name_field = self.get_key(item[name][0][0])
+            if name_field:
+                col = self._names[name_field]['indexes'][0]
+        return col
+
+    def _get_rows_header(self) -> set:
+        return {x['row'] for x in self._names.values()}
+
+    def _get_check_pattern(self) -> list:
+        rows: list[int] = self.get_check('row')
+        if not rows:
+            rows.append((0, False))
+        patts = list()
+        p = self.get_check('pattern')
+        patts.append({'pattern': p, 'full': True,
+                     'find': p == '', 'maxrow': rows[-1][0]})
+        i = 0
+        p = self.get_check(f'pattern_{i}')
+        while p:
+            p = self.get_check(f'pattern_{i}')
+            patts.append({'pattern': p, 'full': True,
+                         'find': False, 'maxrow': rows[-1][0]})
+            i += 1
+            p = self.get_check(f'pattern_{i}')
+
+        for item in self._config._columns_heading:
+            s = ''
+            for patt in item['pattern']:
+                s += patt + '|'
+            s = s.strip('|')
+            patts.append(
+                {'pattern': s, 'full': False, 'find': item['optional'] or not s,
+                 'maxrow': self._config._max_rows_heading[0][0]})
+        return patts
+
+    def _get_headers(self) -> list:
+        if self._headers:
+            return self._headers
+        else:
+            data_reader = self.get_data()
+            if not data_reader:
+                return None
+            headers = list()
+            index = 0
+            for record in data_reader:
+                headers.append(record)
+                index += 1
+                if index > self._config._max_rows_heading[0][0]:
+                    break
+        return headers
+
+    def _check_controll(self, headers: list, patts: list, is_warning: bool = False) -> list:
+        for row in range(self._config._max_rows_heading[0][0]):
+            if row < len(headers):
+                for pattern in patts:
+                    if pattern['maxrow'] > row and pattern['pattern']:
+                        if pattern['full']:
+                            s = (' '.join(headers[row])).strip()
+                            if s:
+                                result = regular_calc(pattern['pattern'], s)
+                                if result and result.find('error') == -1:
+                                    pattern['find'] = True
+                        else:
+                            for s in headers[row]:
+                                if s:
+                                    result = regular_calc(
+                                        pattern['pattern'], s)
+                                    if result and result.find('error') == -1:
+                                        pattern['find'] = True
+        i = 0
+        s = ''
+        for pattern in patts:
+            if not pattern['find']:
+                s += f"\t{pattern['pattern']}\n"
+                i += 1
+        if i == 0:
+            return self._check_function()
+        if (100 - round(i/len(patts) * 100, 0)) > 95:
+            self._config._warning.append('\nфайл "{0}"\nсооответствует шаблону "{1}"\nболее, чем на 95%\nНе найдены:\n{2}'.format(
+                self._parameters['filename']['value'][0], self._parameters['config']['value'][0], s))
+        if is_warning:
+            self._config._warning.append('файл "{0}" не сооответствует шаблону "{1}". skip'.format(
+                self._parameters['filename']['value'][0], self._parameters['config']['value'][0]))
+        return False
+
+    def _check_function(self) -> bool:
+        f = self._config._check['func']
+        if not f:
+            return True
+        patt = [self._config._check['func_pattern']]
+        item_fld = {'func': f, 'func_pattern': patt,
+                    'type': '', 'offset_type': ''}
+        value = self.func(
+            team=dict(), fld_param=item_fld, data='', row=0, col=0)
+        return True if value else False
 
     def get_value_after_validation(self, pattern: str, name: str, row: int, col: int) -> str:
         try:
@@ -570,8 +619,8 @@ class ExcelBaseImporter:
         return None
 
     def done(self):
-        if len(self._team) != 0:
-            self.process_record(self._team[-1])
+        if len(self._teams) != 0:
+            self.process_record(self._teams[-1])
 
     def on_read_line(self, index, record):
         pass
@@ -630,11 +679,14 @@ class ExcelBaseImporter:
         for doc_param in self.get_config_documents():
             doc = self.set_document(team, doc_param)
             self.document_split_one_line(doc, doc_param)
+        self._teams.remove(team)
 
 # ---------- Документы --------------------
     def append_to_collection(self, name: str, doc: dict) -> NoReturn:
-        self._collections.setdefault(name, list())
-        self._collections[name].append(doc)
+        key = self._page_name if self._page_name else 'noname'
+        self._collections.setdefault(name, {key: list()})
+        self._collections[name].setdefault(key, list())
+        self._collections[name][key].append(doc)
 
     def set_document(self, team: dict, doc_param):
         doc = dict()
@@ -727,23 +779,25 @@ class ExcelBaseImporter:
         os.makedirs(self._parameters['path']['value'][0], exist_ok=True)
 
         id = self.func_id()
-        for name, records in self._collections.items():
-            i = 0
-            file_output = pathlib.Path(
-                self._parameters['path']['value'][0],
-                f'{self._parameters["inn"]["value"][0]}{"_"+str(num) if num != 0 else ""}{id}_{name}')
-            if not output_format or output_format == 'json':
-                with open(f'{file_output}.json', mode='w', encoding='utf-8') as file:
-                    jstr = json.dumps(records, indent=4, ensure_ascii=False)
-                    file.write(jstr)
-            if not output_format or output_format == 'csv':
-                with open(f'{file_output}.csv', mode='w', encoding='utf-8') as file:
-                    names = [x for x in records[0].keys()]
-                    file_writer = csv.DictWriter(file, delimiter=";",
-                                                 lineterminator="\r", fieldnames=names)
-                    file_writer.writeheader()
-                    for rec in records:
-                        file_writer.writerow(rec)
+        for name, pages in self._collections.items():
+            for key, records in pages.items():
+                file_output = pathlib.Path(
+                    self._parameters['path']['value'][0],
+                    f'{self._parameters["inn"]["value"][0]}{"_"+str(num) if num != 0 else ""}' +
+                    f'{"_"+key.replace(" ","_") if key != "noname" else ""}{id}_{name}')
+                if not output_format or output_format == 'json':
+                    with open(f'{file_output}.json', mode='a', encoding='utf-8') as file:
+                        jstr = json.dumps(records, indent=4,
+                                          ensure_ascii=False)
+                        file.write(jstr)
+                if not output_format or output_format == 'csv':
+                    with open(f'{file_output}.csv', mode='a', encoding='utf-8') as file:
+                        names = [x for x in records[0].keys()]
+                        file_writer = csv.DictWriter(file, delimiter=";",
+                                                     lineterminator="\r", fieldnames=names)
+                        file_writer.writeheader()
+                        for rec in records:
+                            file_writer.writerow(rec)
 
     def write_logs(self, num: int = 0) -> NoReturn:
         if not self.is_init() or len(self._collections) == 0:
@@ -803,7 +857,6 @@ class ExcelBaseImporter:
 
 # ---------- Параметры конфигурации --------------------
 
-
     def is_init(self) -> bool:
         return self._config._is_init
 
@@ -832,7 +885,7 @@ class ExcelBaseImporter:
         return self._config._page_name
 
     def get_page_index(self) -> int:
-        return self.get_value_int(self._config._page_index)[0]
+        return self.get_value_int(self._config._page_index)
 
     def get_max_cols(self) -> int:
         return self.get_value_int(self._config._max_cols)[0]
@@ -868,6 +921,7 @@ class ExcelBaseImporter:
 
 # -------------------------------------------------------------------------------------------------
 
+
     def get_sub_value(self, item_fld, team, name_field, row, col, value):
         if item_fld['sub']:
             for item_sub in item_fld['sub']:
@@ -875,8 +929,11 @@ class ExcelBaseImporter:
                     team=team[name_field], type_fld=item_fld['type'], pattern=item_sub['pattern'][0], row=row)
                 if value:
                     if item_sub['offset_row'] or item_sub['offset_column']:
-                        value = self.get_value_offset(
-                            team=team, item_fld=item_sub, item_type=item_fld['type'], row=row, col=col,  value=value)
+                        try:
+                            value = self.get_value_offset(
+                                team=team, item_fld=item_sub, item_type=item_fld['type'], row_curr=row, col_curr=col, value=value)
+                        except Exception as ex:
+                            pass
                     if item_sub['func']:
                         value = self.func(
                             team=team, fld_param=item_sub, data=value, row=row, col=col)
@@ -916,13 +973,14 @@ class ExcelBaseImporter:
                 m_key = self.get_key(col[0])
                 if m_key:
                     value = self.get_fld_value(
-                        team=team[m_key], type_fld=item_fld['offset_type'], pattern=item_fld['offset_pattern'],
+                        team=team[m_key], type_fld=item_fld['offset_type'], pattern=item_fld['offset_pattern'][0],
                         row=r[0]+row_curr if not r[1] else r[0]
                     )
         return value
 
 
 # ---------- Функции --------------------
+
 
     def func(self, team: dict, fld_param, data: str, row: int, col: int):
         dic_f = {
@@ -951,7 +1009,10 @@ class ExcelBaseImporter:
                 for name_func in name_func_add.split('+'):
                     name_func, data_calc, is_check = self.__get_func_name(
                         name_func=name_func, data=data)
-                    f = dic_f[name_func.strip()]
+                    try:
+                        f = dic_f[name_func.strip()]
+                    except Exception as ex:
+                        return name_func
                     if is_check:
                         if f(data_calc, row, col, team):
                             value += data_calc + ' '
@@ -977,7 +1038,7 @@ class ExcelBaseImporter:
         if name_func.find('(') != -1:
             # если функция с параметром, то заменяем входные данные (data) на этот параметр
             result = regular_calc(
-                r'(?<=\()[a-z_0-9-]+(?=\))', name_func)
+                r'(?<=\()[\w_0-9-]+(?=\))', name_func)
             if result and result.find('error') == -1:
                 data = result
             name_func = name_func[:name_func.find('(')]

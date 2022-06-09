@@ -5,7 +5,6 @@ import os
 from openpyxl import load_workbook
 import xlrd
 
-
 def rchop(s, sub):
     return s[:-len(sub)] if s.endswith(sub) else s
 
@@ -51,15 +50,14 @@ class CsvFile(DataFile):
     def __del__(self):
         self._freader.close()
 
-
 class XlsFile(DataFile):
-    def __init__(self, fname, sheet_name, first_line, address_columns, page_index=None):
+    def __init__(self, fname, sheet_name, first_line, address_columns, page_index=0):
         super(XlsFile, self).__init__(fname, sheet_name, first_line, address_columns)
-        self._book = xlrd.open_workbook(fname, ignore_workbook_corruption=True)
-        if page_index is not None:
-            sheet = self._book.sheets()[page_index]
-        else:
+        self._book = xlrd.open_workbook(fname, logfile=open(os.devnull, 'w'), ignore_workbook_corruption=True)
+        if self._sheet_name:
             sheet = self._book.sheet_by_name(self._sheet_name)
+        else:
+            sheet = self._book.sheets()[page_index]
         self._rows = (sheet.row(index) for index in range(first_line,
                                                           sheet.nrows))
 
@@ -84,15 +82,14 @@ class XlsFile(DataFile):
     def __del__(self):
         pass
 
-
 class XlsxFile(DataFile):
-    def __init__(self, fname, sheet_name, first_line, columns, page_index=None):
+    def __init__(self, fname, sheet_name, first_line, columns, page_index=0):
         super(XlsxFile, self).__init__(fname, sheet_name, first_line, columns)
         self._wb = load_workbook(filename=fname, read_only=True)
-        if page_index is not None:
-            self._ws = self._wb.worksheets[page_index]
-        else:
+        if self._sheet_name:
             self._ws = self._wb.get_sheet_by_name(self._sheet_name)
+        else:
+            self._ws = self._wb.worksheets[page_index]
         self._cursor = self._ws.iter_rows()
         row_num = 0
         while row_num < self._first_line:

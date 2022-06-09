@@ -1,4 +1,5 @@
 import configparser
+from email.policy import strict
 import os
 import re
 import logging
@@ -16,9 +17,9 @@ PATH_TMP = 'tmp'
 
 
 def fatal_error(func):
-    def wrapper(*args):
+    def wrapper(*args, **kwargs):
         try:
-            return func(*args)
+            return func(*args, **kwargs)
         except Exception as ex:
             db_logger.warning(traceback.format_exc())
             exit()
@@ -50,10 +51,11 @@ class GisConfig:
     @fatal_error
     def __init__(self, filename: str):
         self._is_init = False
+        self._is_unique = False
+        self._warning = list()
         if not os.path.exists(filename):
-            logging.warning('file not found {}. skip'.format(filename))
+            self._warning.append('file not found {}. skip'.format(filename))
             return
-
         self._config = configparser.ConfigParser()
         self._config.read(filename)
         self._config_name = filename
@@ -72,7 +74,7 @@ class GisConfig:
         self._columns_heading: list[dict] = []
         self._row_start = self.read_config(
             'main', 'row_start', isNumeric=True)    #
-        self._page_name = self.read_config('main', 'page_name')         #
+        self._page_name = self.read_config('main', 'page_name')
         self._page_index = self.read_config(
             'main', 'page_index', isNumeric=True)  #
         # максимальное кол-во просматриваемых колонок
@@ -80,16 +82,17 @@ class GisConfig:
             'main', 'max_columns', isNumeric=True)
         # максимальное кол-во строк до таблицы
         self._max_rows_heading = self.read_config(
-            'main', 'max_rows_heading', isNumeric=True)  
+            'main', 'max_rows_heading', isNumeric=True)
         # необрабатываемые строки таблицы
         self._rows_exclude = self.read_config(
-            'main', 'rows_exclude', isNumeric=True)  
+            'main', 'rows_exclude', isNumeric=True)
         self.set_check()
         self.set_header()
         self.set_parameters()
         self.set_table_columns()
         self.set_documents()
-        self._warning = list()
+        self._is_unique = len(self._page_name) != 0 or len(
+            self._page_index) != 1 or self._page_index[0][0] != 0
         self._is_init = True
 
     def set_header(self):
@@ -99,12 +102,14 @@ class GisConfig:
         self._header['pattern'] = self.read_config('header', 'pattern')
 
     def set_check(self):
-        self._check = {'row': [0], 'col': [0], 'pattern': ''}
+        self._check = dict()
         self._check['row'] = self.read_config(
             'check', 'row', isNumeric=True)
         self._check['col'] = self.read_config(
             'check', 'column', isNumeric=True)
         self._check['pattern'] = self.read_config('check', 'pattern')
+        self._check['func'] = self.read_config('check', 'func')
+        self._check['func_pattern'] = self.read_config('check', 'func_pattern')
         i = 0
         while self.read_config('check', f'pattern_{i}'):
             self._check[f'pattern_{i}'] = self.read_config(
@@ -167,6 +172,7 @@ class GisConfig:
                 'indexes': [],
                 'row': -1,
                 'col': i,
+                'col_data': self.read_config(f'col_{i}', 'col_data_offset', isNumeric=True),
                 'active': False,
                 'duplicate': b1,
                 'optional': b2,
@@ -276,8 +282,8 @@ class GisConfig:
             fld['offset_column'] = self.read_config(
                 f'{doc["name"]}_{i}', 'offset_col_config', isNumeric=True)
             # шаблон поиска (регулярное выражение)
-            fld['offset_pattern'] = self.read_config(
-                f'{doc["name"]}_{i}', 'offset_pattern')
+            fld['offset_pattern'] = [self.read_config(
+                f'{doc["name"]}_{i}', 'offset_pattern')]
             # тип данных в колонке смещения
             fld['offset_type'] = self.read_config(
                 f'{doc["name"]}_{i}', 'offset_type')
@@ -297,9 +303,11 @@ class GisConfig:
         for fld in doc['fields']:
             if fld['pattern'][0][0:1] == '@':
                 if fld['pattern'][0][1:]:
-                    fld['column'] = doc['fields'][int(fld['pattern'][0][1:])]['column']
-                    fld['pattern'] = doc['fields'][int(
-                        fld['pattern'][0][1:])]['pattern']
+                    n = int(fld['pattern'][0][1:])
+                    fld['column'] = doc['fields'][n]['column']
+                    fld['pattern'] = doc['fields'][n]['pattern']
+                    for item in doc['fields'][n]['sub']:
+                        fld['pattern'] += item['pattern']
                 else:
                     fld['pattern'] = self._condition_team if self._condition_team else [
                         '']
