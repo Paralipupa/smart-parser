@@ -53,7 +53,8 @@ class CsvFile(DataFile):
 class XlsFile(DataFile):
     def __init__(self, fname, sheet_name, first_line, address_columns, page_index=0):
         super(XlsFile, self).__init__(fname, sheet_name, first_line, address_columns)
-        self._book = xlrd.open_workbook(fname, logfile=open(os.devnull, 'w'), ignore_workbook_corruption=True)
+        self._book = xlrd.open_workbook(fname, logfile=open(os.devnull, 'w'))
+        # self._book = xlrd.open_workbook(fname, logfile=open(os.devnull, 'w'), ignore_workbook_corruption=True)
         if self._sheet_name:
             sheet = self._book.sheet_by_name(self._sheet_name)
         else:
@@ -86,6 +87,7 @@ class XlsxFile(DataFile):
     def __init__(self, fname, sheet_name, first_line, columns, page_index=0):
         super(XlsxFile, self).__init__(fname, sheet_name, first_line, columns)
         self._wb = load_workbook(filename=fname, read_only=True)
+
         if self._sheet_name:
             self._ws = self._wb.get_sheet_by_name(self._sheet_name)
         else:
@@ -128,7 +130,8 @@ def get_file_reader(fname):
     if file_extension == '.xls':
         return XlsFile
     if file_extension == '.xlsx':
-        return XlsxFile
+        return XlsFile
+        # return XlsxFile
     if file_extension == '.csv':
         return CsvFile
     raise Exception("Unknown file type")

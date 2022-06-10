@@ -232,6 +232,7 @@ class GisConfig:
         if not self._columns_heading[i]['offset']['pattern'][0] and index != -1 and index < len(self._columns_heading):
             self._columns_heading[i]['offset']['pattern'] = self._columns_heading[index]['offset']['pattern']
 
+# ========================= Документы =======================================================
     @fatal_error
     def set_documents(self) -> NoReturn:
         self._documents = list()  # список документов
@@ -248,69 +249,147 @@ class GisConfig:
             self._documents.append(doc)
             k += 1
 
-    def set_document_fields(self, doc) -> NoReturn:
-        i = 0
-        while self.read_config(f'{doc["name"]}_{i}', 'name'):
-            fld = dict()
-            fld['name'] = self.read_config(
-                f'{doc["name"]}_{i}', 'name')  # имя аттрибута
-            # шаблон поиска (регулярное выражение)
-            fld['pattern'] = [self.read_config(
-                f'{doc["name"]}_{i}', 'pattern')]
-            j = 0
-            while self.read_config(f'{doc["name"]}_{i}', f'pattern_{j}'):
-                fld['pattern'].append(self.read_config(
-                    f'{doc["name"]}_{i}', f'pattern_{j}'))
-                j += 1
-            # колонка для поиска данных аттрибут
-            fld['column'] = self.read_config(
-                f'{doc["name"]}_{i}', 'col_config', isNumeric=True)
-            # тип данных в колонке
-            fld['type'] = self.read_config(
-                f'{doc["name"]}_{i}', 'type')
-            # запись (в области) для поиска данных атрибутта
-            fld['row'] = self.read_config(
-                f'{doc["name"]}_{i}', 'row_data', isNumeric=True)
-            # запись (в области) для исключения поиска данных атрибутта
-            fld['row_exclude'] = self.read_config(
-                f'{doc["name"]}_{i}', 'row_data_exclude', isNumeric=True)
-            # номер записи в области(иерархии) для поиска данных аттрибут
-            # признак смещения по строкам области (иерархии) True=абсолютное,
-            fld['offset_row'] = self.read_config(
-                f'{doc["name"]}_{i}', 'offset_row_data', isNumeric=True)
-            # колонка для поиска данных аттрибут
-            fld['offset_column'] = self.read_config(
-                f'{doc["name"]}_{i}', 'offset_col_config', isNumeric=True)
-            # шаблон поиска (регулярное выражение)
-            fld['offset_pattern'] = [self.read_config(
-                f'{doc["name"]}_{i}', 'offset_pattern')]
-            # тип данных в колонке смещения
-            fld['offset_type'] = self.read_config(
-                f'{doc["name"]}_{i}', 'offset_type')
-            # Зависимость от колонки
-            fld['depends'] = self.read_config(
-                f'{doc["name"]}_{i}', 'depends_on')
-            # запись (в области) для поиска данных атрибутта
-            fld['func'] = self.read_config(f'{doc["name"]}_{i}', 'func')
-            # шаблон поиска (регулярное выражение)
-            fld['func_pattern'] = [self.read_config(
-                f'{doc["name"]}_{i}', 'func_pattern')]
-            fld['sub'] = []
+    def set_doc_field(self, fld: dict, name: str) -> dict:
+        # имя поля
+        x = self.read_config(f'{name}', 'name')
+        if x:
+            fld['name'] = x
+        else:
+            fld.setdefault('name', x)
+        # шаблон поиска (регулярное выражение)
+        x = self.read_config(f'{name}', 'pattern')
+        if x:
+            fld['pattern'] = [x]
+        else:
+            fld.setdefault('pattern', [x])
+        j = 0
+        while self.read_config(f'{name}', f'pattern_{j}'):
+            fld['pattern'].append(self.read_config(
+                f'{name}', f'pattern_{j}'))
+            j += 1
+        # колонка для поиска данных аттрибут
+        x = self.read_config(
+            f'{name}', 'col_config', isNumeric=True)
+        if x:
+            fld['column'] = x
+        else:
+            fld.setdefault('column', x)
+        # тип данных в колонке
+        x = self.read_config(f'{name}', 'type')
+        if x:
+            fld['type'] = x
+        else:
+            fld.setdefault('type', x)
+        # запись (в области) для поиска данных атрибутта
+        x = self.read_config(
+            f'{name}', 'row_data', isNumeric=True)
+        if x:
+            fld['row'] = x
+        else:
+            fld.setdefault('row', x)
+        # запись (в области) для исключения поиска данных атрибутта
+        x = self.read_config(
+            f'{name}', 'rows_exclude', isNumeric=True)
+        if x:
+            fld['rows_exclude'] = x
+        else:
+            fld.setdefault('rows_exclude', x)
+        # номер записи в области(иерархии) для поиска данных аттрибут
+        # признак смещения по строкам области (иерархии) True=абсолютное,
+        x = self.read_config(
+            f'{name}', 'offset_row_data', isNumeric=True)
+        if x:
+            fld['offset_row'] = x
+        else:
+            fld.setdefault('offset_row', x)
+        # колонка для поиска данных аттрибут
+        x = self.read_config(f'{name}', 'offset_col_config', isNumeric=True)
+        if x:
+            fld['offset_column'] = x
+        else:
+            fld.setdefault('offset_column', x)
+        fld['is_offset'] = (len(fld['offset_column'])!=0 or len(fld['offset_row'])!=0)
+        # шаблон поиска (регулярное выражение)
+        x = self.read_config(f'{name}', 'offset_pattern')
+        if x:
+            fld['offset_pattern'] = [x]
+        else:
+            fld.setdefault('offset_pattern', [x])
+        j = 0
+        while self.read_config(f'{name}', f'offset_pattern_{j}'):
+            fld['offset_pattern'].append(self.read_config(
+                f'{name}', f'offset_pattern_{j}'))
+            j += 1
+        # тип данных в колонке смещения
+        x = self.read_config(
+            f'{name}', 'offset_type')
+        if x:
+            fld['offset_type'] = x
+        else:
+            fld.setdefault('offset_type', x)
+        # Зависимость заполнения от значения в другой колонке
+        x = self.read_config(
+            f'{name}', 'depends_on')
+        if x:
+            fld['depends'] = x
+        else:
+            fld.setdefault('depends', x)
+        # запись (в области) для поиска данных атрибутта
+        x = self.read_config(f'{name}', 'func')
+        if x:
+            fld['func'] = x
+        else:
+            fld.setdefault('func', x)
+        # шаблон поиска (регулярное выражение)
+        x = self.read_config(
+            f'{name}', 'func_pattern')
+        if x:
+            fld['func_pattern'] = [x]
+        else:
+            fld.setdefault('func_pattern', [x])
+        return fld
 
-            doc['fields'].append(fld)
-            self.set_field_sub(fld['sub'], doc["name"], i)
-            i += 1
-        for fld in doc['fields']:
+    def set_fld_pattern_ref(self, fld, doc):
+        try:
             if fld['pattern'][0][0:1] == '@':
                 if fld['pattern'][0][1:]:
                     n = int(fld['pattern'][0][1:])
                     fld['column'] = doc['fields'][n]['column']
                     fld['pattern'] = doc['fields'][n]['pattern']
-                    for item in doc['fields'][n]['sub']:
-                        fld['pattern'] += item['pattern']
+                    # for item in doc['fields'][n]['sub']:
+                    #     fld['pattern'] += item['pattern']
                 else:
                     fld['pattern'] = self._condition_team if self._condition_team else [
                         '']
+        except:
+            pass
+
+    def set_document_fields(self, doc) -> NoReturn:
+        i = 0
+        while self.read_config(f'{doc["name"]}_{i}', 'name'):
+            fld = self.set_doc_field(dict(), f'{doc["name"]}_{i}')
+            fld['sub'] = []
+            j = 0
+            while self.read_config(f'{doc["name"]}_{i}_{j}', 'pattern'):
+                fld_sub = self.set_doc_field(fld.copy(), f'{doc["name"]}_{i}_{j}')
+                fld_sub['sub'] = []
+                fld['sub'].append(fld_sub)
+                j += 1
+            for col in fld['column'][1:]:
+                fld_sub = fld.copy()
+                fld_sub['column'] = [col]
+                fld['sub'].append(fld_sub)
+            doc['fields'].append(fld)
+            i += 1
+        for fld in doc['fields']:
+            self.set_fld_pattern_ref(fld, doc)
+            for fld_sub in fld['sub']:
+                self.set_fld_pattern_ref(fld_sub, doc)
+
+
+    def field_copy(self, fld: dict) -> dict:
+        copy_fld = fld.copy()
+        return copy_fld
 
     def set_field_sub(self, fld, name, i: int):
         j = 0
