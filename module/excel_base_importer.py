@@ -55,43 +55,48 @@ class ExcelBaseImporter:
             return False
         print('Файл {} ({})'.format(
             self._parameters['filename']['value'][0], self._parameters['config']['value'][0]))
-        pages = list()
-        page_indexes = self.get_page_index()
-        page_names = self.get_page_name().split(',')
-        if page_names:
-            pages = [(x, False) for x in page_names]
-        else:
-            pages += page_indexes
-
-        for page in pages:
-            self._page_name = page[0] if not page[1] else ''
-            self._page_index = page[0] if page[1] else 0
-            names = None
-            row = 0
-            if not self.get_header('pattern'):
-                self.colontitul['status'] = 1
-            data_reader = self._get_data_xls()
-            if not data_reader:
-                self._config._warning.append(
-                    f"\nОШИБКА чтения файла {self._parameters['filename']['value'][0]}")
-                continue
-            for record in data_reader:
-                self.on_read_line(row, record)
-                if self.colontitul['status'] != 2:
-                    # Область до или после таблицы
-                    if not self.check_bound_row(row):
-                        return (len(self._collections) > 0)
-                    names = self._get_names(record)
-                    self.check_colontitul(names, row, record)
-                if self.colontitul['status'] == 2:
-                    # Табличная область данных
-                    self.check_body(record, row)
-                row += 1
-                if row % 100 == 0:
-                    print('Обработано: {}   \r'.format(
-                        row), end='', flush=True)
-            self.done()
-            self._page_index += 1
+        if not self.get_col_start():
+            self.set_col_start(0)
+        for col_start in self.get_col_start():
+            self.init_data()
+            self._col_start = col_start[0]
+            pages = list()
+            page_indexes = self.get_page_index()
+            page_names = self.get_page_name().split(',')
+            if page_names:
+                pages = [(x, False) for x in page_names]
+            else:
+                pages += page_indexes
+            for page in pages:
+                self._page_name = page[0] if not page[1] else ''
+                self._page_index = page[0] if page[1] else 0
+                names = None
+                row = 0
+                if not self.get_header('pattern'):
+                    self.colontitul['status'] = 1
+                data_reader = self._get_data_xls()
+                if not data_reader:
+                    self._config._warning.append(
+                        f"\nОШИБКА чтения файла {self._parameters['filename']['value'][0]}")
+                    continue
+                for record in data_reader:
+                    record = record[self._col_start:]
+                    self.on_read_line(row, record)
+                    if self.colontitul['status'] != 2:
+                        # Область до или после таблицы
+                        if not self.check_bound_row(row):
+                            return (len(self._collections) > 0)
+                        names = self._get_names(record)
+                        self.check_colontitul(names, row, record)
+                    if self.colontitul['status'] == 2:
+                        # Табличная область данных
+                        self.check_body(record, row)
+                    row += 1
+                    if row % 100 == 0:
+                        print('Обработано: {}   \r'.format(
+                            row), end='', flush=True)
+                self.done()
+                self._page_index += 1
         return True
 
     def map_record(self, record):
@@ -196,10 +201,7 @@ class ExcelBaseImporter:
             if self.check_headers_status(names):
                 if len(self._teams) != 0:
                     self.process_record(self._teams[-1])
-                    self.colontitul['head'] = list()
-                    self.colontitul['foot'] = list()
-                    self._names = dict()
-                    self._teams = list()
+                    self.init_data()
         if self.check_columns(names, row):
             self._row_start = row
         if self.colontitul['status'] == 1:
@@ -390,7 +392,7 @@ class ExcelBaseImporter:
     def _get_data_xls(self):
         ReaderClass = get_file_reader(self._parameters['filename']['value'][0])
         data_reader = ReaderClass(self._parameters['filename']['value'][0], self._page_name, 0,
-                                  range(self.get_max_cols()), self._page_index)
+                                  range(self._col_start + self.get_max_cols()), self._page_index)
         if not data_reader:
             self.is_file_exists = False
             self._config._warning.append(
@@ -439,6 +441,7 @@ class ExcelBaseImporter:
         if self._headers:
             return self._headers
         else:
+            self._col_start = 0
             data_reader = self._get_data_xls()
             if not data_reader:
                 return None
@@ -803,6 +806,7 @@ class ExcelBaseImporter:
                                 break  # пропускаем проверку по остальным шаблонам
                 if record['is_offset']:
                     record['value'] = record['value_o']
+                    record['type'] = record['offset_type']
                 if record['func']:
                     # запускаем функцию и передаем в нее полученное значение
                     record['value'] = self.func(
@@ -965,7 +969,13 @@ class ExcelBaseImporter:
     def get_row_start(self) -> int:
         return self._get_value_int(self._config._row_start)[0]
 
-    def set_row_start(self, row: int) -> int:
+    def get_col_start(self) -> int:
+        return self._config._col_start
+
+    def set_col_start(self, col: int):
+        self._config._col_start.append((col, True))
+
+    def set_row_start(self, row: int):
         self._config._row_start = [(row, True)]
 
     def get_max_rows_heading(self) -> int:
@@ -990,7 +1000,13 @@ class ExcelBaseImporter:
         else:
             return self._config._documents
 
-
+    def init_data(self):
+        self.colontitul['head'] = list()
+        self.colontitul['foot'] = list()
+        self._names = dict()
+        self._teams = list()
+        for col in self.get_columns_heading():
+            col['active'] = False
 # -------------------------------------------------------------------------------------------------
 
     def get_sub_value(self, item_fld, team, name_field, row, col, value):

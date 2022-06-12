@@ -74,6 +74,8 @@ class GisConfig:
         self._columns_heading: list[dict] = []
         self._row_start = self.read_config(
             'main', 'row_start', isNumeric=True)    #
+        self._col_start = self.read_config(
+            'main', 'col_start', isNumeric=True)    #
         self._page_name = self.read_config('main', 'page_name')
         self._page_index = self.read_config(
             'main', 'page_index', isNumeric=True)  #
