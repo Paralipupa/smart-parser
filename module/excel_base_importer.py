@@ -85,7 +85,8 @@ class ExcelBaseImporter:
                     if self.colontitul['status'] != 2:
                         # Область до или после таблицы
                         if not self.check_bound_row(row):
-                            return (len(self._collections) > 0)
+                            # return (len(self._collections) > 0)
+                            break
                         names = self._get_names(record)
                         self.check_colontitul(names, row, record)
                     if self.colontitul['status'] == 2:
@@ -157,6 +158,8 @@ class ExcelBaseImporter:
 
     def check_bound_row(self, row: int) -> bool:
         if self.get_row_start() + self.get_max_rows_heading() < row:
+            if len(self._teams) != 0:
+                return False
             s1, s2, is_active_find = '', '', False
             for item in self.get_columns_heading():
                 if not item['active']:
@@ -202,6 +205,7 @@ class ExcelBaseImporter:
                 if len(self._teams) != 0:
                     self.process_record(self._teams[-1])
                     self.init_data()
+                    self.set_row_start(row)
         if self.check_columns(names, row):
             self._row_start = row
         if self.colontitul['status'] == 1:
@@ -221,7 +225,8 @@ class ExcelBaseImporter:
 
         if self._config._rows_exclude:
             if row in [x[0]+self._config._parameters['table_start'][0]['row'][0] for x in self._config._rows_exclude]:
-                self.colontitul['head'].append(record)
+                if self.colontitul['head'] and self.colontitul['head'][-1] != record:
+                    self.colontitul['head'].append(record)
                 return
         mapped_record = self.map_record(record)
         if mapped_record:  # строка не пустая
@@ -508,13 +513,15 @@ class ExcelBaseImporter:
                     return result
                 else:
                     return ''
+            else:
+                return ''
         except Exception as ex:
             return f'error: {ex}'
 
     def _get_names(self, record) -> dict:
         names = []
         index = 0
-        if (self.colontitul['status'] == 1):
+        if (self.colontitul['status'] == 1) or (self.colontitul['status'] == 0 and len(self._names) == 0):
             self.colontitul['head'].append(record)
         elif self.colontitul['status'] == 0 and len(self._names) > 0:
             self.colontitul['foot'].append(record)
@@ -742,15 +749,22 @@ class ExcelBaseImporter:
                         self._parameters[name]['value'].append(pattern[1:])
                     else:
                         for row, col in product(rows, cols):
-                            if is_head:
-                                result = self._get_value_after_validation(
-                                    pattern, 'head', row[0], col[0])
-                            else:
-                                result = self._get_value_after_validation(
-                                    pattern, 'foot', row[0], col[0])
+                            result = self._get_value_after_validation(
+                                pattern, 'head' if is_head else 'foot', row[0], col[0])
                             if result:
-                                self._parameters[name]['value'].append(result)
-                                break
+                                if param['offset_pattern']:
+                                    if not param['offset_row']:
+                                        param['offset_row'].append((0, False))
+                                    if not param['offset_col']:
+                                        param['offset_col'].append((0, False))
+                                    result = self._get_value_after_validation(param['offset_pattern'],
+                                            'head' if is_head else 'foot',
+                                            param['offset_row'][0][0] + row[0] if not param['offset_row'][0][1] else param['offset_row'][0][0],
+                                            param['offset_col'][0][0] + col[0] if not param['offset_col'][0][1] else param['offset_col'][0][0])
+                                if result:
+                                    self._parameters[name]['value'].append(result)
+                                    break
+
         return self._parameters[name]
 
     def process_record(self, team: dict) -> NoReturn:
@@ -1002,11 +1016,13 @@ class ExcelBaseImporter:
 
     def init_data(self):
         self.colontitul['head'] = list()
+        if self.colontitul['foot']:
+            self.colontitul['head'].append(self.colontitul['foot'][-1])
         self.colontitul['foot'] = list()
-        self._names = dict()
-        self._teams = list()
         for col in self.get_columns_heading():
             col['active'] = False
+        self._names = dict()
+        self._teams = list()
 # -------------------------------------------------------------------------------------------------
 
     def get_sub_value(self, item_fld, team, name_field, row, col, value):

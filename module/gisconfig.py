@@ -135,14 +135,14 @@ class GisConfig:
         while self.read_config(f'{name}_{i}', 'name'):
             self._parameters.setdefault(
                 self.read_config(f'{name}_{i}', 'name'), [])
-            rows = self.read_config(f'{name}_{i}', 'row', isNumeric=True)
-            cols = self.read_config(
-                f'{name}_{i}', 'column', isNumeric=True)
             self._parameters[self.read_config(f'{name}_{i}', 'name')].append(
                 {
-                    'row': rows,
-                    'col': cols,
+                    'row': self.read_config(f'{name}_{i}', 'row', isNumeric=True),
+                    'col': self.read_config(f'{name}_{i}', 'column', isNumeric=True),
                     'pattern': [self.read_config(f'{name}_{i}', 'pattern')],
+                    'offset_row': self.read_config(f'{name}_{i}', 'offset_row', isNumeric=True),
+                    'offset_col': self.read_config(f'{name}_{i}', 'offset_col', isNumeric=True),
+                    'offset_pattern': self.read_config(f'{name}_{i}', 'offset_pattern'),
                     'ishead': is_head,
                 }
             )
@@ -434,8 +434,11 @@ class GisConfig:
             x = x.replace(result, y)
 
         # rows = [int(i) for i in x.split(',')]
-        rows = [(int(i), False if not i or (
-            i[0] == '+' or i[0] == '-') else True) for i in x.split(',')]
+        try:
+            rows = [(int(i), False if not i or (
+                i[0] == '+' or i[0] == '-') else True) for i in x.split(',')]
+        except Exception as ex:
+            x = 0
         return rows
 
     def read_config(self, name_section: str, name_param: str, isNumeric: bool = False):

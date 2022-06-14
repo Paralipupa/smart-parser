@@ -18,7 +18,7 @@ def remove_files(path: str):
 
 def get_config_files():
     files = [x for x in os.listdir(PATH_CONFIG) if re.search(
-        'gisconfig_[0-9]{3}_[0-9]{2}[0-9a-z]*\.ini', x, re.IGNORECASE)]
+        'gisconfig_[0-9]{3}_[0-9]{2}[0-9a-z_]*\.ini', x, re.IGNORECASE)]
     # сортировка: 002_05a.ini раньше чем 002_05.ini
     files = sorted(files, key=lambda x: (
         x[10:13], x[14:17] if x[16:17] != '.' else x[14:16]+'я'))
@@ -75,7 +75,7 @@ def get_list_files(name: str) -> list:
                 result = []
                 if index != -1:
                     result = re.findall(
-                        """(?<=;)(?:(?:\s*[0-9]{3}_[0-9]{2}[a-z]*)|\s*)""", line)
+                        """(?<=;)(?:(?:\s*[0-9]{3}_[0-9]{2}[a-z0-9_]*)|\s*)""", line)
                     line = line[:index]
                 if line.strip():
                     l.append({'file': line.strip(), 'inn': '', 'config': []})
