@@ -187,7 +187,7 @@ class ExcelBaseImporter:
                 for key, value in self._names.items():
                     s += f"\n{key} - {value['indexes'][0]}"
                 self._config._warning.append('\n{0}:\nВ загружаемом файле "{1}" \
-                \nне верен шаблон нахождения начала области данных(({3})condition_begin_team({2}))\n{4}\n'
+                \nне верен шаблон нахождения начала области данных(({3})condition_begin_team(\n{2}\n))\n{4}\n'
                                              .format(
                                                  self._config._config_name,
                                                  self._parameters['filename']['value'][0],
@@ -290,7 +290,7 @@ class ExcelBaseImporter:
                                                      'active': True,
                                                      'indexes': []})
                         self._names[key]['active'] = True
-                        item['active'] = True
+                        item['active'] = True if not item['after_stable'] else False
                         if item['col_data']:
                             for ind in item['col_data']:
                                 index = ind[0] + \

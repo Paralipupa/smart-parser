@@ -55,10 +55,10 @@
 ;/home/chip/work/polaris/input/0400/5902058953 тсж 25 октября,4.zip          |;;002_00a; 002_00a;
 ;/home/chip/work/polaris/input/0400/5903058138 ЖСК № 14.ZIP                  ; 002_00; 003_01h14
 ;/home/chip/work/polaris/input/0400/5903123926 ТСЖ Содружество.zip           |002_00; 002_00; 003_01sodrug
-;/home/chip/work/polaris/input/0400/5904299680 ТСЖ Бородинская 26.zip
-;/home/chip/work/polaris/input/0400/5908012923 ЖСК-29.ZIP
-;/home/chip/work/polaris/input/0400/5948031697 Фролы тсж.zip
-;/home/chip/work/polaris/input/0400/6165105380 ТСЖ Наш дом-2002.zip
+;/home/chip/work/polaris/input/0400/5904299680 ТСЖ Бородинская 26.zip        |002_00a
+;/home/chip/work/polaris/input/0400/5908012923 ЖСК-29.ZIP                    | ошибка чтения файла
+;/home/chip/work/polaris/input/0400/5948031697 Фролы тсж.zip                 |;;;002_03;002_03
+/home/chip/work/polaris/input/0400/6165105380 ТСЖ Наш дом-2002.zip          ;002_00a; 002_00a;
 ;/home/chip/work/polaris/input/0400/6166020997 Изобретатель ЖКУ.zip
 ;/home/chip/work/polaris/input/0400/6168004550 ТСЖ Вега.zip
 ;/home/chip/work/polaris/input/0400/6168202671 ТСЖ Эверест.zip
