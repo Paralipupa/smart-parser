@@ -57,7 +57,7 @@ def get_files():
         list_files = get_file_config(list_files)
     else:
         list_files.append(
-            {'name': file_name, 'config': file_conf, 'inn': inn, 'warning': list()})
+            {'name': file_name, 'config': file_conf, 'inn': inn, 'warning': list(),'zip':''})
 
     return list_files
 
@@ -75,13 +75,16 @@ def get_list_files(name: str) -> list:
                 result = []
                 if index != -1:
                     result = re.findall(
-                        """(?<=;)(?:(?:\s*[0-9]{3}_[0-9]{2}[a-z0-9_]*)|\s*)""", line)
+                        """(?<=;)(?:(?:\s*[0-9]{3}(?:(?:_[0-9]{2}[a-z0-9_]*)|\s*)))?""", line)
                     line = line[:index]
                 if line.strip():
                     l.append({'file': line.strip(), 'inn': '', 'config': []})
                     for item in result:
-                        l[-1]['config'].append(
-                            f'config/gisconfig_{item.strip()}.ini' if item.strip() else '')
+                        if item.strip() == '000':
+                            l[-1]['config'].append(item.strip())
+                        else:
+                            l[-1]['config'].append(
+                                f'{PATH_CONFIG}/gisconfig_{item.strip()}.ini' if item.strip() else '')
     return l
 
 
@@ -90,7 +93,7 @@ def get_file_config(list_files: list) -> str:
     i = 0
     for item in list_files:
         data_file = {'name': item['name'], 'config': item['config'],
-                     'inn': item['inn'], 'warning': list(), 'records': None}
+                     'inn': item['inn'], 'warning': list(), 'records': None, 'zip':item['zip']}
         if item['config']:
             ls_new.append(data_file)
         else:
@@ -154,7 +157,8 @@ def get_extract_files(archive_file: str, extract_dir: str = 'tmp') -> list:
             list_files.append({'name': new_name,
                               'inn': archive_file['inn'],
                                'config': conf,
-                               'warning': list()})
+                               'warning': list(),
+                               'zip':archive_file['file']})
             if i < len(archive_file['config'])-1:
                 i += 1
 

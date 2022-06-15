@@ -874,9 +874,9 @@ class ExcelBaseImporter:
 
     def write_collections(self, num: int = 0, output_format: str = '') -> NoReturn:
         if not self.is_init() or len(self._collections) == 0:
-            logging.warning('Не удалось прочитать данные из файла "{0}"\n'
-                            'проверьте параметр "condition_begin_team": "{1}" '
-                            .format(
+            logging.warning('Не удалось прочитать данные из файла "{0} - {1}"\n'
+                            'проверьте параметр "condition_begin_team":\n "{2}" '
+                            .format(self._parameters['inn']['value'][0],
                                 self._parameters['filename']['value'][0], self._config._condition_team[0]
                                 if self._config._condition_team else ''))
             return
