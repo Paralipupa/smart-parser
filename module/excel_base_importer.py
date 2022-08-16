@@ -557,7 +557,7 @@ class ExcelBaseImporter:
                 value = str(int(value.replace(',', '.').replace(' ', '')))
             elif type_value == 'double' or type_value == 'float':
                 value = str(
-                    round(float(value.replace(',', '.').replace(' ', '')), 2))
+                    round(self._get_float(value), 2))
         except:
             pass
         result = regular_calc(pattern, value)
@@ -566,7 +566,7 @@ class ExcelBaseImporter:
                 result = int(result.replace(',', '.').replace(' ', ''))
             elif type_value == 'double' or type_value == 'float':
                 result = round(
-                    float(result.replace(',', '.').replace(' ', '')), 2)
+                    self._get_float(result), 2)
         except:
             result = 0
         return result
@@ -586,11 +586,11 @@ class ExcelBaseImporter:
         except:
             return 0
 
-    def _get_float(self, value: str) -> int:
+    def _get_float(self, value: str) -> float:
         try:
             if value:
                 if isinstance(value, str):
-                    return float(value.replace(',', '.').replace(' ', ''))
+                    return float(value.replace(',', '.').replace(' ', '').replace(chr(160),''))
                 else:
                     return 0
             else:
