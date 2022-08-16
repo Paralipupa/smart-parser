@@ -1069,7 +1069,8 @@ class ExcelBaseImporter:
         try:
             for name_func_add in fld_param['func'].split(','):
                 value = 0 if fld_param['type'] == 'float' or fld_param['offset_type'] == 'float' else ''
-                for name_func in name_func_add.split('+'):
+                for index, name_func in enumerate(re.split(r"[+-]", name_func_add)):
+                # for name_func in re.split(r"[+-]", name_func_add):
                     name_func, data_calc, is_check = self.__get_func_name(
                         name_func=name_func, data=data)
                     try:
@@ -1082,7 +1083,10 @@ class ExcelBaseImporter:
                     else:
                         x = f(data_calc, row, col, team)
                         if isinstance(value, float) or isinstance(value, int):
-                            value += self._get_value(x, '.+', 'float')
+                            if name_func_add.find(f'-{name_func}') != -1 and index != 0:
+                                value -= self._get_value(x, '.+', 'float')
+                            else:
+                                value += self._get_value(x, '.+', 'float')
                             value = round(value, 2)
                         else:
                             value += x + ' '
