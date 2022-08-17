@@ -567,6 +567,8 @@ class ExcelBaseImporter:
             elif type_value == 'double' or type_value == 'float':
                 result = round(
                     self._get_float(result), 2)
+            else:
+                result += ' '
         except:
             result = 0
         return result
@@ -657,6 +659,8 @@ class ExcelBaseImporter:
             else:
                 value = round(value, 2) if isinstance(
                     value, float) else value
+        else:
+            value = value.lstrip()
         return value
 
     # если есть смещение, то берем данные от туда
@@ -832,7 +836,7 @@ class ExcelBaseImporter:
                 doc[record['name']].append(
                     {'row': len(doc[record['name']]), 'col': col[0], 'value': ''
                      if (isinstance(record['value'], int) or isinstance(record['value'], float))
-                     and record['value'] == 0 else str(record['value'])})
+                     and record['value'] == 0 else str(record['value']).strip()})
         return doc
 
 # Разбиваем данные документа по-строчно
@@ -1070,7 +1074,6 @@ class ExcelBaseImporter:
             for name_func_add in fld_param['func'].split(','):
                 value = 0 if fld_param['type'] == 'float' or fld_param['offset_type'] == 'float' else ''
                 for index, name_func in enumerate(re.split(r"[+-]", name_func_add)):
-                # for name_func in re.split(r"[+-]", name_func_add):
                     name_func, data_calc, is_check = self.__get_func_name(
                         name_func=name_func, data=data)
                     try:
