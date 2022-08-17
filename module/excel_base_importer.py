@@ -33,7 +33,7 @@ class ExcelBaseImporter:
         self._names = dict()  # колонки таблицы
         self._parameters = dict()  # параметры отчета (период, и др.)
         self._parameters['filename'] = {'fixed': True, 'value': [file_name]}
-        self._parameters['inn'] = {'fixed': True, 'value': [inn]}
+        self._parameters['inn'] = {'fixed': True, 'value': [inn if inn else '00000000']}
         self._parameters['config'] = {'fixed': True, 'value': [config_file]}
         self._collections = dict()  # коллекция выходных таблиц
         self._config = GisConfig(config_file)
@@ -119,11 +119,12 @@ class ExcelBaseImporter:
             return True
         elif len(self._teams) != 0:
             for key in mapped_record.keys():
-                size = len(self._teams[-1][key])
-                self._teams[-1][key].append({'row': size,
-                                            'col': self._teams[-1][key][0]['col'],
-                                             'index': self._teams[-1][key][0]['index'],
-                                             'value': mapped_record[key][0]['value']})
+                size = self._teams[-1][key][-1]['row'] + 1
+                for mr in mapped_record[key]:
+                    self._teams[-1][key].append({'row': size,
+                                                'col': mr['col'],
+                                                'index': mr['index'],
+                                                'value': mr['value']})
         return False
 
     def check(self, is_warning: bool = False) -> bool:
@@ -1143,7 +1144,7 @@ class ExcelBaseImporter:
 
     def func_id(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
         d = self._parameters['period']['value'][0]
-        return f'{data}_{d[6:]}_{d[3:5]}'
+        return f'{str(data).strip()}_{d[6:]}_{d[3:5]}'
 
     def func_column_name(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
         if col != -1:
@@ -1153,21 +1154,19 @@ class ExcelBaseImporter:
     def func_column_value(self, data: str = '', row: int = -1, col: int = 0, team: dict = {}):
         value = next((x[row]['value']
                      for x in team.values() if x[row]['col'] == int(data)), '')
-        # value = next((x[row]['value']
-        #              for x in team.values() if x[row]['col'] == col+int(data)), '')
         return value
 
-    def func_param(self, key: str = '', row: int = -1, col: int = -1, team: dict = {}):
+    def func_param(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
         m = ''
-        for item in self._parameters[key]['value']:
+        for item in self._parameters[data]['value']:
             m += (item.strip() + ' ') if isinstance(item, str) else ''
         return f'{m.strip()}'
 
     def func_spacerem(self, data: str = '', row: int = -1, col: int = 0, team: dict = {}):
-        return data.replace(' ', '')
+        return data.strip().replace(' ', '')
 
     def func_spacerepl(self, data: str = '', row: int = -1, col: int = 0, team: dict = {}):
-        return data.replace(' ', '_')
+        return data.strip().replace(' ', '_')
 
     def func_round2(self, data: str = '', row: int = -1, col: int = 0, team: dict = {}):
         return str(round(data, 2)) if isinstance(data, float) else data

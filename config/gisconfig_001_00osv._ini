@@ -369,7 +369,7 @@ func=id,guid
 name=calc_value
 col_config=0
 pattern=водоотведение
-offset_pattern=^\d{1,6}(?:\.\d{1,2})?$
+offset_pattern=^-?\d{1,6}(?:[\.,]\d{1,2})?$
 offset_col_config=2
 
 [pp_charges_3_0]
@@ -377,7 +377,7 @@ offset_col_config=2
 name=calc_value
 col_config=0
 pattern=холод
-offset_pattern=^\d{1,6}(?:\.\d{1,2})?$
+offset_pattern=^-?\d{1,6}(?:[\.,]\d{1,2})?$
 offset_col_config=2
 
 
@@ -433,6 +433,6 @@ func=
 name=accounting_period_total
 pattern=@3
 col_config=0
-offset_pattern=^\d{1,6}(?:\.\d{1,2})?$
+offset_pattern=^-?\d{1,6}(?:[\.,]\d{1,2})?$
 offset_col_config=2
 
