@@ -32,12 +32,12 @@ class ExcelBaseImporter:
         ), 'foot': list()}  # список  записей до и после табличных данных
         self._names = dict()  # колонки таблицы
         self._parameters = dict()  # параметры отчета (период, и др.)
-        self._parameters['inn'] = {'fixed': True, 'value': [inn if inn else '00000000']}
+        self._parameters['inn'] = {'fixed': True,
+                                   'value': [inn if inn else '00000000']}
         self._parameters['filename'] = {'fixed': True, 'value': [file_name]}
         self._parameters['config'] = {'fixed': True, 'value': [config_file]}
         self._collections = dict()  # коллекция выходных таблиц
         self._config = GisConfig(config_file)
-
 
     @fatal_error
     def is_verify(self, file_name: str) -> bool:
@@ -111,7 +111,7 @@ class ExcelBaseImporter:
                 v = record[index[0]]
                 is_empty = is_empty and (v == '' or v is None)
                 result_record[key].append(
-                    {'row': size, 'col': value['col'], 'index': index[0], 'value': v, 'negative': index[1] })
+                    {'row': size, 'col': value['col'], 'index': index[0], 'value': v, 'negative': index[1]})
         return result_record if not is_empty else None
 
     def append_team(self, mapped_record: list) -> bool:
@@ -124,9 +124,9 @@ class ExcelBaseImporter:
                 for mr in mapped_record[key]:
                     self._teams[-1][key].append({'row': size,
                                                 'col': mr['col'],
-                                                'index': mr['index'],
-                                                'value': mr['value'],
-                                                'negative': mr['negative']})
+                                                 'index': mr['index'],
+                                                 'value': mr['value'],
+                                                 'negative': mr['negative']})
         return False
 
     def check(self, is_warning: bool = False) -> bool:
@@ -298,9 +298,10 @@ class ExcelBaseImporter:
                             for ind in item['col_data']:
                                 index = ind[0] + \
                                     search_name['col'] if not ind[1] else 0
-                                # добавляем номер колонки в таблице с данными для суммирования значений                                
-                                item['indexes'].append((index, ind[2] ))
-                                self._names[key]['indexes'].append((index, ind[2]))
+                                # добавляем номер колонки в таблице с данными для суммирования значений
+                                item['indexes'].append((index, ind[2]))
+                                self._names[key]['indexes'].append(
+                                    (index, ind[2]))
                         else:
                             item['indexes'].append((search_name['col'], False))
                             self._names[key]['indexes'].append(
@@ -560,8 +561,7 @@ class ExcelBaseImporter:
             if type_value == 'int':
                 value = str(int(value.replace(',', '.').replace(' ', '')))
             elif type_value == 'double' or type_value == 'float':
-                value = str(
-                    round(self._get_float(value), 2))
+                value = str(self._get_float(value))
         except:
             pass
         result = regular_calc(pattern, value)
@@ -569,8 +569,7 @@ class ExcelBaseImporter:
             if type_value == 'int':
                 result = int(result.replace(',', '.').replace(' ', ''))
             elif type_value == 'double' or type_value == 'float':
-                result = round(
-                    self._get_float(result), 2)
+                result = self._get_float(result)
             else:
                 result += ' '
         except:
@@ -596,7 +595,7 @@ class ExcelBaseImporter:
         try:
             if value:
                 if isinstance(value, str):
-                    return float(value.replace(',', '.').replace(' ', '').replace(chr(160),''))
+                    return float(value.replace(',', '.').replace(' ', '').replace(chr(160), ''))
                 else:
                     return 0
             else:
@@ -661,13 +660,7 @@ class ExcelBaseImporter:
                 else:
                     value += self._get_value(
                         val_item['value'], pattern, type_fld)
-        if (type_fld == 'float' or type_fld == 'double' or type_fld == 'int'):
-            if value == 0:
-                value = 0
-            else:
-                value = round(value, 2) if isinstance(
-                    value, float) else value
-        else:
+        if not (type_fld == 'float' or type_fld == 'double' or type_fld == 'int'):
             value = value.lstrip()
         return value
 
@@ -770,11 +763,13 @@ class ExcelBaseImporter:
                                     if not param['offset_col']:
                                         param['offset_col'].append((0, False))
                                     result = self._get_value_after_validation(param['offset_pattern'],
-                                            'head' if is_head else 'foot',
-                                            param['offset_row'][0][0] + row[0] if not param['offset_row'][0][1] else param['offset_row'][0][0],
-                                            param['offset_col'][0][0] + col[0] if not param['offset_col'][0][1] else param['offset_col'][0][0])
+                                                                              'head' if is_head else 'foot',
+                                                                              param['offset_row'][0][0] +
+                                                                              row[0] if not param['offset_row'][0][1] else param['offset_row'][0][0],
+                                                                              param['offset_col'][0][0] + col[0] if not param['offset_col'][0][1] else param['offset_col'][0][0])
                                 if result:
-                                    self._parameters[name]['value'].append(result)
+                                    self._parameters[name]['value'].append(
+                                        result)
                                     break
 
         return self._parameters[name]
@@ -890,8 +885,8 @@ class ExcelBaseImporter:
                             'проверьте параметр "condition_begin_team=":\n "{2}" '
                             'и "required_fields="'
                             .format(self._parameters['inn']['value'][-1],
-                                self._parameters['filename']['value'][0], self._config._condition_team[0]
-                                if self._config._condition_team else ''))
+                                    self._parameters['filename']['value'][0], self._config._condition_team[0]
+                                    if self._config._condition_team else ''))
             return
 
         os.makedirs(self._parameters['path']['value'][0], exist_ok=True)
@@ -1074,6 +1069,8 @@ class ExcelBaseImporter:
             'spacerem': self.func_spacerem,
             'spacerepl': self.func_spacerepl,
             'round2': self.func_round2,
+            'round4': self.func_round4,
+            'round6': self.func_round6,
             'opposite': self.func_opposite,
             'param': self.func_param,
             'id': self.func_id,
@@ -1088,20 +1085,20 @@ class ExcelBaseImporter:
                     try:
                         f = dic_f[name_func.strip()]
                     except Exception as ex:
-                        return name_func
-                    if is_check:
-                        if f(data_calc, row, col, team):
-                            value += data_calc + ' '
+                        value = name_func
                     else:
-                        x = f(data_calc, row, col, team)
-                        if isinstance(value, float) or isinstance(value, int):
-                            if name_func_add.find(f'-{name_func}') != -1 and index != 0:
-                                value -= self._get_value(x, '.+', 'float')
-                            else:
-                                value += self._get_value(x, '.+', 'float')
-                            value = round(value, 2)
+                        if is_check:
+                            if f(data_calc, row, col, team):
+                                value += data_calc + ' '
                         else:
-                            value += x + ' '
+                            x = f(data_calc, row, col, team)
+                            if isinstance(value, float) or isinstance(value, int):
+                                if name_func_add.find(f'-{name_func}') != -1 and index != 0:
+                                    value -= self._get_value(x, '.+', 'float')
+                                else:
+                                    value += self._get_value(x, '.+', 'float')
+                            else:
+                                value += x + ' '
                 data = str(value).strip()
                 if pattern:
                     if isinstance(value, float):
@@ -1178,6 +1175,12 @@ class ExcelBaseImporter:
 
     def func_round2(self, data: str = '', row: int = -1, col: int = 0, team: dict = {}):
         return str(round(data, 2)) if isinstance(data, float) else data
+
+    def func_round4(self, data: str = '', row: int = -1, col: int = 0, team: dict = {}):
+        return str(round(data, 4)) if isinstance(data, float) else data
+
+    def func_round6(self, data: str = '', row: int = -1, col: int = 0, team: dict = {}):
+        return str(round(data, 6)) if isinstance(data, float) else data
 
     def func_opposite(self, data: str = '', row: int = -1, col: int = 0, team: dict = {}):
         return str(-data) if isinstance(data, float) else data
