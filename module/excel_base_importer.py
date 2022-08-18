@@ -32,11 +32,12 @@ class ExcelBaseImporter:
         ), 'foot': list()}  # список  записей до и после табличных данных
         self._names = dict()  # колонки таблицы
         self._parameters = dict()  # параметры отчета (период, и др.)
-        self._parameters['filename'] = {'fixed': True, 'value': [file_name]}
         self._parameters['inn'] = {'fixed': True, 'value': [inn if inn else '00000000']}
+        self._parameters['filename'] = {'fixed': True, 'value': [file_name]}
         self._parameters['config'] = {'fixed': True, 'value': [config_file]}
         self._collections = dict()  # коллекция выходных таблиц
         self._config = GisConfig(config_file)
+
 
     @fatal_error
     def is_verify(self, file_name: str) -> bool:
@@ -107,10 +108,10 @@ class ExcelBaseImporter:
             result_record.setdefault(key, [])
             size = len(result_record[key])
             for index in value['indexes']:
-                v = record[index]
+                v = record[index[0]]
                 is_empty = is_empty and (v == '' or v is None)
                 result_record[key].append(
-                    {'row': size, 'col': value['col'], 'index': index, 'value': v})
+                    {'row': size, 'col': value['col'], 'index': index[0], 'value': v, 'negative': index[1] })
         return result_record if not is_empty else None
 
     def append_team(self, mapped_record: list) -> bool:
@@ -124,7 +125,8 @@ class ExcelBaseImporter:
                     self._teams[-1][key].append({'row': size,
                                                 'col': mr['col'],
                                                 'index': mr['index'],
-                                                'value': mr['value']})
+                                                'value': mr['value'],
+                                                'negative': mr['negative']})
         return False
 
     def check(self, is_warning: bool = False) -> bool:
@@ -169,8 +171,8 @@ class ExcelBaseImporter:
                         is_active_find = True
                 else:
                     c = ''
-                    for i in item['indexes']:
-                        c += f"({item['row']},{i}) "
+                    for index in item['indexes']:
+                        c += f"({item['row']},{index[0]}) "
                     s2 += f"{item['name']} {c}\n"
 
             if is_active_find:
@@ -186,7 +188,7 @@ class ExcelBaseImporter:
             else:
                 s = 'Найдены колонки:'
                 for key, value in self._names.items():
-                    s += f"\n{key} - {value['indexes'][0]}"
+                    s += f"\n{key} - {value['indexes'][0][0]}"
                 self._config._warning.append('\n{0}:\nВ загружаемом файле "{1}" \
                 \nне верен шаблон нахождения начала области данных(({3})condition_begin_team(\n{2}\n))\n{4}\n'
                                              .format(
@@ -252,7 +254,7 @@ class ExcelBaseImporter:
             # список уже добавленных колонок, которые нужно исключить при следующем прохождении
             cols_exclude = list()
             for x in [x['indexes'] for x in self._names.values()]:
-                cols_exclude.extend(x)
+                cols_exclude.extend([x[0][0]])
             # сначала проверяем обязательные колонки
             for item in self.get_columns_heading():
                 if (not item['active'] or item['duplicate']) and not item['optional'] and item['pattern'][0]:
@@ -296,12 +298,13 @@ class ExcelBaseImporter:
                             for ind in item['col_data']:
                                 index = ind[0] + \
                                     search_name['col'] if not ind[1] else 0
-                                item['indexes'].append(index)
-                                self._names[key]['indexes'].append(index)
+                                # добавляем номер колонки в таблице с данными для суммирования значений                                
+                                item['indexes'].append((index, ind[2] ))
+                                self._names[key]['indexes'].append((index, ind[2]))
                         else:
-                            item['indexes'].append(search_name['col'])
+                            item['indexes'].append((search_name['col'], False))
                             self._names[key]['indexes'].append(
-                                search_name['col'])
+                                (search_name['col'], False))
                         item['row'] = row
                         is_find = True
                         cols_exclude.append(search_name['col'])
@@ -410,7 +413,7 @@ class ExcelBaseImporter:
         if item[name]:
             name_field = self._get_key(item[name][0][0])
             if name_field:
-                col = self._names[name_field]['indexes'][0]
+                col = self._names[name_field]['indexes'][0][0]
         return col
 
     def _get_rows_header(self) -> set:
@@ -652,8 +655,12 @@ class ExcelBaseImporter:
         value = self._get_value(type_value=type_fld)
         for val_item in team:
             if val_item['row'] == row:
-                value += self._get_value(
-                    val_item['value'], pattern, type_fld)
+                if (type_fld == 'int' or type_fld == 'float') and val_item['negative']:
+                    value -= self._get_value(
+                        val_item['value'], pattern, type_fld)
+                else:
+                    value += self._get_value(
+                        val_item['value'], pattern, type_fld)
         if (type_fld == 'float' or type_fld == 'double' or type_fld == 'int'):
             if value == 0:
                 value = 0
@@ -880,8 +887,9 @@ class ExcelBaseImporter:
     def write_collections(self, num: int = 0, output_format: str = '') -> NoReturn:
         if not self.is_init() or len(self._collections) == 0:
             logging.warning('Не удалось прочитать данные из файла "{0} - {1}"\n'
-                            'проверьте параметр "condition_begin_team":\n "{2}" '
-                            .format(self._parameters['inn']['value'][0],
+                            'проверьте параметр "condition_begin_team=":\n "{2}" '
+                            'и "required_fields="'
+                            .format(self._parameters['inn']['value'][-1],
                                 self._parameters['filename']['value'][0], self._config._condition_team[0]
                                 if self._config._condition_team else ''))
             return
@@ -893,7 +901,7 @@ class ExcelBaseImporter:
             for key, records in pages.items():
                 file_output = pathlib.Path(
                     self._parameters['path']['value'][0],
-                    f'{self._parameters["inn"]["value"][0]}{"_"+str(num) if num != 0 else ""}' +
+                    f'{self._parameters["inn"]["value"][-1]}{"_"+str(num) if num != 0 else ""}' +
                     f'{"_"+key.replace(" ","_") if key != "noname" else ""}{id}_{name}')
                 if not output_format or output_format == 'json':
                     with open(f'{file_output}.json', mode='a', encoding='utf-8') as file:
@@ -919,14 +927,14 @@ class ExcelBaseImporter:
 
         i = 0
         file_output = pathlib.Path(
-            PATH_LOG, f'{self._parameters["inn"]["value"][0]}{"_"+str(num) if num != 0 else ""}{id}')
+            PATH_LOG, f'{self._parameters["inn"]["value"][-1]}{"_"+str(num) if num != 0 else ""}{id}')
         with open(f'{file_output}.log', 'w') as file:
 
             file.write(f'{{')
             for key, value in self._parameters.items():
                 file.write(f'\t{key}:"')
-                for val in value["value"]:
-                    file.write(f'{val} ')
+                for index in value["value"]:
+                    file.write(f'{index} ')
                 file.write(f'",\n')
             file.write(f'}},\n')
 
@@ -935,8 +943,8 @@ class ExcelBaseImporter:
                 if item['row'] != -1:
                     file.write(
                         f"\t({item['col']}){item['name']}:  row={item['row']} col=")
-                    for val in item["indexes"]:
-                        file.write(f'{val},')
+                    for index in item["indexes"]:
+                        file.write(f'{index[0]},')
                     file.write(f'",\n')
             file.write(f'}},\n\n')
 
@@ -1119,7 +1127,7 @@ class ExcelBaseImporter:
         return name_func, data, is_check
 
     def func_inn(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
-        return self._parameters['inn']['value'][0]
+        return self._parameters['inn']['value'][-1]
 
     def func_period(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
         return self._parameters['period']['value'][0]

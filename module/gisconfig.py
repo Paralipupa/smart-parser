@@ -310,7 +310,8 @@ class GisConfig:
             fld['offset_column'] = x
         else:
             fld.setdefault('offset_column', x)
-        fld['is_offset'] = (len(fld['offset_column'])!=0 or len(fld['offset_row'])!=0)
+        fld['is_offset'] = (len(fld['offset_column']) !=
+                            0 or len(fld['offset_row']) != 0)
         # шаблон поиска (регулярное выражение)
         x = self.read_config(f'{name}', 'offset_pattern')
         if x:
@@ -373,7 +374,8 @@ class GisConfig:
             fld['sub'] = []
             j = 0
             while self.read_config(f'{doc["name"]}_{i}_{j}', 'pattern'):
-                fld_sub = self.set_doc_field(fld.copy(), f'{doc["name"]}_{i}_{j}')
+                fld_sub = self.set_doc_field(
+                    fld.copy(), f'{doc["name"]}_{i}_{j}')
                 fld_sub['sub'] = []
                 fld['sub'].append(fld_sub)
                 j += 1
@@ -387,7 +389,6 @@ class GisConfig:
             self.set_fld_pattern_ref(fld, doc)
             for fld_sub in fld['sub']:
                 self.set_fld_pattern_ref(fld_sub, doc)
-
 
     def field_copy(self, fld: dict) -> dict:
         copy_fld = fld.copy()
@@ -433,12 +434,11 @@ class GisConfig:
                           + str(i) for i in range(int(n_start), int(n_end)+1)])
             x = x.replace(result, y)
 
-        # rows = [int(i) for i in x.split(',')]
         try:
-            rows = [(int(i), False if not i or (
-                i[0] == '+' or i[0] == '-') else True) for i in x.split(',')]
+            rows = [(int(i.replace('(', '').replace(')', '')), False if not i or (
+                i[0] == '+' or i[0] == '-') else True, False if i.find('(') == -1 else True) for i in x.split(',')]
         except Exception as ex:
-            x = 0
+            rows = []
         return rows
 
     def read_config(self, name_section: str, name_param: str, isNumeric: bool = False):
