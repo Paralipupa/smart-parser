@@ -7,12 +7,10 @@ import pathlib
 import uuid
 import csv
 import json
-from operator import is_
 from ast import Return
-from asyncio.log import logger
 from typing import NoReturn, Union
 from itertools import product
-from .gisconfig import GisConfig, fatal_error, warning_error, regular_calc, PATH_LOG, PATH_OUTPUT
+from .gisconfig import GisConfig, fatal_error, warning_error, regular_calc, PATH_LOG
 from .file_readers import get_file_reader
 
 db_logger = logging.getLogger('parser')
@@ -33,7 +31,7 @@ class ExcelBaseImporter:
         self._names = dict()  # колонки таблицы
         self._parameters = dict()  # параметры отчета (период, и др.)
         self._parameters['inn'] = {'fixed': True,
-                                   'value': [inn if inn else '00000000']}
+                                   'value': [inn if inn else '0000000000']}
         self._parameters['filename'] = {'fixed': True, 'value': [file_name]}
         self._parameters['config'] = {'fixed': True, 'value': [config_file]}
         self._collections = dict()  # коллекция выходных таблиц
@@ -420,16 +418,16 @@ class ExcelBaseImporter:
     def _get_rows_header(self) -> set:
         return {x['row'] for x in self._names.values()}
 
-    def _get_check_pattern(self) -> list:
-        rows: list[int] = self.get_check('row')
+    def _get_check_pattern(self) -> list:        
+        rows: list[int] = self.get_check('row') # раздел [check]
         if not rows:
             rows.append((0, False))
         patts = list()
-        p = self.get_check('pattern')
+        p = self.get_check('pattern') # раздел [check]
         patts.append({'pattern': p, 'full': True,
                      'find': p == '', 'maxrow': rows[-1][0]})
         i = 0
-        p = self.get_check(f'pattern_{i}')
+        p = self.get_check(f'pattern_{i}')  # раздел [check]
         while p:
             p = self.get_check(f'pattern_{i}')
             patts.append({'pattern': p, 'full': True,
@@ -437,6 +435,7 @@ class ExcelBaseImporter:
             i += 1
             p = self.get_check(f'pattern_{i}')
 
+        # разделы [col_]
         for item in self._config._columns_heading:
             s = ''
             for patt in item['pattern']:
@@ -503,7 +502,7 @@ class ExcelBaseImporter:
         if not f:
             return True
         patt = [self._config._check['func_pattern']]
-        item_fld = {'func': f, 'func_pattern': patt,
+        item_fld = {'func': f, 'func_pattern': patt, 'is_offset': False,
                     'type': '', 'offset_type': '', 'value': '', 'value_o': ''}
         value = self.func(
             team=dict(), fld_param=item_fld, row=0, col=0)
@@ -797,10 +796,11 @@ class ExcelBaseImporter:
         for item_fld in doc_param['fields']:  # перебор полей выходной таблицы
             doc.setdefault(item_fld['name'], list())
             # Формируем записи в выходном файле
+            main_rows_exclude = set()
+            offset_rows_exclude = set()
+            for table_row in doc_param['rows_exclude']:
+                main_rows_exclude.add(table_row[0])
             fld_records = self._get_data_records(item_fld)
-            records_exclude = set()
-            for row in doc_param['rows_exclude']:
-                records_exclude.add(row[0])
             for fld_record in fld_records:
                 if not fld_record['column'] or not fld_record['pattern'] or not fld_record['pattern'][0]:
                     continue
@@ -808,38 +808,34 @@ class ExcelBaseImporter:
                 name_field = self._get_key(col[0])
                 if not name_field:
                     continue
-                for row in fld_record['rows_exclude']:
-                    records_exclude.add(row[0])
-                rows = self._get_value_range(
+                for table_row in fld_record['rows_exclude']:
+                    main_rows_exclude.add(table_row[0])
+                table_rows = self._get_value_range(
                     fld_record['row'], len(team[name_field]))
-                for row in rows:  # обрабатываем все строки области данных
-                    if len(team[name_field]) > row[0]:
-                        if not row[0] in records_exclude:
+                for table_row in table_rows:  # обрабатываем все строки области данных
+                    if len(team[name_field]) > table_row[0]: 
+                        if not table_row[0] in main_rows_exclude:
                             for patt in fld_record['pattern']:
                                 x = self._get_fld_value(
                                     team=team[name_field],
                                     type_fld=fld_record['type'],
-                                    pattern=patt, row=row[0])
+                                    pattern=patt, row=table_row[0])
                                 if x:
                                     fld_record['value'] += x if not isinstance(
                                         x, str) or fld_record['value'].find(x) == -1 else ''
                                     if fld_record['is_offset']:
-                                        # если есть смещение, то берем данные от туда
-                                        x = self._get_value_offset(
-                                            team, fld_record, row[0], col[0])
-                                        if x:
-                                            fld_record['value_o'] += x if not isinstance(
-                                                x, str) or fld_record['value_o'].find(x.strip()) == -1 else ''
-                                    # records_exclude[row[0]] = (
-                                    #     fld_record['value'], fld_record['value_o'])
+                                        if not table_row[0] in offset_rows_exclude:
+                                            # если есть смещение, то берем данные от туда
+                                            fld_record['value_o'] = self._get_value_offset(
+                                                team, fld_record, table_row[0], col[0])
+                                            offset_rows_exclude.add(table_row[0])
+                                    else:
+                                        main_rows_exclude.add(table_row[0])
                                     break  # пропускаем проверку по остальным шаблонам
-                        # else:
-                        #     fld_record['value'] += records_exclude[row[0]][0]
-                        #     fld_record['value_o'] += records_exclude[row[0]][1]
                 if fld_record['func']:
                     # запускаем функцию и передаем в нее полученное значение
                     fld_record['value'] = self.func(
-                        team=team, fld_param=fld_record, row=row[0], col=col[0])
+                        team=team, fld_param=fld_record, row=table_row[0], col=col[0])
                 elif fld_record['is_offset']:
                     fld_record['value'] = fld_record['value_o']
                     fld_record['type'] = fld_record['offset_type']
@@ -892,15 +888,13 @@ class ExcelBaseImporter:
     def write_collections(self, num: int = 0, output_format: str = '') -> NoReturn:
         if not self.is_init() or len(self._collections) == 0:
             logging.warning('Не удалось прочитать данные из файла "{0} - {1}"\n'
-                            'смотри логи'
-                            'и "required_fields="'
                             .format(self._parameters['inn']['value'][-1],
-                                    self._parameters['filename']['value'][0], self._config._condition_team[0]
-                                    if self._config._condition_team else ''))
+                                    self._parameters['filename']['value'][0]))
             return
 
         os.makedirs(self._parameters['path']['value'][0], exist_ok=True)
 
+        self._current_value=''
         id = self.func_id()
         for name, pages in self._collections.items():
             for key, records in pages.items():
@@ -1133,10 +1127,7 @@ class ExcelBaseImporter:
             # если функция с параметром, то заменяем входные данные (data) на этот параметр
             result = regular_calc(
                 r'(?<=\()[\w_0-9-]+(?=\))', name_func)
-            if result and result.find('error') == -1:
-                data = result
-            name_func = name_func[:name_func.find('(')]
-        if name_func.find('check_') != -1:
+            if result and result.find('error') == -1:self._current_value
             name_func = name_func.replace('check_', '')
             is_check = True
         return name_func, data, is_check

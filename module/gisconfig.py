@@ -31,6 +31,7 @@ def warning_error(func):
         try:
             return func(*args)
         except Exception as ex:
+            # db_logger.warning(f'{str(func)} {str(ex)}')
             return None
     return wrapper
 

@@ -20,6 +20,7 @@ def createParser() -> argparse.ArgumentParser:
     parser.add_argument('-u', '--union', nargs='?')
     return parser
 
+
 def remove_files(path: str):
     os.remove(path=path)
 
@@ -33,7 +34,7 @@ def get_config_files():
     return files
 
 
-def get_files(namespace : argparse.Namespace) -> list:
+def get_files(namespace: argparse.Namespace) -> list:
     inn = namespace.inn
     file_conf = namespace.config
     file_name = namespace.name
@@ -95,45 +96,42 @@ def get_file_config(list_files: list) -> str:
         data_file = {'name': item['name'], 'config': item['config'],
                      'inn': item['inn'], 'warning': list(), 'records': None, 'zip': item['zip']}
         if item['config']:
-            ls_new.append(data_file)
+            ls_new.append(__config_process(data_file, item['config']))
         else:
-            ls_new.append(get_data_file(
+            ls_new.append(__config_find(
                 data_file, config_files, i, len(list_files)))
         i += 1
     return ls_new
 
 
-def get_data_file(data_file: dict, config_files: list, j: int, m: int) -> dict:
+def __config_find(data_file: dict, config_files: list, j: int, m: int) -> dict:
     ls = list()
     i = 0
     for conf_file in config_files:
-        data_file = __check_config(data_file, conf_file)
         print('Поиск конфигураций: {}%   \r'.format(
             round((j*len(config_files)+i)/(m*len(config_files))*100, 0)), end='', flush=True)
-        i += 1
+        data_file = __config_process(data_file, pathlib.Path(PATH_CONFIG, f'{conf_file}'))
         if data_file['config']:
             break
+        i += 1
     return data_file
 
 
-def __check_config(data_file, conf_file):
-    if conf_file.find('.ini') != -1:
-        file_config = pathlib.Path(PATH_CONFIG, f'{conf_file}')
-        rep = Report_001_00(file_name=data_file['name'],
-                            config_file=str(file_config), inn=data_file['inn'], data=data_file['records'])
-        if rep.is_file_exists:
-            if not rep._config._is_unique:
-                if rep.check():
-                    data_file['config'] = file_config
-                    return data_file
-                elif rep._config._warning:
-                    for w in rep._config._warning:
-                        data_file['warning'].append(w)
-                data_file['records'] = rep._headers
-        if not rep.is_file_exists:
-            data_file['warning'].append(
-                'ФАЙЛ НЕ НАЙДЕН или ПОВРЕЖДЕН "{}". skip'.format(data_file['name']))
-            return data_file
+def __config_process(data_file: dict, file_config):
+    rep = Report_001_00(file_name=data_file['name'],
+                        config_file=str(file_config), inn=data_file['inn'], data=data_file['records'])
+    if rep.is_file_exists:
+        if not rep._config._is_unique:
+            if rep.check():
+                data_file['config'] = file_config
+                return data_file
+            elif rep._config._warning:
+                for w in rep._config._warning:
+                    data_file['warning'].append(w)
+            data_file['records'] = rep._headers
+    if not rep.is_file_exists:
+        data_file['warning'].append(
+            'ФАЙЛ НЕ НАЙДЕН или ПОВРЕЖДЕН "{}". skip'.format(data_file['name']))
     return data_file
 
 
