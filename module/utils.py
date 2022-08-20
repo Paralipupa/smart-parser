@@ -1,7 +1,7 @@
 import zipfile
 import os
 import re
-import sys
+import argparse
 from datetime import datetime
 from report.report_001_00 import Report_001_00
 from .gisconfig import PATH_OUTPUT, PATH_LOG, PATH_TMP, PATH_CONFIG
@@ -11,6 +11,14 @@ import logging
 db_logger = logging.getLogger('parser')
 config_files = []
 
+
+def createParser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-n', '--name', nargs='?')
+    parser.add_argument('-i', '--inn', nargs='?')
+    parser.add_argument('-c', '--config', nargs='?')
+    parser.add_argument('-u', '--union', nargs='?')
+    return parser
 
 def remove_files(path: str):
     os.remove(path=path)
@@ -25,25 +33,17 @@ def get_config_files():
     return files
 
 
-def get_files():
-    if len(sys.argv) <= 1:
-        logging.warning(
-            'run with parameters:  <file.lst>|<file.xsl>|<file.zip> [<inn>] [<config.ini>]')
-        exit()
-    inn = ''
+def get_files(namespace : argparse.Namespace) -> list:
+    inn = namespace.inn
+    file_conf = namespace.config
+    file_name = namespace.name
     global config_files
     config_files = get_config_files()
-    file_conf = ''
-    if len(sys.argv) > 2:
-        inn = sys.argv[2]
-    if len(sys.argv) > 3:
-        file_conf = sys.argv[3]
-    file_name = sys.argv[1]
     list_files = list()
     zip_files = list()
 
     if file_name.find('.lst') != -1:
-        zip_files = get_list_files(sys.argv[1])
+        zip_files = get_list_files(file_name)
     elif file_name.lower().find('.zip') != -1:
         zip_files.append({'file': file_name, 'inn': inn, 'config': ''})
 
@@ -57,7 +57,7 @@ def get_files():
         list_files = get_file_config(list_files)
     else:
         list_files.append(
-            {'name': file_name, 'config': file_conf, 'inn': inn, 'warning': list(),'zip':''})
+            {'name': file_name, 'config': file_conf, 'inn': inn, 'warning': list(), 'zip': ''})
 
     return list_files
 
@@ -93,7 +93,7 @@ def get_file_config(list_files: list) -> str:
     i = 0
     for item in list_files:
         data_file = {'name': item['name'], 'config': item['config'],
-                     'inn': item['inn'], 'warning': list(), 'records': None, 'zip':item['zip']}
+                     'inn': item['inn'], 'warning': list(), 'records': None, 'zip': item['zip']}
         if item['config']:
             ls_new.append(data_file)
         else:
@@ -158,7 +158,7 @@ def get_extract_files(archive_file: str, extract_dir: str = 'tmp') -> list:
                               'inn': archive_file['inn'],
                                'config': conf,
                                'warning': list(),
-                               'zip':archive_file['file']})
+                               'zip': archive_file['file']})
             if i < len(archive_file['config'])-1:
                 i += 1
 

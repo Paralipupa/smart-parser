@@ -504,9 +504,9 @@ class ExcelBaseImporter:
             return True
         patt = [self._config._check['func_pattern']]
         item_fld = {'func': f, 'func_pattern': patt,
-                    'type': '', 'offset_type': ''}
+                    'type': '', 'offset_type': '', 'value': '', 'value_o': ''}
         value = self.func(
-            team=dict(), fld_param=item_fld, data='', row=0, col=0)
+            team=dict(), fld_param=item_fld, row=0, col=0)
         return True if value else False
 
     def _get_value_after_validation(self, pattern: str, name: str, row: int, col: int) -> str:
@@ -564,14 +564,14 @@ class ExcelBaseImporter:
                 value = str(self._get_float(value))
         except:
             pass
-        result = regular_calc(pattern, value)
+        result: str = regular_calc(pattern, value)
         try:
             if type_value == 'int':
                 result = int(result.replace(',', '.').replace(' ', ''))
             elif type_value == 'double' or type_value == 'float':
                 result = self._get_float(result)
             else:
-                result += ' '
+                result = result.rstrip() + ' '
         except:
             result = 0
         return result
@@ -665,22 +665,24 @@ class ExcelBaseImporter:
         return value
 
     # если есть смещение, то берем данные от туда
-    def _get_value_offset(self, team, record, row_curr, col_curr):
-        rows = record['offset_row']
-        cols = record['offset_column']
-        value = record['value_o']
+    def _get_value_offset(self, team, record: dict, row_curr: int, col_curr: int) -> Union[str, int, float]:
+        rows: list = record['offset_row']
+        cols: list = record['offset_column']
+        value: str = record['value_o']
         if not rows:
             rows = [(0, False)]
         if not cols:
             cols = [(col_curr, True)]
-        fld_name = self._get_key(cols[0][0])
+        fld_name: str = self._get_key(cols[0][0])
         if fld_name:
-            value += self._get_fld_value(
+            x = self._get_fld_value(
                 team=team[fld_name],
                 type_fld=record['offset_type'],
                 pattern=record['offset_pattern'][0],
                 row=rows[0][0]+row_curr if not rows[0][1] else rows[0][0]
             )
+            value += x if not isinstance(x, str) or value.find(x) == -1 else ''
+
         return value
 
     def _get_required_rows(self, name, doc) -> set:
@@ -795,51 +797,59 @@ class ExcelBaseImporter:
         for item_fld in doc_param['fields']:  # перебор полей выходной таблицы
             doc.setdefault(item_fld['name'], list())
             # Формируем записи в выходном файле
-            records = self._get_data_records(item_fld)
+            fld_records = self._get_data_records(item_fld)
             records_exclude = set()
             for row in doc_param['rows_exclude']:
                 records_exclude.add(row[0])
-            for record in records:
-                if not record['column'] or not record['pattern'] or not record['pattern'][0]:
+            for fld_record in fld_records:
+                if not fld_record['column'] or not fld_record['pattern'] or not fld_record['pattern'][0]:
                     continue
-                col = record['column'][0]
+                col = fld_record['column'][0]
                 name_field = self._get_key(col[0])
                 if not name_field:
                     continue
-                for row in record['rows_exclude']:
+                for row in fld_record['rows_exclude']:
                     records_exclude.add(row[0])
                 rows = self._get_value_range(
-                    record['row'], len(team[name_field]))
+                    fld_record['row'], len(team[name_field]))
                 for row in rows:  # обрабатываем все строки области данных
-                    if len(team[name_field]) > row[0] and not row[0] in records_exclude:
-                        for patt in record['pattern']:
-                            x = self._get_fld_value(
-                                team=team[name_field],
-                                type_fld=record['type'],
-                                pattern=patt, row=row[0])
-                            if x:
-                                record['value'] += x
-                                if record['is_offset']:
-                                    # если есть смещение, то берем данные от туда
-                                    record['value_o'] = self._get_value_offset(
-                                        team, record, row[0], col[0])
-                                records_exclude.add(row[0])
-                                break  # пропускаем проверку по остальным шаблонам
-                if record['is_offset']:
-                    record['value'] = record['value_o']
-                    record['type'] = record['offset_type']
-                if record['func']:
+                    if len(team[name_field]) > row[0]:
+                        if not row[0] in records_exclude:
+                            for patt in fld_record['pattern']:
+                                x = self._get_fld_value(
+                                    team=team[name_field],
+                                    type_fld=fld_record['type'],
+                                    pattern=patt, row=row[0])
+                                if x:
+                                    fld_record['value'] += x if not isinstance(
+                                        x, str) or fld_record['value'].find(x) == -1 else ''
+                                    if fld_record['is_offset']:
+                                        # если есть смещение, то берем данные от туда
+                                        x = self._get_value_offset(
+                                            team, fld_record, row[0], col[0])
+                                        if x:
+                                            fld_record['value_o'] += x if not isinstance(
+                                                x, str) or fld_record['value_o'].find(x.strip()) == -1 else ''
+                                    # records_exclude[row[0]] = (
+                                    #     fld_record['value'], fld_record['value_o'])
+                                    break  # пропускаем проверку по остальным шаблонам
+                        # else:
+                        #     fld_record['value'] += records_exclude[row[0]][0]
+                        #     fld_record['value_o'] += records_exclude[row[0]][1]
+                if fld_record['func']:
                     # запускаем функцию и передаем в нее полученное значение
-                    record['value'] = self.func(
-                        team=team, fld_param=record, data=record['value'], row=row[0], col=col[0])
-                if record['value'] and not self._is_data_depends(record, doc, doc_param):
-                    record['value'] = ''
-
+                    fld_record['value'] = self.func(
+                        team=team, fld_param=fld_record, row=row[0], col=col[0])
+                elif fld_record['is_offset']:
+                    fld_record['value'] = fld_record['value_o']
+                    fld_record['type'] = fld_record['offset_type']
+                if fld_record['value'] and not self._is_data_depends(fld_record, doc, doc_param):
+                    fld_record['value'] = ''
                 # формируем документ
-                doc[record['name']].append(
-                    {'row': len(doc[record['name']]), 'col': col[0], 'value': ''
-                     if (isinstance(record['value'], int) or isinstance(record['value'], float))
-                     and record['value'] == 0 else str(record['value']).strip()})
+                doc[fld_record['name']].append(
+                    {'row': len(doc[fld_record['name']]), 'col': col[0], 'value': ''
+                     if (isinstance(fld_record['value'], int) or isinstance(fld_record['value'], float))
+                     and fld_record['value'] == 0 else str(fld_record['value']).strip()})
         return doc
 
 # Разбиваем данные документа по-строчно
@@ -882,7 +892,7 @@ class ExcelBaseImporter:
     def write_collections(self, num: int = 0, output_format: str = '') -> NoReturn:
         if not self.is_init() or len(self._collections) == 0:
             logging.warning('Не удалось прочитать данные из файла "{0} - {1}"\n'
-                            'проверьте параметр "condition_begin_team=":\n "{2}" '
+                            'смотри логи'
                             'и "required_fields="'
                             .format(self._parameters['inn']['value'][-1],
                                     self._parameters['filename']['value'][0], self._config._condition_team[0]
@@ -903,6 +913,7 @@ class ExcelBaseImporter:
                         jstr = json.dumps(records, indent=4,
                                           ensure_ascii=False)
                         file.write(jstr)
+
                 if not output_format or output_format == 'csv':
                     with open(f'{file_output}.csv', mode='a', encoding='utf-8') as file:
                         names = [x for x in records[0].keys()]
@@ -1036,24 +1047,28 @@ class ExcelBaseImporter:
     def get_sub_value(self, item_fld, team, name_field, row, col, value):
         if item_fld['sub']:
             for item_sub in item_fld['sub']:
+                item_sub['value'] = 0 if item_fld['type'] == 'int' or item_fld['type'] == 'float' or item_fld['type'] == 'double' else ''
+                item_sub['value_o'] = 0 if item_fld['offset_type'] == 'int' or item_fld[
+                    'offset_type'] == 'float' or item_fld['offset_type'] == 'double' else ''
                 value += self._get_fld_value(
                     team=team[name_field], type_fld=item_fld['type'], pattern=item_sub['pattern'][0], row=row)
                 if value:
                     if item_sub['offset_row'] or item_sub['offset_column']:
                         try:
-                            value = self._get_value_offset(
+                            item_sub['value_o'] = self._get_value_offset(
                                 team=team, item_fld=item_sub, item_type=item_fld['type'], row_curr=row, col_curr=col, value=value)
                         except Exception as ex:
                             pass
                     if item_sub['func']:
+                        item_sub['value'] = value
                         value = self.func(
-                            team=team, fld_param=item_sub, data=value, row=row, col=col)
+                            team=team, fld_param=item_sub, row=row, col=col)
                     return value
         return value
 
 # ---------- Функции --------------------
 
-    def func(self, team: dict, fld_param, data: str, row: int, col: int):
+    def func(self, team: dict, fld_param, row: int, col: int):
         dic_f = {
             'inn': self.func_inn,
             'period': self.func_period,
@@ -1075,7 +1090,9 @@ class ExcelBaseImporter:
             'param': self.func_param,
             'id': self.func_id,
         }
+        self._current_value = fld_param['value']
         pattern = fld_param['func_pattern'][0]
+        data = fld_param['value_o'] if fld_param['is_offset'] else fld_param['value']
         try:
             for name_func_add in fld_param['func'].split(','):
                 value = 0 if fld_param['type'] == 'float' or fld_param['offset_type'] == 'float' else ''
@@ -1085,7 +1102,7 @@ class ExcelBaseImporter:
                     try:
                         f = dic_f[name_func.strip()]
                     except Exception as ex:
-                        value = name_func
+                        value = value.strip() + ('_' if value else '') + name_func
                     else:
                         if is_check:
                             if f(data_calc, row, col, team):
@@ -1100,6 +1117,7 @@ class ExcelBaseImporter:
                             else:
                                 value += x + ' '
                 data = str(value).strip()
+                self._current_value = data
                 if pattern:
                     if isinstance(value, float):
                         data = data.replace(' ', '').replace(',', '.')
@@ -1149,7 +1167,7 @@ class ExcelBaseImporter:
 
     def func_id(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
         d = self._parameters['period']['value'][0]
-        return f'{str(data).strip()}_{d[6:]}_{d[3:5]}'
+        return f'{str(self._current_value).strip()}_{d[6:]}_{d[3:5]}'
 
     def func_column_name(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
         if col != -1:

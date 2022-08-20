@@ -373,7 +373,7 @@ class GisConfig:
             fld = self.set_doc_field(dict(), f'{doc["name"]}_{i}')
             fld['sub'] = []
             j = 0
-            while self.read_config(f'{doc["name"]}_{i}_{j}', 'pattern'):
+            while self.read_config(f'{doc["name"]}_{i}_{j}', 'pattern') or self.read_config(f'{doc["name"]}_{i}_{j}', 'offset_pattern'):
                 fld_sub = self.set_doc_field(
                     fld.copy(), f'{doc["name"]}_{i}_{j}')
                 fld_sub['sub'] = []
