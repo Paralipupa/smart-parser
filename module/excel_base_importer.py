@@ -1,4 +1,3 @@
-import logging
 import re
 import os
 import hashlib
@@ -8,12 +7,14 @@ import uuid
 import csv
 import json
 from ast import Return
+from cachetools import cached, LRUCache
 from typing import NoReturn, Union
 from itertools import product
 from .gisconfig import GisConfig, fatal_error, warning_error, regular_calc, PATH_LOG
 from .file_readers import get_file_reader
+from module.settings import *
 
-db_logger = logging.getLogger('parser')
+
 def _hashit(s): return hashlib.sha1(s).hexdigest()
 
 
@@ -43,7 +44,7 @@ class ExcelBaseImporter:
             return False
         if not os.path.exists(self._parameters['filename']['value'][0]):
             self._config._warning.append(
-                f"ОШИБКА чтения файла {self._parameters['filename']['value'][0]}")
+                f"ОШИБКА чтения файла {file_name}")
             self.is_file_exists = False
             return False
         return True
@@ -67,8 +68,8 @@ class ExcelBaseImporter:
             else:
                 pages += page_indexes
             for page in pages:
-                self._page_name = page[0] if not page[1] else ''
-                self._page_index = page[0] if page[1] else 0
+                self._page_name = page[POS_PAGE_VALUE] if not page[POS_PAGE_IS_FIX] else ''
+                self._page_index = page[POS_PAGE_VALUE] if page[POS_PAGE_IS_FIX] else 0
                 names = None
                 row = 0
                 if not self.get_header('pattern'):
@@ -84,7 +85,6 @@ class ExcelBaseImporter:
                     if self.colontitul['status'] != 2:
                         # Область до или после таблицы
                         if not self.check_bound_row(row):
-                            # return (len(self._collections) > 0)
                             break
                         names = self._get_names(record)
                         self.check_colontitul(names, row, record)
@@ -106,10 +106,10 @@ class ExcelBaseImporter:
             result_record.setdefault(key, [])
             size = len(result_record[key])
             for index in value['indexes']:
-                v = record[index[0]]
+                v = record[index[POS_INDEX_VALUE]]
                 is_empty = is_empty and (v == '' or v is None)
                 result_record[key].append(
-                    {'row': size, 'col': value['col'], 'index': index[0], 'value': v, 'negative': index[1]})
+                    {'row': size, 'col': value['col'], 'index': index[POS_INDEX_VALUE], 'value': v, 'negative': index[POS_INDEX_IS_NEGATIVE]})
         return result_record if not is_empty else None
 
     def append_team(self, mapped_record: list) -> bool:
@@ -170,7 +170,7 @@ class ExcelBaseImporter:
                 else:
                     c = ''
                     for index in item['indexes']:
-                        c += f"({item['row']},{index[0]}) "
+                        c += f"({item['row']},{index[POS_INDEX_VALUE]}) "
                     s2 += f"{item['name']} {c}\n"
 
             if is_active_find:
@@ -186,7 +186,7 @@ class ExcelBaseImporter:
             else:
                 s = 'Найдены колонки:'
                 for key, value in self._names.items():
-                    s += f"\n{key} - {value['indexes'][0][0]}"
+                    s += f"\n{key} - {value['indexes'][0][POS_INDEX_VALUE]}"
                 self._config._warning.append('\n{0}:\nВ загружаемом файле "{1}" \
                 \nне верен шаблон нахождения начала области данных(({3})condition_begin_team(\n{2}\n))\n{4}\n'
                                              .format(
@@ -252,7 +252,7 @@ class ExcelBaseImporter:
             # список уже добавленных колонок, которые нужно исключить при следующем прохождении
             cols_exclude = list()
             for x in [x['indexes'] for x in self._names.values()]:
-                cols_exclude.extend([x[0][0]])
+                cols_exclude.extend([y[POS_INDEX_VALUE] for y in x])
             # сначала проверяем обязательные колонки
             for item in self.get_columns_heading():
                 if (not item['active'] or item['duplicate']) and not item['optional'] and item['pattern'][0]:
@@ -293,13 +293,14 @@ class ExcelBaseImporter:
                         self._names[key]['active'] = True
                         item['active'] = True if not item['after_stable'] else False
                         if item['col_data']:
-                            for ind in item['col_data']:
-                                index = ind[0] + \
-                                    search_name['col'] if not ind[1] else 0
+                            for val in item['col_data']:
+                                index = val[POS_NUMERIC_VALUE] + \
+                                    search_name['col'] if not val[POS_NUMERIC_IS_ABSOLUTE] else 0
                                 # добавляем номер колонки в таблице с данными для суммирования значений
-                                item['indexes'].append((index, ind[2]))
+                                item['indexes'].append(
+                                    (index, val[POS_NUMERIC_IS_NEGATIVE]))
                                 self._names[key]['indexes'].append(
-                                    (index, ind[2]))
+                                    (index, val[POS_NUMERIC_IS_NEGATIVE]))
                         else:
                             item['indexes'].append((search_name['col'], False))
                             self._names[key]['indexes'].append(
@@ -331,8 +332,10 @@ class ExcelBaseImporter:
             col_right = self._get_border(item, 'right', index)
             if col_left <= index <= col_right:
                 for row, col in product(rows, cols):
-                    r = row[0] if row[1] else (row_count-1)+row[0]
-                    c = col[0] if col[1] else index+col[0]
+                    r = row[POS_NUMERIC_VALUE] if row[POS_NUMERIC_IS_ABSOLUTE] else (
+                        row_count-1)+row[POS_NUMERIC_VALUE]
+                    c = col[POS_NUMERIC_VALUE] if col[POS_NUMERIC_IS_ABSOLUTE] else index + \
+                        col[POS_NUMERIC_VALUE]
                     if not (r == 0 and c == 0) and 0 <= r < len(self.colontitul['head']) \
                             and 0 <= c < len(self.colontitul['head'][r]):
                         result = regular_calc(
@@ -408,22 +411,22 @@ class ExcelBaseImporter:
             return None
         return data_reader
 
-    def _get_border(self, item, name: str, col: int = 0) -> int:
+    def _get_border(self, item: dict, name: str, col: int = 0) -> int:
         if item[name]:
             name_field = self._get_key(item[name][0][0])
             if name_field:
-                col = self._names[name_field]['indexes'][0][0]
+                col = self._names[name_field]['indexes'][0][POS_INDEX_VALUE]
         return col
 
     def _get_rows_header(self) -> set:
         return {x['row'] for x in self._names.values()}
 
-    def _get_check_pattern(self) -> list:        
-        rows: list[int] = self.get_check('row') # раздел [check]
+    def _get_check_pattern(self) -> list:
+        rows: list[int] = self.get_check('row')  # раздел [check]
         if not rows:
             rows.append((0, False))
         patts = list()
-        p = self.get_check('pattern') # раздел [check]
+        p = self.get_check('pattern')  # раздел [check]
         patts.append({'pattern': p, 'full': True,
                      'find': p == '', 'maxrow': rows[-1][0]})
         i = 0
@@ -522,7 +525,7 @@ class ExcelBaseImporter:
         except Exception as ex:
             return f'error: {ex}'
 
-    def _get_names(self, record) -> dict:
+    def _get_names(self, record: list) -> dict:
         names = []
         index = 0
         if (self.colontitul['status'] == 1) or (self.colontitul['status'] == 0 and len(self._names) == 0):
@@ -548,17 +551,19 @@ class ExcelBaseImporter:
                     results.append(name)
         return results
 
+    @cached(cache={})
     def _get_key(self, col: int) -> str:
         for key, value in self._names.items():
             if value['col'] == col:
                 return key
         return ''
 
+    @cached(cache={})
     def _get_value(self, value: str = '', pattern: str = '', type_value: str = '') -> Union[str, int, float]:
         try:
             value = str(value)
             if type_value == 'int':
-                value = str(int(value.replace(',', '.').replace(' ', '')))
+                value = str(self._get_int(value))
             elif type_value == 'double' or type_value == 'float':
                 value = str(self._get_float(value))
         except:
@@ -566,7 +571,7 @@ class ExcelBaseImporter:
         result: str = regular_calc(pattern, value)
         try:
             if type_value == 'int':
-                result = int(result.replace(',', '.').replace(' ', ''))
+                result = self._get_int(value)
             elif type_value == 'double' or type_value == 'float':
                 result = self._get_float(result)
             else:
@@ -575,21 +580,23 @@ class ExcelBaseImporter:
             result = 0
         return result
 
+    @cached(cache={})
     def _get_value_str(self, value: str, pattern: str) -> str:
         return regular_calc(pattern, value)
 
-    def _get_value_int(self, value: list) -> int:
+    def _get_value_int(self, value: Union[list, str]) -> int:
         try:
             if value:
                 if isinstance(value, list):
                     return value[0]
                 elif isinstance(value, str):
-                    return int(value)
+                    return int(value.replace(',', '.').replace(' ', '')).replace(chr(160), '')
             else:
                 return 0
         except:
             return 0
 
+    @cached(cache={})
     def _get_float(self, value: str) -> float:
         try:
             if value:
@@ -627,6 +634,7 @@ class ExcelBaseImporter:
                 'декабр': '12'
                 }
 
+    @cached(cache={})
     def _get_doc_param_fld(self, name: str, fld_name: str):
         doc = next((x for x in self.get_config_documents()
                    if x['name'] == name), None)
@@ -636,7 +644,7 @@ class ExcelBaseImporter:
             return fld
         return None
 
-    def _get_data_records(self, item_fld):
+    def _get_fld_records(self, item_fld: dict):
         records = list()
         records.append(item_fld.copy())
         records[-1]['value'] = 0 if records[-1]['type'] == 'float' or records[-1]['type'] == 'int' else ''
@@ -649,21 +657,20 @@ class ExcelBaseImporter:
                 records[-1]['offset_type'] == 'float' or records[-1]['offset_type'] == 'int') else ''
         return records
 
-    def _get_fld_value(self, team: dict, type_fld: str, pattern: str, row: int) -> str:
+    def _get_values(self, values: list, type_fld: str, pattern: str) -> str:
         value = self._get_value(type_value=type_fld)
-        for val_item in team:
-            if val_item['row'] == row:
-                if (type_fld == 'int' or type_fld == 'float') and val_item['negative']:
-                    value -= self._get_value(
-                        val_item['value'], pattern, type_fld)
-                else:
-                    value += self._get_value(
-                        val_item['value'], pattern, type_fld)
+        for val in values:
+            if (type_fld == 'int' or type_fld == 'float') and val[POS_NUMERIC_IS_NEGATIVE]:
+                value -= self._get_value(
+                    val[POS_VALUE], pattern, type_fld)
+            else:
+                value += self._get_value(
+                    val[POS_VALUE], pattern, type_fld)
         if not (type_fld == 'float' or type_fld == 'double' or type_fld == 'int'):
             value = value.lstrip()
         return value
 
-    # если есть смещение, то берем данные от туда
+    # данные из колонки по смещению (offset_column_)
     def _get_value_offset(self, team, record: dict, row_curr: int, col_curr: int) -> Union[str, int, float]:
         rows: list = record['offset_row']
         cols: list = record['offset_column']
@@ -672,19 +679,20 @@ class ExcelBaseImporter:
             rows = [(0, False)]
         if not cols:
             cols = [(col_curr, True)]
-        fld_name: str = self._get_key(cols[0][0])
+        fld_name: str = self._get_key(cols[0][POS_NUMERIC_VALUE])
         if fld_name:
-            x = self._get_fld_value(
-                team=team[fld_name],
+            row = rows[0][POS_NUMERIC_VALUE] + \
+                row_curr if not rows[0][POS_NUMERIC_IS_ABSOLUTE] else rows[0][POS_NUMERIC_VALUE]
+            x = self._get_values(
+                values=[(x['value'], None, x['negative']) for x in team[fld_name]
+                        if x['row'] == row],
                 type_fld=record['offset_type'],
-                pattern=record['offset_pattern'][0],
-                row=rows[0][0]+row_curr if not rows[0][1] else rows[0][0]
+                pattern=record['offset_pattern'][0]
             )
             value += x if not isinstance(x, str) or value.find(x) == -1 else ''
-
         return value
 
-    def _get_required_rows(self, name, doc) -> set:
+    def _get_required_rows(self, name: str, doc: dict) -> set:
         s = set()
         d = next(
             (x for x in self.get_config_documents() if x['name'] == name), None)
@@ -698,7 +706,7 @@ class ExcelBaseImporter:
                         s.add(item['row'])
         return s
 
-    def _is_data_depends(self, record, doc, doc_param):
+    def _is_data_depends(self, record: dict, doc: dict, doc_param: dict) -> Union[str, bool]:
         if not record['depends']:
             return True
         fld = record['depends']
@@ -765,9 +773,10 @@ class ExcelBaseImporter:
                                         param['offset_col'].append((0, False))
                                     result = self._get_value_after_validation(param['offset_pattern'],
                                                                               'head' if is_head else 'foot',
-                                                                              param['offset_row'][0][0] +
-                                                                              row[0] if not param['offset_row'][0][1] else param['offset_row'][0][0],
-                                                                              param['offset_col'][0][0] + col[0] if not param['offset_col'][0][1] else param['offset_col'][0][0])
+                                                                              param['offset_row'][0][POS_NUMERIC_VALUE] +
+                                                                              row[0] if not param['offset_row'][0][POS_NUMERIC_IS_ABSOLUTE] else param[
+                                                                                  'offset_row'][0][POS_NUMERIC_VALUE],
+                                                                              param['offset_col'][0][POS_NUMERIC_VALUE] + col[0] if not param['offset_col'][0][POS_NUMERIC_IS_ABSOLUTE] else param['offset_col'][0][POS_NUMERIC_VALUE])
                                 if result:
                                     self._parameters[name]['value'].append(
                                         result)
@@ -793,14 +802,15 @@ class ExcelBaseImporter:
 # Формирование документа из полученной порции (отдельной области или иерархии)
     def set_document(self, team: dict, doc_param):
         doc = dict()
-        for item_fld in doc_param['fields']:  # перебор полей выходной таблицы
-            doc.setdefault(item_fld['name'], list())
+        for fld_item in doc_param['fields']:  # перебор полей выходной таблицы
             # Формируем записи в выходном файле
+            doc.setdefault(fld_item['name'], list())
             main_rows_exclude = set()
             offset_rows_exclude = set()
             for table_row in doc_param['rows_exclude']:
                 main_rows_exclude.add(table_row[0])
-            fld_records = self._get_data_records(item_fld)
+            # собираем все поля: name_attr, name_attr_0, ... , name_attr_N
+            fld_records = self._get_fld_records(fld_item)
             for fld_record in fld_records:
                 if not fld_record['column'] or not fld_record['pattern'] or not fld_record['pattern'][0]:
                     continue
@@ -813,27 +823,27 @@ class ExcelBaseImporter:
                 table_rows = self._get_value_range(
                     fld_record['row'], len(team[name_field]))
                 for table_row in table_rows:  # обрабатываем все строки области данных
-                    if len(team[name_field]) > table_row[0]: 
-                        if not table_row[0] in main_rows_exclude:
-                            for patt in fld_record['pattern']:
-                                x = self._get_fld_value(
-                                    team=team[name_field],
-                                    type_fld=fld_record['type'],
-                                    pattern=patt, row=table_row[0])
-                                if x:
-                                    fld_record['value'] += x if not isinstance(
-                                        x, str) or fld_record['value'].find(x) == -1 else ''
-                                    if fld_record['is_offset']:
-                                        if not table_row[0] in offset_rows_exclude:
-                                            # если есть смещение, то берем данные от туда
-                                            fld_record['value_o'] = self._get_value_offset(
-                                                team, fld_record, table_row[0], col[0])
-                                            offset_rows_exclude.add(table_row[0])
-                                    else:
-                                        main_rows_exclude.add(table_row[0])
-                                    break  # пропускаем проверку по остальным шаблонам
+                    if len(team[name_field]) > table_row[0] and not table_row[0] in main_rows_exclude:
+                        for patt in fld_record['pattern']:
+                            x = self._get_values(
+                                values=[(x['value'], None, x['negative']) for x in team[name_field]
+                                        if x['row'] == table_row[0]],
+                                type_fld=fld_record['type'],
+                                pattern=patt)
+                            if x:
+                                fld_record['value'] += x if not isinstance(
+                                    x, str) or fld_record['value'].find(x) == -1 else ''
+                                if fld_record['is_offset']:
+                                    if not table_row[0] in offset_rows_exclude:
+                                        # если есть смещение, то берем данные от туда
+                                        fld_record['value_o'] = self._get_value_offset(
+                                            team, fld_record, table_row[0], col[0])
+                                        offset_rows_exclude.add(table_row[0])
+                                else:
+                                    main_rows_exclude.add(table_row[0])
+                                break  # пропускаем проверку по остальным шаблонам
                 if fld_record['func']:
-                    # запускаем функцию и передаем в нее полученное значение
+                    # запускаем функцию
                     fld_record['value'] = self.func(
                         team=team, fld_param=fld_record, row=table_row[0], col=col[0])
                 elif fld_record['is_offset']:
@@ -894,7 +904,7 @@ class ExcelBaseImporter:
 
         os.makedirs(self._parameters['path']['value'][0], exist_ok=True)
 
-        self._current_value=''
+        self._current_value = ''
         id = self.func_id()
         for name, pages in self._collections.items():
             for key, records in pages.items():
@@ -944,7 +954,7 @@ class ExcelBaseImporter:
                     file.write(
                         f"\t({item['col']}){item['name']}:  row={item['row']} col=")
                     for index in item["indexes"]:
-                        file.write(f'{index[0]},')
+                        file.write(f'{index[POS_INDEX_VALUE]},')
                     file.write(f'",\n')
             file.write(f'}},\n\n')
 
@@ -1036,33 +1046,12 @@ class ExcelBaseImporter:
             col['active'] = False
         self._names = dict()
         self._teams = list()
-# -------------------------------------------------------------------------------------------------
 
-    def get_sub_value(self, item_fld, team, name_field, row, col, value):
-        if item_fld['sub']:
-            for item_sub in item_fld['sub']:
-                item_sub['value'] = 0 if item_fld['type'] == 'int' or item_fld['type'] == 'float' or item_fld['type'] == 'double' else ''
-                item_sub['value_o'] = 0 if item_fld['offset_type'] == 'int' or item_fld[
-                    'offset_type'] == 'float' or item_fld['offset_type'] == 'double' else ''
-                value += self._get_fld_value(
-                    team=team[name_field], type_fld=item_fld['type'], pattern=item_sub['pattern'][0], row=row)
-                if value:
-                    if item_sub['offset_row'] or item_sub['offset_column']:
-                        try:
-                            item_sub['value_o'] = self._get_value_offset(
-                                team=team, item_fld=item_sub, item_type=item_fld['type'], row_curr=row, col_curr=col, value=value)
-                        except Exception as ex:
-                            pass
-                    if item_sub['func']:
-                        item_sub['value'] = value
-                        value = self.func(
-                            team=team, fld_param=item_sub, row=row, col=col)
-                    return value
-        return value
+# -------------------------------------------------------------------------------------------------
 
 # ---------- Функции --------------------
 
-    def func(self, team: dict, fld_param, row: int, col: int):
+    def func(self, team: dict, fld_param: dict, row: int, col: int) -> str:
         dic_f = {
             'inn': self.func_inn,
             'period': self.func_period,
@@ -1127,11 +1116,14 @@ class ExcelBaseImporter:
             # если функция с параметром, то заменяем входные данные (data) на этот параметр
             result = regular_calc(
                 r'(?<=\()[\w_0-9-]+(?=\))', name_func)
-            if result and result.find('error') == -1:self._current_value
+            if result and result.find('error') == -1:
+                data = result
+            name_func = name_func[:name_func.find('(')]
+        if name_func.find('check_') != -1:
             name_func = name_func.replace('check_', '')
             is_check = True
         return name_func, data, is_check
-
+        
     def func_inn(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
         return self._parameters['inn']['value'][-1]
 

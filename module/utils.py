@@ -6,11 +6,8 @@ from datetime import datetime
 from report.report_001_00 import Report_001_00
 from .gisconfig import PATH_OUTPUT, PATH_LOG, PATH_TMP, PATH_CONFIG
 import pathlib
-import logging
 
-db_logger = logging.getLogger('parser')
 config_files = []
-
 
 def createParser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()

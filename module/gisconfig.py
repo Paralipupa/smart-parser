@@ -2,18 +2,11 @@ import configparser
 from email.policy import strict
 import os
 import re
-import logging
 import traceback
 from dataclasses import replace
 from datetime import datetime
 from typing import NoReturn
-
-db_logger = logging.getLogger('parser')
-
-PATH_LOG = 'logs'
-PATH_OUTPUT = 'output'
-PATH_CONFIG = 'config'
-PATH_TMP = 'tmp'
+from module.settings import *
 
 
 def fatal_error(func):
@@ -436,8 +429,9 @@ class GisConfig:
             x = x.replace(result, y)
 
         try:
-            rows = [(int(i.replace('(', '').replace(')', '')), False if not i or (
-                i[0] == '+' or i[0] == '-') else True, False if i.find('(') == -1 else True) for i in x.split(',')]
+            rows = [(int(i.replace('(', '').replace(')', '')),
+                     False if not i or (i[0] == '+' or i[0] == '-') else True,
+                     False if i.find('(') == -1 else True) for i in x.split(',')]
         except Exception as ex:
             rows = []
         return rows
