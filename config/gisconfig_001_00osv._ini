@@ -369,7 +369,7 @@ func=id,guid
 name=calc_value
 col_config=0
 pattern=водоотведение
-offset_pattern=^\d{1,6}(?:\.\d{1,2})?$
+offset_pattern=^-?\d{1,6}(?:[\.,]\d{1,2})?$
 offset_col_config=2
 
 [pp_charges_3_0]
@@ -377,7 +377,7 @@ offset_col_config=2
 name=calc_value
 col_config=0
 pattern=холод
-offset_pattern=^\d{1,6}(?:\.\d{1,2})?$
+offset_pattern=^-?\d{1,6}(?:[\.,]\d{1,2})?$
 offset_col_config=2
 
 
@@ -392,7 +392,41 @@ row_data=0
 ; Идентификатор услуги (поля: ГВС,ХВС,Элект,Услуги)
 ; применена функция column_name, которая возвращает наименование группы или колонки
 name=service_internal_id
-pattern=водоотведение
+pattern=водоотведение        
+    if os.path.isdir(PATH_OUTPUT):
+        list(map(os.unlink, (os.path.join(PATH_OUTPUT, f)
+             for f in os.listdir(PATH_OUTPUT))))
+    if os.path.isdir(PATH_LOG):
+        list(map(os.unlink, (os.path.join(PATH_LOG, f)
+             for f in os.listdir(PATH_LOG))))
+
+    list_files = get_files(namespace)
+    i = 0
+    if list_files:
+        for file_name in list_files:
+            i += 1
+            if file_name['config']:
+                if file_name['config'] != '000':
+                    t = regular_calc('[0-9]{3}(?=_)', str(file_name['config']))
+                    rep: ExcelBaseImporter = report[t](file_name=file_name['name'],
+                                                       inn=file_name['inn'], config_file=str(file_name['config']))
+                    if rep.read():
+                        rep.write_collections(i)
+                        rep.write_logs(i)
+                    else:
+                        if rep._config._warning:
+                            logging.warning(
+                                f"{file_name['inn']} - {file_name['name']}  не все поля найдены см.logs/")
+                    file_name['warning'] += rep._config._warning
+            else:
+                if len(file_name['warning']) != 0:
+                    logging.warning(
+                        f"{file_name['inn']} - {file_name['name']}")
+                else:
+                    logging.warning(
+                        f"{file_name['inn']} - {file_name['name']} не найден файл конфигурации.")
+        write_list(list_files)
+
 col_config=0
 row_data=
 func=водоотведение
@@ -409,12 +443,73 @@ func=холодная вода
 ; Идентификатор услуги (поля: ГВС,ХВС,Элект,Услуги)
 ; применена функция column_name, которая возвращает наименование группы или колонки
 pattern=счетчик
-col_config=0
-row_data=
-func=установка счетчика
+col_config=0        
+    if os.path.isdir(PATH_OUTPUT):
+        list(map(os.unlink, (os.path.join(PATH_OUTPUT, f)
+             for f in os.listdir(PATH_OUTPUT))))
+    if os.path.isdir(PATH_LOG):
+        list(map(os.unlink, (os.path.join(PATH_LOG, f)        
+    if os.path.isdir(PATH_OUTPUT):
+        list(map(os.unlink, (os.path.join(PATH_OUTPUT, f)
+             for f in os.listdir(PATH_OUTPUT))))
+    if os.path.isdir(PATH_LOG):
+        list(map(os.unlink, (os.path.join(PATH_LOG, f)
+             for f in os.listdir(PATH_LOG))))
 
-[pp_charges_6]
-; кол-во услуги  при однотарифном начислении (поля: ГВС,ХВС,Элект)
+    list_files = get_files(namespace)
+    i = 0
+    if list_files:
+        for file_name in list_files:
+            i += 1
+            if file_name['config']:
+                if file_name['config'] != '000':
+                    t = regular_calc('[0-9]{3}(?=_)', str(file_name['config']))
+                    rep: ExcelBaseImporter = report[t](file_name=file_name['name'],
+                                                       inn=file_name['inn'], config_file=str(file_name['config']))
+                    if rep.read():
+                        rep.write_collections(i)
+                        rep.write_logs(i)
+                    else:
+                        if rep._config._warning:
+                            logging.warning(
+                                f"{file_name['inn']} - {file_name['name']}  не все поля найдены см.logs/")
+                    file_name['warning'] += rep._config._warning
+            else:
+                if len(file_name['warning']) != 0:
+                    logging.warning(
+                        f"{file_name['inn']} - {file_name['name']}")
+                else:
+                    logging.warning(
+                        f"{file_name['inn']} - {file_name['name']} не найден файл конфигурации.")
+        write_list(list_files)
+
+    list_files = get_files(namespace)
+    i = 0
+    if list_files:
+        for file_name in list_files:
+            i += 1
+            if file_name['config']:
+                if file_name['config'] != '000':
+                    t = regular_calc('[0-9]{3}(?=_)', str(file_name['config']))
+                    rep: ExcelBaseImporter = report[t](file_name=file_name['name'],
+                                                       inn=file_name['inn'], config_file=str(file_name['config']))
+                    if rep.read():
+                        rep.write_collections(i)
+                        rep.write_logs(i)
+                    else:
+                        if rep._config._warning:
+                            logging.warning(
+                                f"{file_name['inn']} - {file_name['name']}  не все поля найдены см.logs/")
+                    file_name['warning'] += rep._config._warning
+            else:
+                if len(file_name['warning']) != 0:
+                    logging.warning(
+                        f"{file_name['inn']} - {file_name['name']}")
+                else:
+                    logging.warning(
+                        f"{file_name['inn']} - {file_name['name']} не найден файл конфигурации.")
+        write_list(list_files)
+ХВС,Элект)
 name=rr
 pattern=
 col_config=
@@ -433,6 +528,6 @@ func=
 name=accounting_period_total
 pattern=@3
 col_config=0
-offset_pattern=^\d{1,6}(?:\.\d{1,2})?$
+offset_pattern=^-?\d{1,6}(?:[\.,]\d{1,2})?$
 offset_col_config=2
 

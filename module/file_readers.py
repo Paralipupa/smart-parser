@@ -130,8 +130,8 @@ def get_file_reader(fname):
     if file_extension == '.xls':
         return XlsFile
     if file_extension == '.xlsx':
-        return XlsFile
-        # return XlsxFile
+        # return XlsFile
+        return XlsxFile
     if file_extension == '.csv':
         return CsvFile
     raise Exception("Unknown file type")

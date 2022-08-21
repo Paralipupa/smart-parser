@@ -1,3 +1,5 @@
+;
+;
 ; 002_00  - ЛС(0);Задолженность на начало (1);Итого начислено(2);Итого оплачено(4);Конечный остаток(5)
 ; 002_01  - ЛС(0);                            Итого начислено(2);Итого оплачено(4);Конечный остаток(5)
 ; 002_02  - ЛС(0);Задолженность на начало (1);                   Итого оплачено(4);Конечный остаток(5)
@@ -8,13 +10,12 @@
 ; 002_07  - ЛС(0);Задолженность на начало (1);Итого начислено(2);
 ; 002_08  - ЛС(0);Задолженность на начало (1);
 ; 002_09  - ЛС(0);                            Итого начислено(2);  
+; 002_10  - ЛС(0);                                               Итого Оплачено(4)
 ;
 ;
-;
-;
-;/home/chip/work/polaris/input/0001/2722039995 ТСЖ Сибирская,32.zip          |001_02; 002_00;
+;/home/chip/work/polaris/input/0001/2722039995 ТСЖ Сибирская,32.zip          |002_00;001_02
 ;/home/chip/work/polaris/input/0001/2901184942 Гайдаровец тсж.zip            |002_00;
-;/home/chip/work/polaris/input/0001/5024214314 ПЕРВЫЙ долг.zip               |002_01; 002_10;
+;/home/chip/work/polaris/input/0001/5024214314 ПЕРВЫЙ долг.zip               |002_03; 002_09;
 ;/home/chip/work/polaris/input/0001/5408182388 ТСЖ Академ-Уют.zip            |002_00; 002_00;
 ;/home/chip/work/polaris/input/0001/5904376408 ТСЖ ВИЖАЙСКАЯ 20.ZIP          |002_00; 002_00;
 ;/home/chip/work/polaris/input/0001/5905240015 ТСЖ Мира,45.zip               |002_00; 002_00; 002_01;
@@ -29,37 +30,37 @@
 ;/home/chip/work/polaris/input/0000/5907037241 ЖК Высотка.zip                |002_02; 002_02;
 ;/home/chip/work/polaris/input/0000/5933008141 ТСЖ ЖК Карагайский.zip        |002_00;
 ;/home/chip/work/polaris/input/0000/7801394857 ТСЖ УЮТ.ZIP                   |002_00; 002_02; 001_04
-;/home/chip/work/polaris/input/0011/0323401948 МУП ЖКХ ОНОХОЙ.ZIP            |002_09onoxoi; 002_09onoxoi; 001_00; 001_00;
+;/home/chip/work/polaris/input/0011/0323401948 МУП ЖКХ ОНОХОЙ.ZIP            ;002_09onoxoi; 002_09onoxoi; 001_00; 001_00;
 ;/home/chip/work/polaris/input/0044/6168011973 Галс тсж.zip                  |002_00a;
 ;/home/chip/work/polaris/input/0200/7816014138 656 жск.zip                   |002_00; 002_09b;
 ;/home/chip/work/polaris/input/0300/6450090460 ООО КОМФОРТСИТИ.ZIP           |001_00; 001_00; 001_00; 001_00; 001_00; 001_00;
 ;/home/chip/work/polaris/input/0300/6903005402 106 жск.zip                   |002_00; 002_00;
 ;/home/chip/work/polaris/input/0300/7604140807 ТСН ТСЖ СОЮЗ-1.ZIP            |002_00; 002_00; 002_09;
 ;----------------------------------------------------------------------------------------------------------
-;/home/chip/work/polaris/input/0400/1101000383 ЖСК-21.ZIP                    |002_00; 002_00; 001; 001 ;
+;/home/chip/work/polaris/input/0400/1101000383 ЖСК-21.ZIP                    |002_00; 002_00; 000; 000 ;
 ;/home/chip/work/polaris/input/0400/1121006658 ЖСК 29 Заря-3.zip             |002_00b
 ;/home/chip/work/polaris/input/0400/2267004962 МУП Мирный.zip                |002_06
 ;/home/chip/work/polaris/input/0400/2460004350 ЖСК УЮТ.zip                   |002_00; не верная кодировка 
-;/home/chip/work/polaris/input/0400/2538037749 ТСЖ Кондоминиум №4.zip        |002_00a
+;/home/chip/work/polaris/input/0400/2538037749 ТСЖ Кондоминиум №4.zip        ;002_00a
 ;/home/chip/work/polaris/input/0400/3444074120 ТСЖ Медик.zip                 |002_medic
 ;/home/chip/work/polaris/input/0400/3444161767 АКМ.zip                       ;002_09akm 
 ;/home/chip/work/polaris/input/0400/3628019094 МУП ВОДОКАНАЛ СЕМИЛУКИ.ZIP    |002_09mypvk; 002_09osv; 002_09osv; 002_09osv;
 ;/home/chip/work/polaris/input/0400/3711023890 Комсети.zip                   |002_00komseti
-;/home/chip/work/polaris/input/0400/3711032742 МП Водоканал Лежнево.zip      |002_00komseti;  001;
+;;/home/chip/work/polaris/input/0400/3711032742 МП Водоканал Лежнево.zip      ;002_00komseti;  000;
 ;/home/chip/work/polaris/input/0400/3913011199 ТСЖ Суворова-2.zip            |002_04; 002_04; 
 ;/home/chip/work/polaris/input/0400/4703149724 Центральная 5 тсн.zip         |002_00; 002_09;
 ;------------------------------------------------------------------------------------------------------------
 ;/home/chip/work/polaris/input/0400/4705012362 ЖСК Комета.zip                ;002_00kometa
 ;/home/chip/work/polaris/input/0400/4716042538 УК УЮТ.ZIP                    |002_09;
-;/home/chip/work/polaris/input/0400/5018148381 ТСЖ Спартаковская 15.zip      |001_00spartak
+;/home/chip/work/polaris/input/0400/5018148381 ТСЖ Спартаковская 15.zip      ;001_00spartak
 ;/home/chip/work/polaris/input/0400/5902058953 тсж 25 октября,4.zip          |;;002_00a; 002_00a;
 ;/home/chip/work/polaris/input/0400/5903058138 ЖСК № 14.ZIP                  ; 002_00; 003_01h14
-;/home/chip/work/polaris/input/0400/5903123926 ТСЖ Содружество.zip           |002_00; 002_00; 003_01sodrug
-;/home/chip/work/polaris/input/0400/5904299680 ТСЖ Бородинская 26.zip        |002_00a
-;/home/chip/work/polaris/input/0400/5908012923 ЖСК-29.ZIP                    | ошибка чтения файла
-;/home/chip/work/polaris/input/0400/5948031697 Фролы тсж.zip                 |;;;002_03;002_03
-/home/chip/work/polaris/input/0400/6165105380 ТСЖ Наш дом-2002.zip          ;002_00a; 002_00a;
-;/home/chip/work/polaris/input/0400/6166020997 Изобретатель ЖКУ.zip
+;;/home/chip/work/polaris/input/0400/5903123926 ТСЖ Содружество.zip           |002_00; 002_00; 003_01sodrug
+;;/home/chip/work/polaris/input/0400/5904299680 ТСЖ Бородинская 26.zip        |002_00a
+;;/home/chip/work/polaris/input/0400/5908012923 ЖСК-29.ZIP                    | ошибка чтения файла
+;;/home/chip/work/polaris/input/0400/5948031697 Фролы тсж.zip                 |;;;002_03;002_03
+;;/home/chip/work/polaris/input/0400/6165105380 ТСЖ Наш дом-2002.zip          ;002_00a; 002_00a;
+;;/home/chip/work/polaris/input/0400/6166020997 Изобретатель ЖКУ.zip
 ;/home/chip/work/polaris/input/0400/6168004550 ТСЖ Вега.zip
 ;/home/chip/work/polaris/input/0400/6168202671 ТСЖ Эверест.zip
 ;/home/chip/work/polaris/input/0400/6602009227 ЖСК2.zip
@@ -95,4 +96,16 @@
 ;/home/chip/work/polaris/input/0400/7811074782 ТСЖ Оккервиль.zip
 ;/home/chip/work/polaris/input/0400/7811335145 ТСЖ СПб, Искровский пр., д. 29, корп. 2.zip
 ;/home/chip/work/polaris/input/0400/7825127770 ТСЖ Развитие сервис.zip
+;--------------------------------------------------------------------------------
+;/home/chip/work/polaris/input/0500/2722039995 ТСЖ Сибирская 32.zip
+;/home/chip/work/polaris/input/0500/5024214314 ТСН ПЕРВЫЙ.zip                    
+;/home/chip/work/polaris/input/0500/5408182388 Академ-Уют.zip
+;/home/chip/work/polaris/input/0500/5904376408 Вижайская 20.zip
+;/home/chip/work/polaris/input/0500/5905240015 Мира 45.zip
+;/home/chip/work/polaris/input/0500/5914007720 Наш двор.zip
+;/home/chip/work/polaris/input/0500/5948047471 Нихнемуллинская 3.zip
+;/home/chip/work/polaris/input/0500/7704318554 Еропкинский 16.zip
+;/home/chip/work/polaris/input/0500/7838413520_ТСЖ_Резиденция_на_Крестовском.zip
+;/home/chip/work/polaris/input/0500/2901184942 Гайдаровец тсж.zip
+/home/chip/work/polaris/input/Шустов/Shustoff.zip
 

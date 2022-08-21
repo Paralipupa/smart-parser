@@ -1,7 +1,7 @@
 import zipfile
 import os
 import re
-import sys
+import argparse
 from datetime import datetime
 from report.report_001_00 import Report_001_00
 from .gisconfig import PATH_OUTPUT, PATH_LOG, PATH_TMP, PATH_CONFIG
@@ -12,38 +12,39 @@ db_logger = logging.getLogger('parser')
 config_files = []
 
 
+def createParser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-n', '--name', nargs='?')
+    parser.add_argument('-i', '--inn', nargs='?')
+    parser.add_argument('-c', '--config', nargs='?')
+    parser.add_argument('-u', '--union', nargs='?')
+    return parser
+
+
 def remove_files(path: str):
     os.remove(path=path)
 
 
 def get_config_files():
     files = [x for x in os.listdir(PATH_CONFIG) if re.search(
-        'gisconfig_[0-9]{3}_[0-9]{2}[0-9a-z_]*\.ini', x, re.IGNORECASE)]
+        'gisconfig_[0-9]{3}_[0-9]{2}[0-9a-z_\-,()]*\.ini', x, re.IGNORECASE)]
     # сортировка: 002_05a.ini раньше чем 002_05.ini
     files = sorted(files, key=lambda x: (
         x[10:13], x[14:17] if x[16:17] != '.' else x[14:16]+'я'))
     return files
 
 
-def get_files():
-    if len(sys.argv) <= 1:
-        logging.warning(
-            'run with parameters:  <file.lst>|<file.xsl>|<file.zip> [<inn>] [<config.ini>]')
-        exit()
-    inn = ''
+def get_files(namespace: argparse.Namespace) -> list:
+    inn = namespace.inn
+    file_conf = namespace.config
+    file_name = namespace.name
     global config_files
     config_files = get_config_files()
-    file_conf = ''
-    if len(sys.argv) > 2:
-        inn = sys.argv[2]
-    if len(sys.argv) > 3:
-        file_conf = sys.argv[3]
-    file_name = sys.argv[1]
     list_files = list()
     zip_files = list()
 
     if file_name.find('.lst') != -1:
-        zip_files = get_list_files(sys.argv[1])
+        zip_files = get_list_files(file_name)
     elif file_name.lower().find('.zip') != -1:
         zip_files.append({'file': file_name, 'inn': inn, 'config': ''})
 
@@ -57,7 +58,7 @@ def get_files():
         list_files = get_file_config(list_files)
     else:
         list_files.append(
-            {'name': file_name, 'config': file_conf, 'inn': inn, 'warning': list()})
+            {'name': file_name, 'config': file_conf, 'inn': inn, 'warning': list(), 'zip': ''})
 
     return list_files
 
@@ -75,13 +76,16 @@ def get_list_files(name: str) -> list:
                 result = []
                 if index != -1:
                     result = re.findall(
-                        """(?<=;)(?:(?:\s*[0-9]{3}_[0-9]{2}[a-z0-9_]*)|\s*)""", line)
+                        """(?<=;)(?:(?:\s*[0-9]{3}(?:(?:_[0-9]{2}[a-z0-9_]*)|\s*)))?""", line)
                     line = line[:index]
                 if line.strip():
                     l.append({'file': line.strip(), 'inn': '', 'config': []})
                     for item in result:
-                        l[-1]['config'].append(
-                            f'config/gisconfig_{item.strip()}.ini' if item.strip() else '')
+                        if item.strip() == '000':
+                            l[-1]['config'].append(item.strip())
+                        else:
+                            l[-1]['config'].append(
+                                f'{PATH_CONFIG}/gisconfig_{item.strip()}.ini' if item.strip() else '')
     return l
 
 
@@ -90,47 +94,44 @@ def get_file_config(list_files: list) -> str:
     i = 0
     for item in list_files:
         data_file = {'name': item['name'], 'config': item['config'],
-                     'inn': item['inn'], 'warning': list(), 'records': None}
+                     'inn': item['inn'], 'warning': list(), 'records': None, 'zip': item['zip']}
         if item['config']:
-            ls_new.append(data_file)
+            ls_new.append(__config_process(data_file, item['config']))
         else:
-            ls_new.append(get_data_file(
+            ls_new.append(__config_find(
                 data_file, config_files, i, len(list_files)))
         i += 1
     return ls_new
 
 
-def get_data_file(data_file: dict, config_files: list, j: int, m: int) -> dict:
+def __config_find(data_file: dict, config_files: list, j: int, m: int) -> dict:
     ls = list()
     i = 0
     for conf_file in config_files:
-        data_file = __check_config(data_file, conf_file)
         print('Поиск конфигураций: {}%   \r'.format(
             round((j*len(config_files)+i)/(m*len(config_files))*100, 0)), end='', flush=True)
-        i += 1
+        data_file = __config_process(data_file, pathlib.Path(PATH_CONFIG, f'{conf_file}'))
         if data_file['config']:
             break
+        i += 1
     return data_file
 
 
-def __check_config(data_file, conf_file):
-    if conf_file.find('.ini') != -1:
-        file_config = pathlib.Path(PATH_CONFIG, f'{conf_file}')
-        rep = Report_001_00(file_name=data_file['name'],
-                            config_file=str(file_config), inn=data_file['inn'], data=data_file['records'])
-        if rep.is_file_exists:
-            if not rep._config._is_unique:
-                if rep.check():
-                    data_file['config'] = file_config
-                    return data_file
-                elif rep._config._warning:
-                    for w in rep._config._warning:
-                        data_file['warning'].append(w)
-                data_file['records'] = rep._headers
-        if not rep.is_file_exists:
-            data_file['warning'].append(
-                'ФАЙЛ НЕ НАЙДЕН или ПОВРЕЖДЕН "{}". skip'.format(data_file['name']))
-            return data_file
+def __config_process(data_file: dict, file_config):
+    rep = Report_001_00(file_name=data_file['name'],
+                        config_file=str(file_config), inn=data_file['inn'], data=data_file['records'])
+    if rep.is_file_exists:
+        if not rep._config._is_unique:
+            if rep.check():
+                data_file['config'] = file_config
+                return data_file
+            elif rep._config._warning:
+                for w in rep._config._warning:
+                    data_file['warning'].append(w)
+            data_file['records'] = rep._headers
+    if not rep.is_file_exists:
+        data_file['warning'].append(
+            'ФАЙЛ НЕ НАЙДЕН или ПОВРЕЖДЕН "{}". skip'.format(data_file['name']))
     return data_file
 
 
@@ -154,7 +155,8 @@ def get_extract_files(archive_file: str, extract_dir: str = 'tmp') -> list:
             list_files.append({'name': new_name,
                               'inn': archive_file['inn'],
                                'config': conf,
-                               'warning': list()})
+                               'warning': list(),
+                               'zip': archive_file['file']})
             if i < len(archive_file['config'])-1:
                 i += 1
 
