@@ -379,6 +379,9 @@ class GisConfig:
                 fld['sub'].append(fld_sub)
             doc['fields'].append(fld)
             i += 1
+            if not self.read_config(f'{doc["name"]}_{i}', 'name'):
+                i = 99
+
         for fld in doc['fields']:
             self.set_fld_pattern_ref(fld, doc)
             for fld_sub in fld['sub']:

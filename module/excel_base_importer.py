@@ -913,13 +913,13 @@ class ExcelBaseImporter:
                     f'{self._parameters["inn"]["value"][-1]}{"_"+str(num) if num != 0 else ""}' +
                     f'{"_"+key.replace(" ","_") if key != "noname" else ""}{id}_{name}')
                 if not output_format or output_format == 'json':
-                    with open(f'{file_output}.json', mode='a', encoding='utf-8') as file:
+                    with open(f'{file_output}.json', mode='a', encoding=ENCONING) as file:
                         jstr = json.dumps(records, indent=4,
                                           ensure_ascii=False)
                         file.write(jstr)
 
                 if not output_format or output_format == 'csv':
-                    with open(f'{file_output}.csv', mode='a', encoding='utf-8') as file:
+                    with open(f'{file_output}.csv', mode='a', encoding=ENCONING) as file:
                         names = [x for x in records[0].keys()]
                         file_writer = csv.DictWriter(file, delimiter=";",
                                                      lineterminator="\r", fieldnames=names)

@@ -1,5 +1,10 @@
 import logging
 
+# ENCONING = 'utf-8'
+ENCONING = 'windows-1251'
+
+DOCUMENTS = 'accounts pp pp_charges pp_service pu puv'
+
 PATH_LOG = 'logs'
 PATH_OUTPUT = 'output'
 PATH_CONFIG = 'config'

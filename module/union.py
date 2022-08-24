@@ -8,13 +8,9 @@ import csv
 from typing import NoReturn, Final
 from collections import Counter
 from .gisconfig import fatal_error, warning_error, PATH_LOG
-
-db_logger = logging.getLogger('parser')
-DOCUMENTS: Final = 'accounts pp pp_charges pu puv'
+from module.settings import *
 
 # Объединение однотипных файлом
-
-
 class UnionData:
 
     def __init__(self) -> None:
@@ -74,7 +70,7 @@ class UnionData:
     def __get_data(self, path_output: str, file_name: str) -> dict:
         data = dict()
         file_output = pathlib.Path(path_output, file_name)
-        with open(file_output, mode='r', encoding='utf-8') as file:
+        with open(file_output, mode='r', encoding=ENCONING) as file:
             data = json.load(file)
             if data:
                 # список в словарь
@@ -104,11 +100,11 @@ class UnionData:
     def __write(self, path_output: str, inn: str, file_name: str, data: dict) -> NoReturn:
         data = [x for x in data.values()]
         file_output = pathlib.Path(path_output, f'{inn}_{file_name}')
-        with open(f'{file_output}.json', mode='a', encoding='utf-8') as file:
+        with open(f'{file_output}.json', mode='a', encoding=ENCONING) as file:
             jstr = json.dumps(data, indent=4,
                               ensure_ascii=False)
             file.write(jstr)
-        with open(f'{file_output}.csv', mode='a', encoding='utf-8') as file:
+        with open(f'{file_output}.csv', mode='a', encoding=ENCONING) as file:
             names = [x for x in data[0].keys()]
             file_writer = csv.DictWriter(file, delimiter=";",
                                          lineterminator="\r", fieldnames=names)
