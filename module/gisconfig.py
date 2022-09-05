@@ -5,7 +5,7 @@ import re
 import traceback
 from dataclasses import replace
 from datetime import datetime
-from typing import NoReturn
+from typing import NoReturn, Union
 from module.settings import *
 
 
@@ -82,6 +82,7 @@ class GisConfig:
         # необрабатываемые строки таблицы
         self._rows_exclude = self.read_config(
             'main', 'rows_exclude', isNumeric=True)
+        self.set_patterns()
         self.set_check()
         self.set_header()
         self.set_parameters()
@@ -95,7 +96,8 @@ class GisConfig:
         self._header = {'row': [0], 'col': [0], 'pattern': ''}
         self._header['col'] = self.read_config(
             'header', 'column', isNumeric=True)
-        self._header['pattern'] = self.read_config('header', 'pattern')
+        self._header['pattern'] = self.__get_pattern(
+            self.read_config('header', 'pattern'))
 
     def set_check(self):
         self._check = dict()
@@ -103,7 +105,8 @@ class GisConfig:
             'check', 'row', isNumeric=True)
         self._check['col'] = self.read_config(
             'check', 'column', isNumeric=True)
-        self._check['pattern'] = self.read_config('check', 'pattern')
+        self._check['pattern'] = self.__get_pattern(
+            self.read_config('check', 'pattern'))
         self._check['func'] = self.read_config('check', 'func')
         self._check['func_pattern'] = self.read_config('check', 'func_pattern')
         i = 0
@@ -124,73 +127,81 @@ class GisConfig:
         self._parameters.setdefault(
             'path', [{'row': 0, 'col': 0, 'pattern': ['@output'], 'ishead': True}])
 
-    def set_param_colontitul(self, name: str, is_head: bool = True) -> NoReturn:
+    def set_param_colontitul(self, name_part: str, is_head: bool = True) -> NoReturn:
         i = 0
-        while self.read_config(f'{name}_{i}', 'name'):
-            self._parameters.setdefault(
-                self.read_config(f'{name}_{i}', 'name'), [])
-            self._parameters[self.read_config(f'{name}_{i}', 'name')].append(
-                {
-                    'row': self.read_config(f'{name}_{i}', 'row', isNumeric=True),
-                    'col': self.read_config(f'{name}_{i}', 'column', isNumeric=True),
-                    'pattern': [self.read_config(f'{name}_{i}', 'pattern')],
-                    'offset_row': self.read_config(f'{name}_{i}', 'offset_row', isNumeric=True),
-                    'offset_col': self.read_config(f'{name}_{i}', 'offset_col', isNumeric=True),
-                    'offset_pattern': self.read_config(f'{name}_{i}', 'offset_pattern'),
-                    'ishead': is_head,
-                }
-            )
-            j = 0
-            while self.read_config(f'{name}_{i}', f'pattern_{j}'):
-                self._parameters[self.read_config(
-                    f'{name}_{i}', 'name')][0]['pattern'].append(self.read_config(f'{name}_{i}', f'pattern_{j}'))
-                j += 1
+        name = 'default'
+        while name:
+            name = self.read_config(f'{name_part}_{i}', 'name')
+            if name:
+                self._parameters.setdefault(name, [])
+                self._parameters[name].append(
+                    {
+                        'row': self.read_config(f'{name_part}_{i}', 'row', isNumeric=True),
+                        'col': self.read_config(f'{name_part}_{i}', 'column', isNumeric=True),
+                        'pattern': [self.__get_pattern(self.read_config(f'{name_part}_{i}', 'pattern'))],
+                        'offset_row': self.read_config(f'{name_part}_{i}', 'offset_row', isNumeric=True),
+                        'offset_col': self.read_config(f'{name_part}_{i}', 'offset_col', isNumeric=True),
+                        'offset_pattern': self.read_config(f'{name_part}_{i}', 'offset_pattern'),
+                        'ishead': is_head,
+                    }
+                )
+                j = 0
+                p = 'default'
+                while p:
+                    p = self.read_config(f'{name_part}_{i}', f'pattern_{j}')
+                    if p:
+                        self._parameters[name][0]['pattern'].append(p)
+                    j += 1
             i += 1
 
     def set_table_columns(self) -> NoReturn:
-        i = 0
-        pattern = self.read_config(f'col_{i}', 'pattern')
-        name = self.read_config(f'col_{i}', 'name')
+        i = -1
+        pattern = 'default'
+        name = 'default'
         while pattern or name:
-            b1 = True if self.read_config(
-                f'col_{i}', 'is_duplicate') in ('-1', '1', 'True', 'true') else False
-            b2 = True if self.read_config(
-                f'col_{i}', 'is_optional') in ('-1', '1', 'True', 'true') else False
-            b3 = True if self.read_config(
-                f'col_{i}', 'is_unique') in ('-1', '1', 'True', 'true') else False
-            b4 = True if self.read_config(
-                f'col_{i}', 'is_only_after_stable') in ('-1', '1', 'True', 'true') else False
-            b2 = b2 or b4 or not pattern
-            heading = {
-                'name': name if name else f'col_{i}',
-                'pattern': list(),
-                'index': -1,
-                'indexes': [],
-                'row': -1,
-                'col': i,
-                'col_data': self.read_config(f'col_{i}', 'col_data_offset', isNumeric=True),
-                'active': False,
-                'duplicate': b1,
-                'optional': b2,
-                'unique': b3,
-                'after_stable': b4,
-                'left': self.read_config(f'col_{i}', 'border_column_left', isNumeric=True),
-                'right': self.read_config(f'col_{i}', 'border_column_right', isNumeric=True),
-                'offset': dict(),
-            }
-            heading['pattern'].append(pattern)
-            j = 0
-            pattern_dop = self.read_config(f'col_{i}', f'pattern_{j}')
-            while pattern_dop:
-                heading['pattern'].append(pattern_dop)
-                j += 1
-                pattern_dop = self.read_config(f'col_{i}', f'pattern_{j}')
-            self._columns_heading.append(heading)
-            self.set_column_conditions(i)
-            self.set_column_offset(i)
             i += 1
-            pattern = self.read_config(f'col_{i}', 'pattern')
+            pattern = self.__get_pattern(
+                self.read_config(f'col_{i}', 'pattern'))
             name = self.read_config(f'col_{i}', 'name')
+            if pattern or name:
+                b1 = True if self.read_config(
+                    f'col_{i}', 'is_duplicate') in ('-1', '1', 'True', 'true') else False
+                b2 = True if self.read_config(
+                    f'col_{i}', 'is_optional') in ('-1', '1', 'True', 'true') else False
+                b3 = True if self.read_config(
+                    f'col_{i}', 'is_unique') in ('-1', '1', 'True', 'true') else False
+                b4 = True if self.read_config(
+                    f'col_{i}', 'is_only_after_stable') in ('-1', '1', 'True', 'true') else False
+                b2 = b2 or b4 or not pattern
+                heading = {
+                    'name': name if name else f'col_{i}',
+                    'pattern': list(),
+                    'index': -1,
+                    'indexes': [],
+                    'row': -1,
+                    'col': i,
+                    'col_data': self.read_config(f'col_{i}', 'col_data_offset', isNumeric=True),
+                    'active': False,
+                    'duplicate': b1,
+                    'optional': b2,
+                    'unique': b3,
+                    'after_stable': b4,
+                    'left': self.read_config(f'col_{i}', 'border_column_left', isNumeric=True),
+                    'right': self.read_config(f'col_{i}', 'border_column_right', isNumeric=True),
+                    'offset': dict(),
+                }
+                heading['pattern'].append(pattern)
+                j = -1
+                pattern_dop = 'default'
+                while pattern_dop:
+                    j += 1
+                    pattern_dop = self.__get_pattern(
+                        self.read_config(f'col_{i}', f'pattern_{j}'))
+                    if pattern_dop:
+                        heading['pattern'].append(pattern_dop)
+                self._columns_heading.append(heading)
+                self.set_column_conditions(i)
+                self.set_column_offset(i)
 
     def set_column_conditions(self, i: int) -> NoReturn:
         patt = self.read_config(f'col_{i}', 'condition_begin_team')
@@ -228,6 +239,20 @@ class GisConfig:
         if not self._columns_heading[i]['offset']['pattern'][0] and index != -1 and index < len(self._columns_heading):
             self._columns_heading[i]['offset']['pattern'] = self._columns_heading[index]['offset']['pattern']
 
+
+# ========================= Шаблоны =======================================================
+    @fatal_error
+    def set_patterns(self) -> NoReturn:
+        self._patterns = dict()  # список шаблонов
+        name = 'default'
+        k = -1
+        while name and k < 1000:
+            part = f'pattern{"_" if k>=0 else ""}{k if k>=0 else ""}'
+            name = self.read_config(part, 'name')
+            if name:
+                self._patterns[name] = self.read_config(part, 'pattern')
+            k += 1
+
 # ========================= Документы =======================================================
     @fatal_error
     def set_documents(self) -> NoReturn:
@@ -253,15 +278,15 @@ class GisConfig:
         else:
             fld.setdefault('name', x)
         # шаблон поиска (регулярное выражение)
-        x = self.read_config(f'{name}', 'pattern')
+        x = self.__get_pattern(self.read_config(f'{name}', 'pattern'))
         if x:
             fld['pattern'] = [x]
         else:
             fld.setdefault('pattern', [x])
         j = 0
         while self.read_config(f'{name}', f'pattern_{j}'):
-            fld['pattern'].append(self.read_config(
-                f'{name}', f'pattern_{j}'))
+            fld['pattern'].append(self.__get_pattern(
+                self.read_config(f'{name}', f'pattern_{j}')))
             j += 1
         # колонка для поиска данных аттрибут
         x = self.read_config(
@@ -307,15 +332,15 @@ class GisConfig:
         fld['is_offset'] = (len(fld['offset_column']) !=
                             0 or len(fld['offset_row']) != 0)
         # шаблон поиска (регулярное выражение)
-        x = self.read_config(f'{name}', 'offset_pattern')
+        x = self.__get_pattern(self.read_config(f'{name}', 'offset_pattern'))
         if x:
             fld['offset_pattern'] = [x]
         else:
             fld.setdefault('offset_pattern', [x])
         j = 0
         while self.read_config(f'{name}', f'offset_pattern_{j}'):
-            fld['offset_pattern'].append(self.read_config(
-                f'{name}', f'offset_pattern_{j}'))
+            fld['offset_pattern'].append(self.__get_pattern(
+                self.read_config(f'{name}', f'offset_pattern_{j}')))
             j += 1
         # тип данных в колонке смещения
         x = self.read_config(
@@ -338,28 +363,17 @@ class GisConfig:
         else:
             fld.setdefault('func', x)
         # шаблон поиска (регулярное выражение)
-        x = self.read_config(
-            f'{name}', 'func_pattern')
+        x = self.__get_pattern(self.read_config(f'{name}', 'func_pattern'))
         if x:
             fld['func_pattern'] = [x]
         else:
             fld.setdefault('func_pattern', [x])
         return fld
 
+    @warning_error
     def set_fld_pattern_ref(self, fld, doc):
-        try:
-            if fld['pattern'][0][0:1] == '@':
-                if fld['pattern'][0][1:]:
-                    n = int(fld['pattern'][0][1:])
-                    fld['column'] = doc['fields'][n]['column']
-                    fld['pattern'] = doc['fields'][n]['pattern']
-                    # for item in doc['fields'][n]['sub']:
-                    #     fld['pattern'] += item['pattern']
-                else:
-                    fld['pattern'] = self._condition_team if self._condition_team else [
-                        '']
-        except:
-            pass
+        fld['pattern'][0], fld['column'] = self.__get_pattern(
+            fld['pattern'][0], fld['column'], doc)
 
     def set_document_fields(self, doc) -> NoReturn:
         i = 0
@@ -381,7 +395,6 @@ class GisConfig:
             i += 1
             if not self.read_config(f'{doc["name"]}_{i}', 'name'):
                 i = 99
-
         for fld in doc['fields']:
             self.set_fld_pattern_ref(fld, doc)
             for fld_sub in fld['sub']:
@@ -390,33 +403,6 @@ class GisConfig:
     def field_copy(self, fld: dict) -> dict:
         copy_fld = fld.copy()
         return copy_fld
-
-    def set_field_sub(self, fld, name, i: int):
-        j = 0
-        while self.read_config(f'{name}_{i}_{j}', 'pattern'):
-            rows = self.read_config(
-                f'{name}_{i}_{j}', 'row', isNumeric=True)
-            cols = self.read_config(
-                f'{name}_{i}_{j}', 'column', isNumeric=True)
-            cols_offset = self.read_config(
-                f'{name}_{i}_{j}', 'offset_col_config', isNumeric=True)
-            rows_offset = self.read_config(
-                f'{name}_{i}_{j}', 'offset_row_data', isNumeric=True)
-            fld.append(
-                {
-                    'row': rows,
-                    'column': cols,
-                    'pattern': [self.read_config(f'{name}_{i}_{j}', 'pattern')],
-                    'type': '',
-                    'offset_type': '',
-                    'offset_column': cols_offset,
-                    'offset_row': rows_offset,
-                    'offset_pattern': [self.read_config(f'{name}_{i}_{j}', 'offset_pattern')],
-                    'func': self.read_config(f'{name}_{i}_{j}', 'func'),
-                    'func_pattern': [self.read_config(f'{name}_{i}_{j}', 'func_pattern')],
-                }
-            )
-            j += 1
 
     @fatal_error
     def get_range(self, x: str) -> list:
@@ -450,3 +436,28 @@ class GisConfig:
                 return []
             else:
                 return ''
+
+    def __get_pattern(self, patt: str, col: list = None, doc: dict = None) -> Union[str, tuple]:
+        if patt[0:1] == '@':
+            names: str = patt[1:]
+            patt = ''
+            if names:
+                for name in names.split(','):
+                    if self._patterns.get(name, ''):
+                        patt = patt + \
+                            ('|' if patt else '') + \
+                            self._patterns[name]
+                    elif doc:
+                        n = int(name)
+                        col = doc['fields'][n]['column']
+                        patt = patt + \
+                            ('|' if patt else '') + \
+                            doc['fields'][n]['pattern'][0]
+                    else:
+                        patt = f'@{name}'
+            else:
+                patt = self._condition_team[0] if self._condition_team else ''
+        if doc and col:
+            return patt, col
+        else:
+            return patt

@@ -1,7 +1,7 @@
-from email import utils
 import sys
 import os
 import logging
+import datetime
 from module.utils import get_files, write_list, createParser
 from module.excel_base_importer import ExcelBaseImporter
 from report.report_001_00 import Report_001_00
@@ -29,13 +29,6 @@ if __name__ == "__main__":
             u = UnionData()
             u.start(namespace.union)
     else:
-        if os.path.isdir(PATH_OUTPUT):
-            list(map(os.unlink, (os.path.join(PATH_OUTPUT, f)
-                                 for f in os.listdir(PATH_OUTPUT))))
-        if os.path.isdir(PATH_LOG):
-            list(map(os.unlink, (os.path.join(PATH_LOG, f)
-                                 for f in os.listdir(PATH_LOG))))
-
         list_files = get_files(namespace)
         i = 0
         if list_files:

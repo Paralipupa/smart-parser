@@ -913,13 +913,13 @@ class ExcelBaseImporter:
                     f'{self._parameters["inn"]["value"][-1]}{"_"+str(num) if num != 0 else ""}' +
                     f'{"_"+key.replace(" ","_") if key != "noname" else ""}{id}_{name}')
                 if not output_format or output_format == 'json':
-                    with open(f'{file_output}.json', mode='a', encoding=ENCONING) as file:
+                    with open(f'{file_output}.json', mode='w', encoding=ENCONING) as file:
                         jstr = json.dumps(records, indent=4,
                                           ensure_ascii=False)
                         file.write(jstr)
 
                 if not output_format or output_format == 'csv':
-                    with open(f'{file_output}.csv', mode='a', encoding=ENCONING) as file:
+                    with open(f'{file_output}.csv', mode='w', encoding=ENCONING) as file:
                         names = [x for x in records[0].keys()]
                         file_writer = csv.DictWriter(file, delimiter=";",
                                                      lineterminator="\r", fieldnames=names)
@@ -1053,12 +1053,8 @@ class ExcelBaseImporter:
 
     def func(self, team: dict, fld_param: dict, row: int, col: int) -> str:
         dic_f = {
-            'inn': self.func_inn,
-            'period': self.func_period,
-            'period_last': self.func_period_last,
             'period_month': self.func_period_month,
             'period_year': self.func_period_year,
-            'address': self.func_address,
             'column_name': self.func_column_name,
             'column_value': self.func_column_value,
             'hash': self.func_hash,
@@ -1085,7 +1081,12 @@ class ExcelBaseImporter:
                     try:
                         f = dic_f[name_func.strip()]
                     except Exception as ex:
-                        value = value.strip() + ('_' if value else '') + name_func
+                        if self._parameters.get(name_func,[]):
+                            value = value.strip() + self._parameters[name_func]['value'][-1]
+                        elif name_func == '_':
+                            value = value.strip() + (' ' if value else '') + data
+                        else:
+                            value = value.strip() + (' ' if value else '') + name_func
                     else:
                         if is_check:
                             if f(data_calc, row, col, team):
@@ -1124,23 +1125,11 @@ class ExcelBaseImporter:
             is_check = True
         return name_func, data, is_check
         
-    def func_inn(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
-        return self._parameters['inn']['value'][-1]
-
-    def func_period(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
-        return self._parameters['period']['value'][0]
-
-    def func_period_last(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
-        return self._parameters['period']['value'][-1]
-
     def func_period_month(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
         return self._parameters['period']['value'][0][3:5]
 
     def func_period_year(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
         return self._parameters['period']['value'][0][6:]
-
-    def func_address(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
-        return self._parameters['address']['value'][0]
 
     def func_hash(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
         return _hashit(str(data).encode('utf-8'))

@@ -32,11 +32,11 @@ class UnionData:
                     if inn and name and period:
                         del_files.append(file)
                         data.setdefault(inn[0], dict())
-                        data[inn[0]].setdefault(f'{name[0]}_{period[0]}', [])
-                        data[inn[0]][f'{name[0]}_{period[0]}'].append(
+                        data[inn[0]].setdefault(f'{name[0]}@{period[0]}', [])
+                        data[inn[0]][f'{name[0]}@{period[0]}'].append(
                             self.__get_data(path_output, file))
             for inn, item in data.items():
-                for period, value in item.items():
+                for id_period, value in item.items():
                     if len(value) > 1:
                         for key, a in value[0].items():
                             for index in range(1, len(value)):
@@ -46,7 +46,7 @@ class UnionData:
                                     value[index].pop(key)
                         for index in range(1, len(value)):
                             value[0].update(value[index])
-                    self.__write(path_output, inn, period, value[0])
+                    self.__write(path_output, inn, id_period, value[0])
             for file in del_files:
                 os.remove(pathlib.Path(path_output, file))
                 os.remove(pathlib.Path(
@@ -97,14 +97,18 @@ class UnionData:
         return a
 
     @fatal_error
-    def __write(self, path_output: str, inn: str, file_name: str, data: dict) -> NoReturn:
+    def __write(self, path_output: str, inn: str, file_with_period: str, data: dict) -> NoReturn:
         data = [x for x in data.values()]
-        file_output = pathlib.Path(path_output, f'{inn}_{file_name}')
-        with open(f'{file_output}.json', mode='a', encoding=ENCONING) as file:
+        file_name, period = file_with_period.split('@')
+        
+        path = pathlib.Path(path_output, f'{inn}_{period[5:]}{period[0:4]}')
+        os.makedirs(path, exist_ok=True)
+        file_output = pathlib.Path(path, file_name)
+        with open(f'{file_output}.json', mode='w', encoding=ENCONING) as file:
             jstr = json.dumps(data, indent=4,
                               ensure_ascii=False)
             file.write(jstr)
-        with open(f'{file_output}.csv', mode='a', encoding=ENCONING) as file:
+        with open(f'{file_output}.csv', mode='w', encoding=ENCONING) as file:
             names = [x for x in data[0].keys()]
             file_writer = csv.DictWriter(file, delimiter=";",
                                          lineterminator="\r", fieldnames=names)
