@@ -1053,6 +1053,7 @@ class ExcelBaseImporter:
 
     def func(self, team: dict, fld_param: dict, row: int, col: int) -> str:
         dic_f = {
+            'period_last': self.func_period_last,
             'period_month': self.func_period_month,
             'period_year': self.func_period_year,
             'column_name': self.func_column_name,
@@ -1124,7 +1125,13 @@ class ExcelBaseImporter:
             name_func = name_func.replace('check_', '')
             is_check = True
         return name_func, data, is_check
-        
+
+    def func_period_last(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
+        any_day = datetime.datetime.strptime(self._parameters['period']['value'][-1],'%d.%m.%Y')
+        next_month = any_day.replace(day=28) + datetime.timedelta(days=4)  # this will never fail
+        return (next_month - datetime.timedelta(days=next_month.day)).strftime('%d.%m.%Y')
+        # return self._parameters['period']['value'][-1]
+
     def func_period_month(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
         return self._parameters['period']['value'][0][3:5]
 

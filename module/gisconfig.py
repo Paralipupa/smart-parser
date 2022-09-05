@@ -24,7 +24,6 @@ def warning_error(func):
         try:
             return func(*args)
         except Exception as ex:
-            # db_logger.warning(f'{str(func)} {str(ex)}')
             return None
     return wrapper
 
@@ -204,13 +203,14 @@ class GisConfig:
                 self.set_column_offset(i)
 
     def set_column_conditions(self, i: int) -> NoReturn:
-        patt = self.read_config(f'col_{i}', 'condition_begin_team')
+        patt = self.__get_pattern(self.read_config(
+            f'col_{i}', 'condition_begin_team'))
         if len(self._condition_team) == 0 and patt:
             self._condition_team.append(patt)
             j = 0
             while self.read_config(f'col_{i}', f'condition_begin_team_{j}'):
-                self._condition_team.append(self.read_config(
-                    f'col_{i}', f'condition_begin_team_{j}'))
+                self._condition_team.append(self.__get_pattern(self.read_config(
+                    f'col_{i}', f'condition_begin_team_{j}')))
                 j += 1
             self._condition_team_column = self._columns_heading[i]['name']
         if not self._condition_end_table:
@@ -241,6 +241,8 @@ class GisConfig:
 
 
 # ========================= Шаблоны =======================================================
+
+
     @fatal_error
     def set_patterns(self) -> NoReturn:
         self._patterns = dict()  # список шаблонов
@@ -270,7 +272,7 @@ class GisConfig:
             self._documents.append(doc)
             k += 1
 
-    def set_doc_field(self, fld: dict, name: str) -> dict:
+    def set_doc_field(self, fld: dict, name: str, doc: dict) -> dict:
         # имя поля
         x = self.read_config(f'{name}', 'name')
         if x:
@@ -278,7 +280,7 @@ class GisConfig:
         else:
             fld.setdefault('name', x)
         # шаблон поиска (регулярное выражение)
-        x = self.__get_pattern(self.read_config(f'{name}', 'pattern'))
+        x = self.__get_pattern(self.read_config(f'{name}', 'pattern'), doc)
         if x:
             fld['pattern'] = [x]
         else:
@@ -286,7 +288,7 @@ class GisConfig:
         j = 0
         while self.read_config(f'{name}', f'pattern_{j}'):
             fld['pattern'].append(self.__get_pattern(
-                self.read_config(f'{name}', f'pattern_{j}')))
+                self.read_config(f'{name}', f'pattern_{j}'), doc))
             j += 1
         # колонка для поиска данных аттрибут
         x = self.read_config(
@@ -332,7 +334,8 @@ class GisConfig:
         fld['is_offset'] = (len(fld['offset_column']) !=
                             0 or len(fld['offset_row']) != 0)
         # шаблон поиска (регулярное выражение)
-        x = self.__get_pattern(self.read_config(f'{name}', 'offset_pattern'))
+        x = self.__get_pattern(self.read_config(
+            f'{name}', 'offset_pattern'), doc)
         if x:
             fld['offset_pattern'] = [x]
         else:
@@ -340,7 +343,7 @@ class GisConfig:
         j = 0
         while self.read_config(f'{name}', f'offset_pattern_{j}'):
             fld['offset_pattern'].append(self.__get_pattern(
-                self.read_config(f'{name}', f'offset_pattern_{j}')))
+                self.read_config(f'{name}', f'offset_pattern_{j}'), doc))
             j += 1
         # тип данных в колонке смещения
         x = self.read_config(
@@ -363,7 +366,8 @@ class GisConfig:
         else:
             fld.setdefault('func', x)
         # шаблон поиска (регулярное выражение)
-        x = self.__get_pattern(self.read_config(f'{name}', 'func_pattern'))
+        x = self.__get_pattern(self.read_config(
+            f'{name}', 'func_pattern'), doc)
         if x:
             fld['func_pattern'] = [x]
         else:
@@ -371,19 +375,19 @@ class GisConfig:
         return fld
 
     @warning_error
-    def set_fld_pattern_ref(self, fld, doc):
+    def set_fld_pattern_ref(self, fld: dict, doc: dict) -> NoReturn:
         fld['pattern'][0], fld['column'] = self.__get_pattern(
-            fld['pattern'][0], fld['column'], doc)
+            fld['pattern'][0], doc, fld['column'])
 
-    def set_document_fields(self, doc) -> NoReturn:
+    def set_document_fields(self, doc: dict) -> NoReturn:
         i = 0
         while self.read_config(f'{doc["name"]}_{i}', 'name'):
-            fld = self.set_doc_field(dict(), f'{doc["name"]}_{i}')
+            fld = self.set_doc_field(dict(), f'{doc["name"]}_{i}', doc)
             fld['sub'] = []
             j = 0
             while self.read_config(f'{doc["name"]}_{i}_{j}', 'pattern') or self.read_config(f'{doc["name"]}_{i}_{j}', 'offset_pattern'):
                 fld_sub = self.set_doc_field(
-                    fld.copy(), f'{doc["name"]}_{i}_{j}')
+                    fld.copy(), f'{doc["name"]}_{i}_{j}', doc)
                 fld_sub['sub'] = []
                 fld['sub'].append(fld_sub)
                 j += 1
@@ -437,7 +441,7 @@ class GisConfig:
             else:
                 return ''
 
-    def __get_pattern(self, patt: str, col: list = None, doc: dict = None) -> Union[str, tuple]:
+    def __get_pattern(self, patt: str, doc: dict = None, col: list = None) -> Union[str, tuple]:
         if patt[0:1] == '@':
             names: str = patt[1:]
             patt = ''
@@ -449,10 +453,14 @@ class GisConfig:
                             self._patterns[name]
                     elif doc:
                         n = int(name)
-                        col = doc['fields'][n]['column']
-                        patt = patt + \
-                            ('|' if patt else '') + \
-                            doc['fields'][n]['pattern'][0]
+                        col = doc['fields'][n]['column'] if col != None else None
+                        try:
+                            patt = patt + \
+                                ('|' if patt else '') + \
+                                doc['fields'][n]['pattern'][0]
+                        except Exception as ex:
+                            db_logger.warning(
+                                f'{self._config_name}(pattern=@{n}): {ex.args}')
                     else:
                         patt = f'@{name}'
             else:
