@@ -28,7 +28,7 @@ class UnionData:
                     name: list = re.findall(
                         '(?<=[0-9]{1}_)'+fn+'(?=\.json)', file, re.IGNORECASE)
                     period: list = re.findall(
-                        '(?<=[0-9]{1}_)[0-9]{4}_[0-9]{2}(?=_)', file, re.IGNORECASE)
+                        '(?<=[0-9]{1}_)[0-9]{2}[0-9]{4}(?=_)', file, re.IGNORECASE)
                     if inn and name and period:
                         del_files.append(file)
                         data.setdefault(inn[0], dict())
@@ -100,8 +100,7 @@ class UnionData:
     def __write(self, path_output: str, inn: str, file_with_period: str, data: dict) -> NoReturn:
         data = [x for x in data.values()]
         file_name, period = file_with_period.split('@')
-        
-        path = pathlib.Path(path_output, f'{inn}_{period[5:]}{period[0:4]}')
+        path = pathlib.Path(path_output, f'{inn}_{period}')
         os.makedirs(path, exist_ok=True)
         file_output = pathlib.Path(path, file_name)
         with open(f'{file_output}.json', mode='w', encoding=ENCONING) as file:

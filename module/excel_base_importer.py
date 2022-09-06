@@ -930,16 +930,12 @@ class ExcelBaseImporter:
     def write_logs(self, num: int = 0) -> NoReturn:
         if not self.is_init() or len(self._collections) == 0:
             return
-
         os.makedirs(PATH_LOG, exist_ok=True)
-
         id = self.func_id()
-
         i = 0
         file_output = pathlib.Path(
             PATH_LOG, f'{self._parameters["inn"]["value"][-1]}{"_"+str(num) if num != 0 else ""}{id}')
-        with open(f'{file_output}.log', 'w') as file:
-
+        with open(f'{file_output}.log', 'w', encoding=ENCONING) as file:
             file.write(f'{{')
             for key, value in self._parameters.items():
                 file.write(f'\t{key}:"')
@@ -947,7 +943,6 @@ class ExcelBaseImporter:
                     file.write(f'{index} ')
                 file.write(f'",\n')
             file.write(f'}},\n')
-
             file.write(f'\n{{')
             for item in self._config._columns_heading:
                 if item['row'] != -1:
@@ -957,15 +952,15 @@ class ExcelBaseImporter:
                         file.write(f'{index[POS_INDEX_VALUE]},')
                     file.write(f'",\n')
             file.write(f'}},\n\n')
-
             file.write('\nself._parameters\n')
-            jstr = json.dumps(self._parameters, indent=4)
+            jstr = json.dumps(self._parameters, indent=4, ensure_ascii=False)
             file.write(jstr)
             file.write('\nself._config._parameters\n')
             jstr = json.dumps(self._config._parameters, indent=4)
             file.write(jstr)
             file.write('\nself._config._columns_heading\n')
-            jstr = json.dumps(self._config._columns_heading, indent=4)
+            jstr = json.dumps(self._config._columns_heading,
+                              indent=4, ensure_ascii=False)
             file.write(jstr)
 
 # ---------- Параметры конфигурации --------------------
@@ -1082,8 +1077,9 @@ class ExcelBaseImporter:
                     try:
                         f = dic_f[name_func.strip()]
                     except Exception as ex:
-                        if self._parameters.get(name_func,[]):
-                            value = value.strip() + self._parameters[name_func]['value'][-1]
+                        if self._parameters.get(name_func, []):
+                            value = value.strip() + \
+                                self._parameters[name_func]['value'][-1]
                         elif name_func == '_':
                             value = value.strip() + (' ' if value else '') + data
                         else:
@@ -1127,10 +1123,10 @@ class ExcelBaseImporter:
         return name_func, data, is_check
 
     def func_period_last(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
-        any_day = datetime.datetime.strptime(self._parameters['period']['value'][-1],'%d.%m.%Y')
-        next_month = any_day.replace(day=28) + datetime.timedelta(days=4)  # this will never fail
+        period = datetime.datetime.strptime(
+            self._parameters['period']['value'][-1], '%d.%m.%Y')
+        next_month = period.replace(day=28) + datetime.timedelta(days=4)
         return (next_month - datetime.timedelta(days=next_month.day)).strftime('%d.%m.%Y')
-        # return self._parameters['period']['value'][-1]
 
     def func_period_month(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
         return self._parameters['period']['value'][0][3:5]
@@ -1146,7 +1142,7 @@ class ExcelBaseImporter:
 
     def func_id(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
         d = self._parameters['period']['value'][0]
-        return f'{str(self._current_value).strip()}_{d[6:]}_{d[3:5]}'
+        return f'{str(self._current_value).strip()}_{d[3:5]}{d[6:]}'  # _mmyyyy
 
     def func_column_name(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
         if col != -1:
