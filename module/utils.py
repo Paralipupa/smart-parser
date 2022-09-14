@@ -9,7 +9,7 @@ import pathlib
 
 config_files = []
 
-def createParser() -> argparse.ArgumentParser:
+def getArgs() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument('-n', '--name', nargs='?')
     parser.add_argument('-i', '--inn', nargs='?')
@@ -31,10 +31,7 @@ def get_config_files():
     return files
 
 
-def get_files(namespace: argparse.Namespace) -> list:
-    inn = namespace.inn
-    file_conf = namespace.config
-    file_name = namespace.name
+def get_files(file_name:str, inn: str, file_conf: str) -> list:
     global config_files
     config_files = get_config_files()
     list_files = list()
@@ -47,8 +44,7 @@ def get_files(namespace: argparse.Namespace) -> list:
 
     if zip_files:
         for file_name in zip_files:
-            inn = get_inn(filename=file_name['file'])
-            file_name['inn'] = inn if inn else file_name['inn']
+            file_name['inn'] = inn if inn else get_inn(filename=file_name['file'])
             file_name['config'] = [
                 file_conf] if file_conf else file_name['config']
             list_files += get_extract_files(archive_file=file_name)
