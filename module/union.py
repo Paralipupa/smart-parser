@@ -5,19 +5,23 @@ import os
 import pathlib
 import json
 import csv
+import zipfile
 from typing import NoReturn, Final
 from collections import Counter
 from .gisconfig import fatal_error, warning_error, PATH_LOG
 from .settings import *
 
 # Объединение однотипных файлом
+
+
 class UnionData:
 
     def __init__(self) -> None:
         self.logs = list()
 
-    def start(self, path_output: str) -> NoReturn:
-        files: list[str] = self.__get_files(path_output)
+    def start(self, path_input: str, path_output: str) -> list:
+        save_directories = dict()
+        files: list[str] = self.__get_files(path_input)
         if files:
             data = dict()
             del_files = list()
@@ -34,7 +38,7 @@ class UnionData:
                         data.setdefault(inn[0], dict())
                         data[inn[0]].setdefault(f'{name[0]}@{period[0]}', [])
                         data[inn[0]][f'{name[0]}@{period[0]}'].append(
-                            self.__get_data(path_output, file))
+                            self.__get_data(path_input, file))
             for inn, item in data.items():
                 for id_period, value in item.items():
                     if len(value) > 1:
@@ -46,12 +50,15 @@ class UnionData:
                                     value[index].pop(key)
                         for index in range(1, len(value)):
                             value[0].update(value[index])
-                    self.__write(path_output, inn, id_period, value[0])
+                    key = self.__write(path_output, inn, id_period, value[0])
+                    save_directories[key] = path_output
             for file in del_files:
-                os.remove(pathlib.Path(path_output, file))
+                os.remove(pathlib.Path(path_input, file))
                 os.remove(pathlib.Path(
-                    path_output, file.replace('json', 'csv')))
+                    path_input, file.replace('json', 'csv')))
             self.__write_logs()
+            return self.__make_archive(save_directories)
+        return []
 
     def __check_unique(self, file_name: str, arr: list) -> NoReturn:
         setarr = set(arr)
@@ -100,7 +107,8 @@ class UnionData:
     def __write(self, path_output: str, inn: str, file_with_period: str, data: dict) -> NoReturn:
         data = [x for x in data.values()]
         file_name, period = file_with_period.split('@')
-        path = pathlib.Path(path_output, f'{inn}_{period}')
+        key = f'{inn}_{period}'
+        path = pathlib.Path(path_output, key)
         os.makedirs(path, exist_ok=True)
         file_output = pathlib.Path(path, file_name)
         with open(f'{file_output}.json', mode='w', encoding=ENCONING) as file:
@@ -114,6 +122,22 @@ class UnionData:
             file_writer.writeheader()
             for rec in data:
                 file_writer.writerow(rec)
+        return key
+
+    def __make_archive(self, dirs):
+        files_arch = list()
+        for key, val in dirs.items():
+            path = pathlib.Path(val, key)
+            file_arc = pathlib.Path(val, f'{key}.zip')
+            fantasy_zip = zipfile.ZipFile(file_arc, 'w')
+            for folder, subfolders, files in os.walk(path):
+                for file in files:
+                    if file.endswith('.csv'):
+                        fantasy_zip.write(os.path.join(
+                            folder, file), file, compress_type=zipfile.ZIP_DEFLATED)
+            fantasy_zip.close()
+            files_arch.append({'file': file_arc, 'path': val})
+        return files_arch
 
     @fatal_error
     def __write_logs(self, num: int = 0) -> NoReturn:

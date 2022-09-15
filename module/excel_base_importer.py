@@ -903,7 +903,6 @@ class ExcelBaseImporter:
             return
 
         os.makedirs(self._parameters['path']['value'][0], exist_ok=True)
-        # os.makedirs(PATH_OUTPUT, exist_ok=True)
 
         self._current_value = ''
         id = self.func_id()

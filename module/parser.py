@@ -13,26 +13,27 @@ from .union import UnionData
 
 class Parser:
 
-    def __init__(self, file_name: str = '', inn: str = '', file_config: str = '', union: str = PATH_OUTPUT) -> None:
+    def __init__(self, file_name: str = '', inn: str = '', file_config: str = '', union: str = PATH_OUTPUT, path_down: str = PATH_OUTPUT) -> None:
         self.logs = list()
         self.name = file_name
         self.inn = inn
         self.config = file_config
         self.union = union
+        self.download = path_down
         self.report = {
             '001': Report_001_00,
             '002': Report_002_00,
             '003': Report_003_00
         }
 
-    def start(self):
+    def start(self) -> list:
         if not self.name:
             if not self.union:
                 logging.warning(
                     'run with parameters:  [--name|-n]=<file.lst>|<file.xsl>|<file.zip> [[--inn|-i]=<inn>] [[--config|-c]=<config.ini>] [[--union|-u]=<path>')
             else:
                 u = UnionData()
-                u.start(self.union)
+                return u.start(self.union, self.download)
         else:
             list_files = get_files(self.name, self.inn, self.config)
             i = 0
@@ -63,4 +64,5 @@ class Parser:
                 write_list(list_files)
                 if self.union:
                     u = UnionData()
-                    u.start(self.union)
+                    return u.start(self.union, self.download)
+        return []

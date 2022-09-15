@@ -7,8 +7,6 @@ DOCUMENTS = 'accounts pp pp_charges pp_service pu puv'
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-STATIC_ROOT = os.path.join(BASE_DIR, 'static')
-
 PATH_LOG = os.path.join(BASE_DIR, 'logs')
 PATH_OUTPUT = os.path.join(BASE_DIR, 'output')
 PATH_CONFIG = os.path.join(BASE_DIR, 'config')
