@@ -5,7 +5,7 @@ import argparse
 import pathlib
 from datetime import datetime
 from report.report_001_00 import Report_001_00
-from .gisconfig import PATH_OUTPUT, PATH_LOG, PATH_TMP, PATH_CONFIG
+from .gisconfig import print_message, PATH_OUTPUT, PATH_LOG, PATH_TMP, PATH_CONFIG
 
 config_files = []
 
@@ -101,7 +101,7 @@ def __config_find(data_file: dict, config_files: list, j: int, m: int) -> dict:
     ls = list()
     i = 0
     for conf_file in config_files:
-        print('Поиск конфигураций: {}%   \r'.format(
+        print_message('Поиск конфигураций: {}%   \r'.format(
             round((j*len(config_files)+i)/(m*len(config_files))*100, 0)), end='', flush=True)
         data_file = __config_process(data_file, pathlib.Path(PATH_CONFIG, f'{conf_file}'))
         if data_file['config']:
@@ -126,7 +126,6 @@ def __config_process(data_file: dict, file_config):
         data_file['warning'].append(
             'ФАЙЛ НЕ НАЙДЕН или ПОВРЕЖДЕН "{}". skip'.format(data_file['name']))
     return data_file
-
 
 def get_extract_files(archive_file: str, extract_dir: str = PATH_TMP) -> list:
     if not os.path.exists(archive_file['file']):

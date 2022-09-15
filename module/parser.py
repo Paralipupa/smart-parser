@@ -9,7 +9,7 @@ from .utils import get_files, write_list, getArgs
 from .excel_base_importer import ExcelBaseImporter
 from .gisconfig import regular_calc, PATH_OUTPUT, PATH_LOG
 from .union import UnionData
-
+from .settings import *
 
 class Parser:
 

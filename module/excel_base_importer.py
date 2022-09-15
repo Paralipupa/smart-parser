@@ -10,7 +10,7 @@ from ast import Return
 from cachetools import cached, LRUCache
 from typing import NoReturn, Union
 from itertools import product
-from .gisconfig import GisConfig, fatal_error, warning_error, regular_calc, PATH_LOG
+from .gisconfig import GisConfig, fatal_error, warning_error, regular_calc, print_message, PATH_LOG
 from .file_readers import get_file_reader
 from .settings import *
 
@@ -53,7 +53,7 @@ class ExcelBaseImporter:
     def read(self) -> bool:
         if not self.is_verify(self._parameters['filename']['value'][0]):
             return False
-        print('Файл {} ({})'.format(
+        print_message('Файл {} ({})'.format(
             self._parameters['filename']['value'][0], self._parameters['config']['value'][0]))
         if not self.get_col_start():
             self.set_col_start(0)
@@ -93,7 +93,7 @@ class ExcelBaseImporter:
                         self.check_body(record, row)
                     row += 1
                     if row % 100 == 0:
-                        print('Обработано: {}   \r'.format(
+                        print_message('Обработано: {}   \r'.format(
                             row), end='', flush=True)
                 self.done()
                 self._page_index += 1
