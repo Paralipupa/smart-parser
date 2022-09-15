@@ -12,7 +12,7 @@ from typing import NoReturn, Union
 from itertools import product
 from .gisconfig import GisConfig, fatal_error, warning_error, regular_calc, PATH_LOG
 from .file_readers import get_file_reader
-from module.settings import *
+from .settings import *
 
 
 def _hashit(s): return hashlib.sha1(s).hexdigest()

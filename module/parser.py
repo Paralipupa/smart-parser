@@ -2,13 +2,13 @@ import sys
 import os
 import logging
 import datetime
-from module.utils import get_files, write_list, getArgs
-from module.excel_base_importer import ExcelBaseImporter
 from report.report_001_00 import Report_001_00
 from report.report_002_00 import Report_002_00
 from report.report_003_00 import Report_003_00
-from module.gisconfig import regular_calc, PATH_OUTPUT, PATH_LOG
-from module.union import UnionData
+from .utils import get_files, write_list, getArgs
+from .excel_base_importer import ExcelBaseImporter
+from .gisconfig import regular_calc, PATH_OUTPUT, PATH_LOG
+from .union import UnionData
 
 
 class Parser:

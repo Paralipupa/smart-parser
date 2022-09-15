@@ -8,7 +8,7 @@ import csv
 from typing import NoReturn, Final
 from collections import Counter
 from .gisconfig import fatal_error, warning_error, PATH_LOG
-from module.settings import *
+from .settings import *
 
 # Объединение однотипных файлом
 class UnionData:

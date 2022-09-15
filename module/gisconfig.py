@@ -6,7 +6,7 @@ import traceback
 from dataclasses import replace
 from datetime import datetime
 from typing import NoReturn, Union
-from module.settings import *
+from .settings import *
 
 
 def fatal_error(func):

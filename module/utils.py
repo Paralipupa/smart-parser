@@ -2,10 +2,10 @@ import zipfile
 import os
 import re
 import argparse
+import pathlib
 from datetime import datetime
 from report.report_001_00 import Report_001_00
 from .gisconfig import PATH_OUTPUT, PATH_LOG, PATH_TMP, PATH_CONFIG
-import pathlib
 
 config_files = []
 
