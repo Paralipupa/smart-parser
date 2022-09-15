@@ -1,14 +1,18 @@
-import logging
+import logging, os
 
 # ENCONING = 'utf-8'
 ENCONING = 'windows-1251'
 
 DOCUMENTS = 'accounts pp pp_charges pp_service pu puv'
 
-PATH_LOG = 'logs'
-PATH_OUTPUT = 'output'
-PATH_CONFIG = 'config'
-PATH_TMP = 'tmp'
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+
+PATH_LOG = os.path.join(BASE_DIR, 'logs')
+PATH_OUTPUT = os.path.join(BASE_DIR, 'output')
+PATH_CONFIG = os.path.join(BASE_DIR, 'config')
+PATH_TMP = os.path.join(BASE_DIR, 'tmp')
 
 POS_INDEX_VALUE = 0
 POS_INDEX_IS_NEGATIVE = 1

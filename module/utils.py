@@ -128,7 +128,7 @@ def __config_process(data_file: dict, file_config):
     return data_file
 
 
-def get_extract_files(archive_file: str, extract_dir: str = 'tmp') -> list:
+def get_extract_files(archive_file: str, extract_dir: str = PATH_TMP) -> list:
     if not os.path.exists(archive_file['file']):
         return []
     z = zipfile.ZipFile(archive_file['file'], 'r')

@@ -742,7 +742,7 @@ class ExcelBaseImporter:
 
         self._parameters.setdefault('path', {'fixed': False, 'value': list()})
         if not self._parameters['path']['value']:
-            self._parameters['path']['value'].append('output')
+            self._parameters['path']['value'].append(PATH_OUTPUT)
         self._parameters.setdefault(
             'address', {'fixed': False, 'value': list()})
         if not self._parameters['address']['value']:
@@ -903,6 +903,7 @@ class ExcelBaseImporter:
             return
 
         os.makedirs(self._parameters['path']['value'][0], exist_ok=True)
+        # os.makedirs(PATH_OUTPUT, exist_ok=True)
 
         self._current_value = ''
         id = self.func_id()

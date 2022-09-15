@@ -124,7 +124,7 @@ class GisConfig:
         self._parameters.setdefault(
             'address', [{'row': 0, 'col': 0, 'pattern': [''], 'ishead': True}])
         self._parameters.setdefault(
-            'path', [{'row': 0, 'col': 0, 'pattern': ['@output'], 'ishead': True}])
+            'path', [{'row': 0, 'col': 0, 'pattern': [f'@{PATH_OUTPUT}'], 'ishead': True}])
 
     def set_param_colontitul(self, name_part: str, is_head: bool = True) -> NoReturn:
         i = 0
