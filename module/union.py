@@ -57,7 +57,7 @@ class UnionData:
                 os.remove(pathlib.Path(
                     path_input, file.replace('json', 'csv')))
             self.__write_logs()
-            return self.__make_archive(save_directories)
+            return self.__make_archive(path_output, save_directories)
         return []
 
     def __check_unique(self, file_name: str, arr: list) -> NoReturn:
@@ -124,20 +124,20 @@ class UnionData:
                 file_writer.writerow(rec)
         return key
 
-    def __make_archive(self, dirs):
-        files_arch = list()
+    @fatal_error
+    def __make_archive(self, path_output: str, dirs: list) -> str:
+        filename_arch = f'output_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.zip'
+        arch_zip = zipfile.ZipFile(
+            pathlib.Path(path_output, filename_arch), 'w')
         for key, val in dirs.items():
             path = pathlib.Path(val, key)
-            file_arc = pathlib.Path(val, f'{key}.zip')
-            fantasy_zip = zipfile.ZipFile(file_arc, 'w')
             for folder, subfolders, files in os.walk(path):
                 for file in files:
                     if file.endswith('.csv'):
-                        fantasy_zip.write(os.path.join(
-                            folder, file), file, compress_type=zipfile.ZIP_DEFLATED)
-            fantasy_zip.close()
-            files_arch.append({'file': file_arc, 'path': val})
-        return files_arch
+                        arch_zip.write(os.path.join(
+                            folder, file), os.path.join(folder, file), compress_type=zipfile.ZIP_DEFLATED)
+        arch_zip.close()
+        return filename_arch
 
     @fatal_error
     def __write_logs(self, num: int = 0) -> NoReturn:
