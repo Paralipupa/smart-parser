@@ -65,4 +65,4 @@ class Parser:
                 if self.union:
                     u = UnionData()
                     return u.start(self.union, self.download)
-        return []
+        return ''
