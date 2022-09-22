@@ -66,3 +66,14 @@ class Parser:
                     u = UnionData()
                     return u.start(self.union, self.download)
         return ''
+
+    @staticmethod
+    def get_path(pathname:str)->str:
+        if pathname == 'log':
+            return PATH_LOG
+        elif pathname == 'output':
+            return PATH_OUTPUT
+        elif pathname == 'tmp':
+            return PATH_TMP
+        return ''
+
