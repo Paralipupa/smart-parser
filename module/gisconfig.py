@@ -165,6 +165,7 @@ class GisConfig:
             pattern = self.__get_pattern(
                 self.read_config(f'col_{i}', 'pattern'))
             name = self.read_config(f'col_{i}', 'name')
+            alias = self.read_config(f'col_{i}', 'alias')
             if pattern or name:
                 b1 = True if self.read_config(
                     f'col_{i}', 'is_duplicate') in ('-1', '1', 'True', 'true') else False
@@ -192,6 +193,7 @@ class GisConfig:
                     'right': self.read_config(f'col_{i}', 'border_column_right', isNumeric=True),
                     'offset': dict(),
                 }
+                heading['alias'] = alias if alias else heading['name']
                 heading['pattern'].append(pattern)
                 j = -1
                 pattern_dop = 'default'
@@ -256,6 +258,10 @@ class GisConfig:
             name = self.read_config(part, 'name')
             if name:
                 self._patterns[name] = self.read_config(part, 'pattern')
+                j = 0
+                while self.read_config(part, f'pattern_{j}'):
+                    self._patterns[name] += '|' + self.read_config(part, f'pattern_{j}')
+                    j += 1
             k += 1
 
 # ========================= Документы =======================================================

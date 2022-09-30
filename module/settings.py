@@ -23,7 +23,7 @@ POS_VALUE = 0
 POS_PAGE_VALUE = 0
 POS_PAGE_IS_FIX = 1
 
-IS_MESSAGE_PRINT = False
+IS_MESSAGE_PRINT = True
 
 db_logger = logging.getLogger('parser')
 
