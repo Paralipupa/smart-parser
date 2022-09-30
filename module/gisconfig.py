@@ -447,27 +447,31 @@ class GisConfig:
     def __get_pattern(self, patt: str, doc: dict = None, col: list = None) -> Union[str, tuple]:
         if patt[0:1] == '@':
             names: str = patt[1:]
-            patt = ''
+            patt: str = ''
             if names:
                 for name in names.split(','):
                     if self._patterns.get(name, ''):
                         patt = patt + \
-                            ('|' if patt else '') + \
-                            self._patterns[name]
+                            (('|' if patt else '') +
+                                self._patterns[name]) if patt.find(self._patterns[name]) == -1 else ''
                     elif doc:
                         n = int(name)
                         col = doc['fields'][n]['column'] if col != None else None
                         try:
-                            patt = patt + \
-                                ('|' if patt else '') + \
-                                doc['fields'][n]['pattern'][0]
+                            for p in doc['fields'][n]['pattern']:
+                                patt = patt + \
+                                    (('|' if patt else '') +
+                                     p) if patt.find(p) == -1 else ''
                         except Exception as ex:
                             db_logger.warning(
                                 f'{self._config_name}(pattern=@{n}): {ex.args}')
                     else:
                         patt = f'@{name}'
             else:
-                patt = self._condition_team[0] if self._condition_team else ''
+                for p in self._condition_team:
+                    patt = patt + \
+                        (('|' if patt else '') +
+                            p) if patt.find(p) == -1 else ''
         if doc and col:
             return patt, col
         else:
