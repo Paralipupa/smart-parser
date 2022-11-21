@@ -48,10 +48,10 @@ def get_files(file_name:str, inn: str, file_conf: str) -> list:
             file_name['config'] = [
                 file_conf] if file_conf else file_name['config']
             list_files += get_extract_files(archive_file=file_name)
-        list_files = get_file_config(list_files)
     else:
         list_files.append(
             {'name': file_name, 'config': file_conf, 'inn': inn, 'warning': list(), 'zip': ''})
+    list_files = get_file_config(list_files)
 
     return list_files
 

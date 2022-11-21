@@ -136,6 +136,15 @@ class ExcelBaseImporter:
             return False
         return self._check_controll(self._headers, patts, is_warning)
 
+    def get_condition_data(self, values: list, pattern: str) -> str:
+        result = ''
+        for val in values:
+            value = regular_calc(pattern, val['value'])
+            if value == '' or result.find('error') != -1:
+                return ''
+            result += value
+        return result
+
     def check_condition_team(self, mapped_record: list) -> bool:
         if not self.get_condition_team():
             return True
@@ -143,16 +152,15 @@ class ExcelBaseImporter:
             return False
         b = False
         for patt in self.get_condition_team():
-            result = regular_calc(
-                patt, mapped_record[self.get_condition_column()][0]['value'])
+            result = self.get_condition_data(
+                mapped_record[self.get_condition_column()], patt)
             b = False if not result or result.find('error') != -1 else True
-            if b:
-                if len(self._teams) != 0:
-                    # Проверяем значение со значением из предыдущей области (иерархии)
-                    # если не совпадает, то фиксируем начало новой области (иерархии)
-                    pred = regular_calc(
-                        patt, self._teams[-1][self.get_condition_column()][0]['value'])
-                    b = (result != pred)
+            if b and len(self._teams) != 0:
+                # Проверяем значение со значением из предыдущей области (иерархии)
+                # если не совпадает, то фиксируем начало новой области (иерархии)
+                pred = self.get_condition_data(
+                    self._teams[-1][self.get_condition_column()], patt)
+                b = (result != pred)
                 if b:
                     break
         return b
