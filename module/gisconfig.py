@@ -14,7 +14,11 @@ def fatal_error(func):
         try:
             return func(*args, **kwargs)
         except Exception as ex:
-            db_logger.warning(traceback.format_exc())
+            s = ''
+            if args and isinstance(args[0], GisConfig):
+                s += ('Error in '+args[0]._config_name if hasattr(
+                    args[0], '_config_name') else '') + ':\n'
+            db_logger.warning(s+traceback.format_exc())
             exit()
     return wrapper
 
@@ -38,9 +42,11 @@ def regular_calc(pattern, value):
     except Exception as ex:
         return f"error in regular: '{pattern}' ({str(ex)})"
 
+
 def print_message(msg: str, end: str = '', flush: bool = False):
     if IS_MESSAGE_PRINT:
         print(msg, end=end, flush=flush)
+
 
 class GisConfig:
 
@@ -247,7 +253,6 @@ class GisConfig:
 
 # ========================= Шаблоны =======================================================
 
-
     @fatal_error
     def set_patterns(self) -> NoReturn:
         self._patterns = dict()  # список шаблонов
@@ -260,7 +265,8 @@ class GisConfig:
                 self._patterns[name] = self.read_config(part, 'pattern')
                 j = 0
                 while self.read_config(part, f'pattern_{j}'):
-                    self._patterns[name] += '|' + self.read_config(part, f'pattern_{j}')
+                    self._patterns[name] += '|' + \
+                        self.read_config(part, f'pattern_{j}')
                     j += 1
             k += 1
 

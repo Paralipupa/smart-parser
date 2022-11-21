@@ -86,7 +86,10 @@ class XlsFile(DataFile):
 class XlsxFile(DataFile):
     def __init__(self, fname, sheet_name, first_line, columns, page_index=0):
         super(XlsxFile, self).__init__(fname, sheet_name, first_line, columns)
-        self._wb = load_workbook(filename=fname, read_only=True)
+        try:
+            self._wb = load_workbook(filename=fname)
+        except:
+            self._wb = load_workbook(filename=fname, read_only=True)
 
         if self._sheet_name:
             self._ws = self._wb.get_sheet_by_name(self._sheet_name)

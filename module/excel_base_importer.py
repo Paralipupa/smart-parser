@@ -470,7 +470,7 @@ class ExcelBaseImporter:
         for row in range(self._config._max_rows_heading[0][0]):
             if row < len(headers):
                 for pattern in patts:
-                    if pattern['maxrow'] > row and pattern['pattern']:
+                    if pattern['maxrow'] >= row and pattern['pattern']:
                         if pattern['full']:
                             s = (' '.join(headers[row])).strip()
                             if s:
@@ -808,7 +808,7 @@ class ExcelBaseImporter:
             main_rows_exclude = set()
             offset_rows_exclude = set()
             for table_row in doc_param['rows_exclude']:
-                main_rows_exclude.add((table_row[0],-1))
+                main_rows_exclude.add((table_row[0], -1))
             # собираем все поля: name_attr, name_attr_0, ... , name_attr_N
             fld_records = self._get_fld_records(fld_item)
             for fld_record in fld_records:
@@ -819,29 +819,32 @@ class ExcelBaseImporter:
                 if not name_field:
                     continue
                 for table_row in fld_record['rows_exclude']:
-                    main_rows_exclude.add((table_row[0],-1))
+                    main_rows_exclude.add((table_row[0], -1))
                 table_rows = self._get_value_range(
                     fld_record['row'], len(team[name_field]))
                 for table_row in table_rows:  # обрабатываем все строки области данных
                     if len(team[name_field]) > table_row[0] and not (table_row[0], -1) in main_rows_exclude \
-                            and not (table_row[0], col[POS_VALUE]) in main_rows_exclude:
+                            and not (table_row[POS_VALUE], col[POS_VALUE]) in main_rows_exclude:
                         for patt in fld_record['pattern']:
                             x = self._get_values(
                                 values=[(x['value'], None, x['negative']) for x in team[name_field]
-                                        if x['row'] == table_row[0]],
+                                        if x['row'] == table_row[POS_VALUE]],
                                 type_fld=fld_record['type'],
                                 pattern=patt)
                             if x:
                                 fld_record['value'] += x if not isinstance(
                                     x, str) or fld_record['value'].find(x) == -1 else ''
                                 if fld_record['is_offset']:
-                                    if not table_row[0] in offset_rows_exclude:
+                                    if not (table_row[POS_VALUE], col[POS_VALUE], fld_record['offset_column'][0][POS_VALUE]) \
+                                            in offset_rows_exclude:
                                         # если есть смещение, то берем данные от туда
                                         fld_record['value_o'] = self._get_value_offset(
                                             team, fld_record, table_row[0], col[POS_VALUE])
-                                        offset_rows_exclude.add(table_row[0])
+                                        offset_rows_exclude.add(
+                                            (table_row[POS_VALUE], col[POS_VALUE], fld_record['offset_column'][0][POS_VALUE]))
                                 else:
-                                    main_rows_exclude.add((table_row[0], col[POS_VALUE]))
+                                    main_rows_exclude.add(
+                                        (table_row[0], col[POS_VALUE]))
                                 break  # пропускаем проверку по остальным шаблонам
                 if fld_record['func']:
                     # запускаем функцию

@@ -1,7 +1,7 @@
 import logging, os
 
-# ENCONING = 'utf-8'
-ENCONING = 'windows-1251'
+ENCONING = 'utf-8'
+# ENCONING = 'windows-1251'
 
 DOCUMENTS = 'accounts pp pp_charges pp_service pu puv'
 
