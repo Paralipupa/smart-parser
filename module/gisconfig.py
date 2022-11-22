@@ -163,11 +163,8 @@ class GisConfig:
             i += 1
 
     def set_table_columns(self) -> NoReturn:
-        i = -1
-        pattern = 'default'
-        name = 'default'
-        while pattern or name:
-            i += 1
+        i = 0
+        while self.is_section_exist(f'col_{i}'):
             pattern = self.__get_pattern(
                 self.read_config(f'col_{i}', 'pattern'))
             name = self.read_config(f'col_{i}', 'name')
@@ -188,7 +185,7 @@ class GisConfig:
                     'index': -1,
                     'indexes': [],
                     'row': -1,
-                    'col': i,
+                    'col': len(self._columns_heading),
                     'col_data': self.read_config(f'col_{i}', 'col_data_offset', isNumeric=True),
                     'active': False,
                     'duplicate': b1,
@@ -200,7 +197,7 @@ class GisConfig:
                     'offset': dict(),
                 }
                 heading['alias'] = alias if alias else heading['name']
-                heading['pattern'].append(pattern)
+                heading['pattern'].append(pattern if pattern else '.+')
                 j = -1
                 pattern_dop = 'default'
                 while pattern_dop:
@@ -212,6 +209,9 @@ class GisConfig:
                 self._columns_heading.append(heading)
                 self.set_column_conditions(i)
                 self.set_column_offset(i)
+            i += 1
+            if i < 99 and not self.is_section_exist(f'col_{i}'):
+                i = 99
 
     def set_column_conditions(self, i: int) -> NoReturn:
         patt = self.__get_pattern(self.read_config(
@@ -227,28 +227,34 @@ class GisConfig:
         if not self._condition_end_table:
             self._condition_end_table = self.read_config(
                 f'col_{i}', 'condition_end_table')
-            self._condition_end_table_column = self._columns_heading[i]['name']
+            if self._condition_end_table:
+                try:
+                    self._condition_end_table_column = self._columns_heading[i]['name']
+                except Exception as ex:
+                    pass
 
     def set_column_offset(self, i: int):
+        j = i if i < len(self._columns_heading) else len(
+            self._columns_heading)-1
         ref = self.read_config(f'col_{i}', 'offset')
         index = -1
         if ref and len(ref) > 1 and ref[0] == '@':
             index = int(ref[1:])
 
-        self._columns_heading[i]['offset']['row'] = self.read_config(
+        self._columns_heading[j]['offset']['row'] = self.read_config(
             f'col_{i}', 'offset_row', isNumeric=True)
-        if not self._columns_heading[i]['offset']['row'] and index != -1 and index < len(self._columns_heading):
-            self._columns_heading[i]['offset']['row'] = self._columns_heading[index]['offset']['row']
+        if not self._columns_heading[j]['offset']['row'] and index != -1 and index < len(self._columns_heading):
+            self._columns_heading[j]['offset']['row'] = self._columns_heading[index]['offset']['row']
 
-        self._columns_heading[i]['offset']['col'] = self.read_config(
+        self._columns_heading[j]['offset']['col'] = self.read_config(
             f'col_{i}', 'offset_col', isNumeric=True)
-        if not self._columns_heading[i]['offset']['col'] and index != -1 and index < len(self._columns_heading):
-            self._columns_heading[i]['offset']['col'] = self._columns_heading[index]['offset']['col']
+        if not self._columns_heading[j]['offset']['col'] and index != -1 and index < len(self._columns_heading):
+            self._columns_heading[j]['offset']['col'] = self._columns_heading[index]['offset']['col']
 
-        self._columns_heading[i]['offset']['pattern'] = [self.read_config(
+        self._columns_heading[j]['offset']['pattern'] = [self.read_config(
             f'col_{i}', 'offset_pattern')]
-        if not self._columns_heading[i]['offset']['pattern'][0] and index != -1 and index < len(self._columns_heading):
-            self._columns_heading[i]['offset']['pattern'] = self._columns_heading[index]['offset']['pattern']
+        if not self._columns_heading[j]['offset']['pattern'][0] and index != -1 and index < len(self._columns_heading):
+            self._columns_heading[j]['offset']['pattern'] = self._columns_heading[index]['offset']['pattern']
 
 
 # ========================= Шаблоны =======================================================
@@ -412,7 +418,7 @@ class GisConfig:
                 fld['sub'].append(fld_sub)
             doc['fields'].append(fld)
             i += 1
-            if not self.read_config(f'{doc["name"]}_{i}', 'name'):
+            if i < 99 and not self.read_config(f'{doc["name"]}_{i}', 'name'):
                 i = 99
         for fld in doc['fields']:
             self.set_fld_pattern_ref(fld, doc)
@@ -448,8 +454,7 @@ class GisConfig:
         try:
             return self._config.has_section(name_section)
         except:
-            return False 
-
+            return False
 
     def read_config(self, name_section: str, name_param: str, isNumeric: bool = False):
         try:
