@@ -400,7 +400,7 @@ class GisConfig:
             fld = self.set_doc_field(dict(), f'{doc["name"]}_{i}', doc)
             fld['sub'] = []
             j = 0
-            while self.read_config(f'{doc["name"]}_{i}_{j}', 'pattern') or self.read_config(f'{doc["name"]}_{i}_{j}', 'offset_pattern'):
+            while self.is_section_exist(f'{doc["name"]}_{i}_{j}'):
                 fld_sub = self.set_doc_field(
                     fld.copy(), f'{doc["name"]}_{i}_{j}', doc)
                 fld_sub['sub'] = []
@@ -443,6 +443,13 @@ class GisConfig:
         except Exception as ex:
             rows = []
         return rows
+
+    def is_section_exist(self, name_section: str) -> bool:
+        try:
+            return self._config.has_section(name_section)
+        except:
+            return False 
+
 
     def read_config(self, name_section: str, name_param: str, isNumeric: bool = False):
         try:
