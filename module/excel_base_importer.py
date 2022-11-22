@@ -266,7 +266,7 @@ class ExcelBaseImporter:
                 if (not item['active'] or item['duplicate']) and not item['optional'] and item['pattern'][0]:
                     if self.check_column(item, names, row, cols_exclude):
                         is_find = True
-            # потом проверяем не обязательные колонки
+            # потом проверяем не обязательные колонки (is_optional=true)
             for item in self.get_columns_heading():
                 if (not item['active'] or item['duplicate']) and item['optional'] and item['pattern'][0]:
                     b = not item['after_stable']
