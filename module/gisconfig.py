@@ -61,6 +61,8 @@ class GisConfig:
         self._config = configparser.ConfigParser()
         self._config.read(filename)
         self._config_name = filename
+        # разрыв между порядковыми номерами колонок
+        self.column_difference = (0, 0)
         self.configuration_initialize()
 
     @fatal_error
@@ -210,8 +212,9 @@ class GisConfig:
                 self.set_column_conditions(i)
                 self.set_column_offset(i)
             i += 1
-            if i < 10 and not self.is_section_exist(f'col_{i}'):
-                i = 10
+            if (i < 20) and not self.is_section_exist(f'col_{i}') and self.is_section_exist(f'col_{20}'):
+                self.column_difference = (i, 20 - i)
+                i = 20
 
     def set_column_conditions(self, i: int) -> NoReturn:
         patt = self.__get_pattern(self.read_config(
@@ -349,7 +352,10 @@ class GisConfig:
         # колонка для поиска данных аттрибут
         x = self.read_config(f'{name}', 'offset_col_config', isNumeric=True)
         if x:
-            fld['offset_column'] = x
+            fld['offset_column'] = [
+                (y[POS_NUMERIC_VALUE] - self.column_difference[1] if y[POS_NUMERIC_VALUE] > self.column_difference[0] else y[POS_NUMERIC_VALUE],
+                 y[POS_NUMERIC_IS_ABSOLUTE],
+                 y[POS_NUMERIC_IS_NEGATIVE]) for y in x]
         else:
             fld.setdefault('offset_column', x)
         fld['is_offset'] = (len(fld['offset_column']) !=

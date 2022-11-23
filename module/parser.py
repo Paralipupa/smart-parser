@@ -11,15 +11,24 @@ from .gisconfig import regular_calc, PATH_OUTPUT, PATH_LOG
 from .union import UnionData
 from .settings import *
 
+
 class Parser:
 
-    def __init__(self, file_name: str = '', inn: str = '', file_config: str = '', union: str = PATH_OUTPUT, path_down: str = PATH_OUTPUT) -> None:
+    def __init__(self,
+                 file_name: str = '',
+                 inn: str = '',
+                 file_config: str = '',
+                 union: str = PATH_OUTPUT,
+                 path_down: str = PATH_OUTPUT,
+                 hash: str = 'yes'
+                 ) -> None:
         self.logs = list()
         self.name = file_name
         self.inn = inn
         self.config = file_config
         self.union = union
         self.download = path_down
+        self.is_hash = False if hash=='no' else True
         self.report = {
             '001': Report_001_00,
             '002': Report_002_00,
@@ -46,6 +55,7 @@ class Parser:
                                 '[0-9]{3}(?=_)', str(file_name['config']))
                             rep: ExcelBaseImporter = self.report[t](file_name=file_name['name'],
                                                                     inn=file_name['inn'], config_file=str(file_name['config']))
+                            rep.is_hash = self.is_hash
                             if rep.read():
                                 rep.write_collections(i)
                                 rep.write_logs(i)
@@ -68,7 +78,7 @@ class Parser:
         return ''
 
     @staticmethod
-    def get_path(pathname:str)->str:
+    def get_path(pathname: str) -> str:
         if pathname == 'log':
             return PATH_LOG
         elif pathname == 'output':
@@ -76,4 +86,3 @@ class Parser:
         elif pathname == 'tmp':
             return PATH_TMP
         return ''
-

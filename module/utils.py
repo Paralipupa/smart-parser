@@ -15,6 +15,7 @@ def getArgs() -> argparse.ArgumentParser:
     parser.add_argument('-i', '--inn', nargs='?')
     parser.add_argument('-c', '--config', nargs='?')
     parser.add_argument('-u', '--union', nargs='?')
+    parser.add_argument('-x', '--hash', nargs='?')
     return parser
 
 

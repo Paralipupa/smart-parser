@@ -23,6 +23,7 @@ class ExcelBaseImporter:
     @fatal_error
     def __init__(self, file_name: str, config_file: str, inn: str, data: list = None):
         self.is_file_exists = True
+        self.is_hash = True
         self._teams = list()  # список областей с данными
         self._page_index = 0
         self._page_name = ''
@@ -866,8 +867,11 @@ class ExcelBaseImporter:
                 # формируем документ
                 doc[fld_record['name']].append(
                     {'row': len(doc[fld_record['name']]), 'col': col[0], 'value': ''
-                     if (isinstance(fld_record['value'], int) or isinstance(fld_record['value'], float))
-                     and fld_record['value'] == 0 else str(fld_record['value']).strip()})
+                     if ((isinstance(fld_record['value'], int) or isinstance(fld_record['value'], float))
+                     and fld_record['value'] == 0) or
+                     (isinstance(fld_record['value'], str)
+                      and fld_record['offset_type']=='float' and fld_record['value'] == '0.0')
+                     else str(fld_record['value']).strip()})
         return doc
 
 # Разбиваем данные документа по-строчно
@@ -1153,8 +1157,7 @@ class ExcelBaseImporter:
         return self._parameters['period']['value'][0][6:]
 
     def func_hash(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
-        # return data
-        return _hashit(str(data).encode('utf-8'))
+        return _hashit(str(data).encode('utf-8')) if self.is_hash else data
 
     def func_uuid(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
         return str(uuid.uuid5(uuid.NAMESPACE_X500, data))
