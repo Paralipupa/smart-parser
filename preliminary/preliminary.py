@@ -2,16 +2,15 @@ import sys, os
 import argparse
 from pp_service import pp_service
 from pp_charges import pp_charges
-# from pp import pp
+from pp import pp
+from accounts import accounts
 from columns import set_columns
+from header import header
 
 
 def getArgs() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument('-n', '--name', nargs='?')
-    parser.add_argument('-i', '--inn', nargs='?')
-    parser.add_argument('-c', '--config', nargs='?')
-    parser.add_argument('-u', '--union', nargs='?')
     return parser
 
 def read(file_name: str) -> list:
@@ -26,7 +25,9 @@ if __name__ == "__main__":
     args = getArgs()
     namespace = args.parse_args(sys.argv[1:])
     lines = read(namespace.name)
-    # pp(lines, os.path.dirname(namespace.name))
+    header(lines, os.path.dirname(namespace.name))
+    set_columns(lines, os.path.dirname(namespace.name))
+    accounts(lines, os.path.dirname(namespace.name))
+    pp(lines, os.path.dirname(namespace.name))
     pp_charges(lines, os.path.dirname(namespace.name))
     pp_service(lines, os.path.dirname(namespace.name))
-    set_columns(lines, os.path.dirname(namespace.name))

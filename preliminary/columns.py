@@ -12,7 +12,7 @@ def get_reg(name: str) -> str:
 
 def set_columns(lines: list, path: str):
 
-    with open(f'{path}/col.ini', 'w') as file:
+    with open(f'{path}/1_col.ini', 'w') as file:
         file.write(';---- колонки ------------\n')
         file.write('[col_0]\n')
         file.write('name=ЛС\n')
@@ -54,7 +54,7 @@ def set_columns(lines: list, path: str):
         file.write('[col_7]\n')
         file.write('name=Квартира\n\n')
 
-        file.write('[col_8]\n\n')
+        file.write('[col_8]\n')
         file.write('name=Площадь\n\n')
 
         file.write('[col_9]\n')

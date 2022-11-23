@@ -1,6 +1,6 @@
 def pp_charges(lines:list, path: str):
 
-    with open(f'{path}/pp_charges.ini', 'w') as file:
+    with open(f'{path}/4_pp_charges.ini', 'w') as file:
         file.write(';--------- pp_charges -----------\n')
         file.write('[doc_2]\n')
         file.write('; Документ Начисления платежей\n')

@@ -1,6 +1,6 @@
 def pp_service(lines:list, path: str):
 
-    with open(f'{path}/pp_service.ini', 'w') as file:
+    with open(f'{path}/5_pp_service.ini', 'w') as file:
         file.write(';--------- pp_service -----------\n')
         file.write('[doc_3]\n')
         file.write(';Документ. Услуги (pp_service.csv)\n')
