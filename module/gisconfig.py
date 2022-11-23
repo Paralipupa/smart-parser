@@ -197,7 +197,7 @@ class GisConfig:
                     'offset': dict(),
                 }
                 heading['alias'] = alias if alias else heading['name']
-                heading['pattern'].append(pattern if pattern else '.+')
+                heading['pattern'].append(pattern)
                 j = -1
                 pattern_dop = 'default'
                 while pattern_dop:
@@ -210,8 +210,8 @@ class GisConfig:
                 self.set_column_conditions(i)
                 self.set_column_offset(i)
             i += 1
-            if i < 99 and not self.is_section_exist(f'col_{i}'):
-                i = 99
+            if i < 10 and not self.is_section_exist(f'col_{i}'):
+                i = 10
 
     def set_column_conditions(self, i: int) -> NoReturn:
         patt = self.__get_pattern(self.read_config(

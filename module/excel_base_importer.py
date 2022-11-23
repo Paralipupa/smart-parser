@@ -1060,6 +1060,7 @@ class ExcelBaseImporter:
 
     def func(self, team: dict, fld_param: dict, row: int, col: int) -> str:
         dic_f = {
+            'period_first': self.func_period_first,
             'period_last': self.func_period_last,
             'period_month': self.func_period_month,
             'period_year': self.func_period_year,
@@ -1134,6 +1135,11 @@ class ExcelBaseImporter:
             is_check = True
         return name_func, data, is_check
 
+    def func_period_first(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
+        period = datetime.datetime.strptime(
+            self._parameters['period']['value'][-1], '%d.%m.%Y')
+        return period.replace(day=1).strftime('%d.%m.%Y')
+
     def func_period_last(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
         period = datetime.datetime.strptime(
             self._parameters['period']['value'][-1], '%d.%m.%Y')
@@ -1147,6 +1153,7 @@ class ExcelBaseImporter:
         return self._parameters['period']['value'][0][6:]
 
     def func_hash(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
+        # return data
         return _hashit(str(data).encode('utf-8'))
 
     def func_uuid(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
