@@ -140,10 +140,11 @@ class ExcelBaseImporter:
     def get_condition_data(self, values: list, pattern: str) -> str:
         result = ''
         for val in values:
-            value = regular_calc(pattern, val['value'])
-            if value == '' or result.find('error') != -1:
-                return ''
-            result += value
+            if val['row'] == 0:
+                value = regular_calc(pattern, val['value'])
+                if value == '' or result.find('error') != -1:
+                    return ''
+                result += value
         return result
 
     def check_condition_team(self, mapped_record: list) -> bool:

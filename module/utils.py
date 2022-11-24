@@ -6,6 +6,7 @@ import pathlib
 from datetime import datetime
 from report.report_001_00 import Report_001_00
 from .gisconfig import print_message, PATH_OUTPUT, PATH_LOG, PATH_TMP, PATH_CONFIG
+from .settings import *
 
 config_files = []
 
@@ -183,7 +184,7 @@ def write_list(files):
 
     file_output = pathlib.Path(
         PATH_LOG, f'session{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log')
-    with open(file_output, 'w') as file:
+    with open(file_output, 'w', encoding=ENCONING) as file:
         for item in files:
             if item['config']:
                 file.write(

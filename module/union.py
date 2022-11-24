@@ -147,6 +147,6 @@ class UnionData:
         i = 0
         file_output = pathlib.Path(
             PATH_LOG, f'union_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log')
-        with open(f'{file_output}.log', 'w') as file:
+        with open(f'{file_output}.log', 'w', encoding=ENCONING) as file:
             for log in self.logs:
                 file.write(f'{log}\n')
