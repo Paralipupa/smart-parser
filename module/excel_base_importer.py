@@ -915,7 +915,7 @@ class ExcelBaseImporter:
     def write_collections(self, num: int = 0, output_format: str = '') -> NoReturn:
         if not self.is_init() or len(self._collections) == 0:
             logging.warning('Не удалось прочитать данные из файла "{0} - {1}"\n'
-                            .format(self._parameters['inn']['value'][-1],
+                            .format(self.func_inn(),
                                     self._parameters['filename']['value'][0]))
             return
 
@@ -923,11 +923,12 @@ class ExcelBaseImporter:
 
         self._current_value = ''
         id = self.func_id()
+        inn = self.func_inn()
         for name, pages in self._collections.items():
             for key, records in pages.items():
                 file_output = pathlib.Path(
                     self._parameters['path']['value'][0],
-                    f'{self._parameters["inn"]["value"][-1]}{"_"+str(num) if num != 0 else ""}' +
+                    f'{inn}{"_"+str(num) if num != 0 else ""}' +
                     f'{"_"+key.replace(" ","_") if key != "noname" else ""}{id}_{name}')
                 if not output_format or output_format == 'json':
                     with open(f'{file_output}.json', mode='w', encoding=ENCONING) as file:
@@ -949,9 +950,10 @@ class ExcelBaseImporter:
             return
         os.makedirs(PATH_LOG, exist_ok=True)
         id = self.func_id()
+        inn = self.func_inn()
         i = 0
         file_output = pathlib.Path(
-            PATH_LOG, f'{self._parameters["inn"]["value"][-1]}{"_"+str(num) if num != 0 else ""}{id}')
+            PATH_LOG, f'{inn}{"_"+str(num) if num != 0 else ""}{id}')
         with open(f'{file_output}.log', 'w', encoding=ENCONING) as file:
             file.write(f'{{')
             for key, value in self._parameters.items():
@@ -1065,6 +1067,7 @@ class ExcelBaseImporter:
 
     def func(self, team: dict, fld_param: dict, row: int, col: int) -> str:
         dic_f = {
+            'inn': self.func_inn,
             'period_first': self.func_period_first,
             'period_last': self.func_period_last,
             'period_month': self.func_period_month,
@@ -1139,6 +1142,12 @@ class ExcelBaseImporter:
             name_func = name_func.replace('check_', '')
             is_check = True
         return name_func, data, is_check
+
+    def func_inn(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
+        if self._parameters['inn']['value'][0] != '0000000000':
+            return self._parameters['inn']['value'][0]
+        else:
+            return self._parameters['inn']['value'][-1]
 
     def func_period_first(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
         period = datetime.datetime.strptime(
