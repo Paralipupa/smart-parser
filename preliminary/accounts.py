@@ -2,7 +2,7 @@ def accounts(lines:list, path: str):
 
     with open(f'{path}/ini/2_accounts.ini', 'w') as file:
         file.write(';---------------  Документы -------------------------\n\n')
-        file.write(';--------- accounts -----------\n')
+        file.write(';-------------------------------------------------------------- accounts -------------------------------------------------\n')
         file.write('[doc_0]\n')
         file.write('; Лицевые счета\n')
         file.write('name=accounts\n')

@@ -1,7 +1,7 @@
 def pu(lines:list, path: str):
 
     with open(f'{path}/ini/3_pu.ini', 'w') as file:
-        file.write(';--------- pu -----------\n')
+        file.write(';---------------------------------------------------------------- pu -----------------------------------------------------\n')
         file.write('[doc_3]\n')
         file.write('; Приборы учета (ПУ) \n')
         file.write('name=pu\n\n')

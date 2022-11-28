@@ -3,7 +3,7 @@ from settings import *
 def puv(lines:list, path: str):
 
     with open(f'{path}/ini/4_puv.ini', 'w') as file:
-        file.write(';--------- puv -----------\n')
+        file.write(';---------------------------------------------------------------- puv -----------------------------------------------------\n')
         file.write('[doc_4]\n')
         file.write('; ПУ показания\n')
         file.write('name=puv\n')

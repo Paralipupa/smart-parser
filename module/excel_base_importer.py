@@ -1094,7 +1094,7 @@ class ExcelBaseImporter:
                 value = 0 if fld_param['type'] == 'float' or fld_param['offset_type'] == 'float' else ''
                 for index, name_func in enumerate(re.split(r"[+-]", name_func_add)):
                     name_func, data_calc, is_check = self.__get_func_name(
-                        name_func=name_func, data=data)
+                        name_func=name_func, data=data, dic_f=dic_f)
                     try:
                         f = dic_f[name_func.strip()]
                     except Exception as ex:
@@ -1129,7 +1129,7 @@ class ExcelBaseImporter:
         except Exception as ex:
             return f'error {name_func}: {str(ex)}'
 
-    def __get_func_name(self, name_func, data):
+    def __get_func_name(self, name_func: str, data: str, dic_f: dict):
         is_check = False
         if name_func.find('(') != -1:
             # если функция с параметром, то заменяем входные данные (data) на этот параметр
@@ -1137,7 +1137,11 @@ class ExcelBaseImporter:
                 r'(?<=\()[\w_0-9-]+(?=\))', name_func)
             if result and result.find('error') == -1:
                 data = result
-            name_func = name_func[:name_func.find('(')]
+            try:
+                f = dic_f[name_func[:name_func.find('(')]]
+                name_func = name_func[:name_func.find('(')]
+            except:
+                name_func = name_func.replace('(','- ').replace(')','')
         if name_func.find('check_') != -1:
             name_func = name_func.replace('check_', '')
             is_check = True

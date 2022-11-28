@@ -10,7 +10,6 @@ from header import header
 from pu import pu
 from puv import puv
 
-
 def getArgs() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument('-n', '--name', nargs='?')
@@ -27,10 +26,13 @@ def read(file_name: str) -> list:
                         [{'name': x, 'is_unique': True, 'is_optional': False if len(lines['0']) == 0 else True} for x in line[2:].split('\t')])
                 elif line[:2] == '1:':
                     lines['1'].extend(
-                        [{'name': x, 'is_unique': False, 'is_optional': True} for x in line[2:].split('\t')])
+                        [{'name': x.strip(), 'is_unique': False, 'is_optional': True} for x in line[2:].split('\t')
+                         if x.strip() != '' and not any(y for y in lines['1'] if y['name'].strip() == x.strip())])
                 elif line[:2] == '2:':
                     lines['2'].extend(
-                        [{'name': x, 'is_unique': False, 'is_optional': True} for x in line[2:].split('\t')])
+                        [{'name': x, 'is_unique': False, 'is_optional': True} for x in line[2:].split('\t')
+                         if x.strip() != '' and not any(y for y in lines['2'] if y['name'].strip() == x.strip())])
+    lines['1'] = sorted(lines["1"], key=lambda x: x['name'])
     lines['1'].append({'name': 'Прочие'})
     return lines
 

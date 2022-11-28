@@ -3,7 +3,7 @@ from settings import *
 def pp_charges(lines:list, path: str):
 
     with open(f'{path}/ini/4_pp_charges.ini', 'w') as file:
-        file.write(';--------- pp_charges -----------\n')
+        file.write(';-------------------------------------------------------------- pp_charges -------------------------------------------------\n')
         file.write('[doc_2]\n')
         file.write('; Документ Начисления платежей\n')
         file.write('name=pp_charges\n')
@@ -22,12 +22,13 @@ def pp_charges(lines:list, path: str):
         file.write('name=internal_id\n')
         file.write('pattern=@0\n')
         file.write('col_config=0\n')
+        file.write('row_data=0\n')
         file.write('offset_col_config=0\n')
         file.write('offset_pattern=.+\n')
-        file.write(f'func=id+{lines["1"][0]["name"].replace(","," ").replace("+","")},spacerepl,hash\n\n')
+        file.write(f'func=id+{lines["1"][0]["name"].split(";")[0].replace(","," ").replace("+","")},spacerepl,hash\n\n')
         for i, line in enumerate(lines["1"][1:]):
             file.write(f'[pp_charges_1_{i}]\n')
-            file.write(f'func=id+{line["name"].replace(","," ").replace("+","").rstrip()},spacerepl,hash\n\n')
+            file.write(f'func=id+{line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()},spacerepl,hash\n\n')
 
         file.write('[pp_charges_2]\n')
         file.write('; Внутренний идентификатор платежного документа\n')
@@ -43,6 +44,7 @@ def pp_charges(lines:list, path: str):
         file.write('name=calc_value\n')
         file.write('pattern=@0\n')
         file.write('col_config=0\n')
+        file.write('row_data=0\n')
         file.write(f'offset_col_config={COLUMN_BEGIN}\n')
         file.write('offset_pattern=@currency\n')
         file.write('offset_type=float\n\n')
@@ -84,6 +86,7 @@ def pp_charges(lines:list, path: str):
         file.write('name=accounting_period_total\n')
         file.write('pattern=@0\n')
         file.write('col_config=0\n')
+        file.write('row_data=0\n')
         file.write(f'offset_col_config={COLUMN_BEGIN}\n')
         file.write('offset_pattern=@currency\n')
         file.write('offset_type=float\n\n')

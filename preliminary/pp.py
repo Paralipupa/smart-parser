@@ -1,7 +1,7 @@
 def pp(lines:list, path: str):
 
     with open(f'{path}/ini/3_pp.ini', 'w') as file:
-        file.write(';--------- pp -----------\n')
+        file.write(';---------------------------------------------------------------- pp -----------------------------------------------------\n')
         file.write('[doc_1]\n')
         file.write('; Платежный документ \n')
         file.write('name=pp\n')
