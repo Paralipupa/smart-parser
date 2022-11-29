@@ -153,18 +153,21 @@ class ExcelBaseImporter:
         if not mapped_record:
             return False
         b = False
-        for patt in self.get_condition_team():
-            result = self.get_condition_data(
-                mapped_record[self.get_condition_column()], patt)
-            b = False if not result or result.find('error') != -1 else True
-            if b and len(self._teams) != 0:
-                # Проверяем значение со значением из предыдущей области (иерархии)
-                # если не совпадает, то фиксируем начало новой области (иерархии)
-                pred = self.get_condition_data(
-                    self._teams[-1][self.get_condition_column()], patt)
-                b = (result != pred)
-                if b:
-                    break
+        for p in self.get_condition_team():
+            if mapped_record.get(p['col']):
+                for patt in p['pattern']: 
+                    result = self.get_condition_data(
+                        mapped_record[p['col']], patt)
+                    b = False if not result or result.find('error') != -1 else True
+                    if b:
+                        if len(self._teams) != 0:
+                            # Проверяем значение со значением из предыдущей области (иерархии)
+                            # если не совпадает, то фиксируем начало новой области (иерархии)
+                            pred = self.get_condition_data(
+                                self._teams[-1][p['col']], patt)
+                            b = (result != pred)
+                        if b:
+                            return b
         return b
 
     def check_bound_row(self, row: int) -> bool:
@@ -202,8 +205,10 @@ class ExcelBaseImporter:
                                              .format(
                                                  self._config._config_name,
                                                  self._parameters['filename']['value'][0],
-                                                 self.get_condition_team(),
-                                                 self.get_condition_column(),
+                                                 self.get_condition_team(
+                                                 )[0]['pattern'] if self.get_condition_team() else '',
+                                                 self.get_condition_team(
+                                                 )[0]['col'] if self.get_condition_team() else '',
                                                  s
                                              ))
 
@@ -789,7 +794,7 @@ class ExcelBaseImporter:
                                                                               param['offset_col'][0][POS_NUMERIC_VALUE] + col[0] if not param['offset_col'][0][POS_NUMERIC_IS_ABSOLUTE] else param['offset_col'][0][POS_NUMERIC_VALUE])
                                 if result:
                                     self._parameters[name]['value'].append(
-                                        result)
+                                        param['value'] if param['value'] else result)
                                     break
 
         return self._parameters[name]
@@ -871,7 +876,7 @@ class ExcelBaseImporter:
                      if ((isinstance(fld_record['value'], int) or isinstance(fld_record['value'], float))
                      and fld_record['value'] == 0) or
                      (isinstance(fld_record['value'], str)
-                      and fld_record['offset_type']=='float' and fld_record['value'] == '0.0')
+                      and fld_record['offset_type'] == 'float' and fld_record['value'] == '0.0')
                      else str(fld_record['value']).strip()})
         return doc
 
@@ -1002,8 +1007,8 @@ class ExcelBaseImporter:
     def get_condition_end_table(self) -> str:
         return self._config._condition_end_table
 
-    def get_condition_column(self) -> str:
-        return self._config._condition_team_column
+    # def get_condition_column(self) -> str:
+    #     return self._config._condition_team_column
 
     def get_condition_end_table_column(self) -> str:
         return self._config._condition_end_table_column
@@ -1100,7 +1105,8 @@ class ExcelBaseImporter:
                     except Exception as ex:
                         if self._parameters.get(name_func, []):
                             value = value.strip() + \
-                                self._parameters[name_func]['value'][-1]
+                                (self._parameters[name_func]['value'][-1]
+                                 if self._parameters[name_func]['value'] else '')
                         elif name_func == '_':
                             value = value.strip() + (' ' if value else '') + data
                         else:
@@ -1141,7 +1147,7 @@ class ExcelBaseImporter:
                 f = dic_f[name_func[:name_func.find('(')]]
                 name_func = name_func[:name_func.find('(')]
             except:
-                name_func = name_func.replace('(','- ').replace(')','')
+                name_func = name_func.replace('(', '- ').replace(')', '')
         if name_func.find('check_') != -1:
             name_func = name_func.replace('check_', '')
             is_check = True

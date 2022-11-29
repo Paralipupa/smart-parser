@@ -5,9 +5,10 @@ def get_ident(name: str) -> str:
     return result
 
 def get_reg(name: str) -> str:
-    name = name.replace('\\','\\\\').replace('.','\.')
-    name = name.replace('(','\(').replace(')','\)')
+    name = name.replace('\\','\\\\')
     name = name.replace('[','\[').replace(']','\]')
-    return f'^{name.rstrip()}$'
+    name = name.replace('(','\(').replace(')','\)')
+    name = name.replace('.','[.]')
+    return f'^{name.rstrip().replace(";","$;^")}$'
 
 

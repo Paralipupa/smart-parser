@@ -1,8 +1,12 @@
 def accounts(lines:list, path: str):
 
     with open(f'{path}/ini/2_accounts.ini', 'w') as file:
-        file.write(';---------------  Документы -------------------------\n\n')
+        file.write(';########################################################################################################################\n')
+        file.write(';----------------------------------------------  Документы --------------------------------------------------------------\n')
+        file.write(';########################################################################################################################\n\n')
+        file.write(';########################################################################################################################\n')
         file.write(';-------------------------------------------------------------- accounts -------------------------------------------------\n')
+        file.write(';########################################################################################################################\n')
         file.write('[doc_0]\n')
         file.write('; Лицевые счета\n')
         file.write('name=accounts\n')
@@ -39,17 +43,17 @@ def accounts(lines:list, path: str):
         file.write('[accounts_4]\n')
         file.write('; Адрес дома\n')
         file.write('name=address\n')
-        file.write('; pattern=.+\n')
-        file.write('; col_config=6\n')
-        file.write('; row_data=0\n')
-        file.write('; func=_+кв.+column_value(7)\n\n')
+        file.write('pattern=.+\n')
+        file.write('col_config=6\n')
+        file.write('row_data=0\n')
+        file.write('func=_+кв.+column_value(7)\n\n')
 
         file.write('[accounts_5]\n')
         file.write('; Номер помещения (если есть)\n')
         file.write('name=room_number\n')
-        file.write('; pattern=.+\n')
-        file.write('; col_config=7\n')
-        file.write('; row_data=0\n\n')
+        file.write('pattern=.+\n')
+        file.write('col_config=7\n')
+        file.write('row_data=0\n\n')
 
         file.write('[accounts_6]\n')
         file.write('; ГИС. Идентификатор квартиры GUID\n')
@@ -84,7 +88,11 @@ def accounts(lines:list, path: str):
 
         file.write('[accounts_13]\n')
         file.write('; Общая площадь помещения\n')
-        file.write('name=total_square\n\n')
+        file.write('name=total_square\n')
+        file.write('pattern=@0\n')
+        file.write('col_config=0\n')
+        file.write('offset_col_config=9\n')
+        file.write('offset_pattern=@currency\n\n')
 
         file.write('[accounts_14]\n')
         file.write('; Жилая площадь\n')
@@ -92,7 +100,11 @@ def accounts(lines:list, path: str):
 
         file.write('[accounts_15]\n')
         file.write('; Кол-во проживающих\n')
-        file.write('name=living_person_number\n\n')
+        file.write('name=living_person_number\n')
+        file.write('pattern=@0\n')
+        file.write('col_config=0\n')
+        file.write('offset_col_config=8\n')
+        file.write('offset_pattern=.+\n\n')
 
         file.write('[accounts_16]\n')
         file.write('; Часовой пояс. Кол-во часов + или - от UTC\n')

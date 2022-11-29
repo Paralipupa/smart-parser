@@ -3,7 +3,9 @@ from settings import *
 def pp_service(lines:list, path: str):
 
     with open(f'{path}/ini/5_pp_service.ini', 'w') as file:
-        file.write(';-------------------------------------------------------------- pp_service -------------------------------------------------\n')
+        file.write(';########################################################################################################################\n')
+        file.write(';----------------------------------------------------------- pp_service -------------------------------------------------\n')
+        file.write(';########################################################################################################################\n')
         file.write('[doc_3]\n')
         file.write(';Документ. Услуги (pp_service.csv)\n')
         file.write('name=pp_service\n\n')
@@ -24,13 +26,12 @@ def pp_service(lines:list, path: str):
 
         file.write('col_config=0\n')
         file.write('row_data=0\n')
-        file.write('func=1,hash\n\n')
-
+        file.write(f'func={lines["1"][0]["name"].split(";")[0].replace(","," ").replace("+","")},hash\n\n')
         for i, line in enumerate(lines["1"][1:]):
             file.write(f'[pp_service_1_{i}]\n')
             file.write('; Внутренний идентификатор услуги\n')
             file.write(f'; {line["name"].rstrip()}\n')
-            file.write(f'func={i+2},hash\n\n')
+            file.write(f'func={line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()},hash\n\n')
 
         for k in [2,3]:
             file.write(f'[pp_service_{k}]\n')

@@ -3,7 +3,9 @@ from settings import *
 def pp_charges(lines:list, path: str):
 
     with open(f'{path}/ini/4_pp_charges.ini', 'w') as file:
-        file.write(';-------------------------------------------------------------- pp_charges -------------------------------------------------\n')
+        file.write(';########################################################################################################################\n')
+        file.write(';-------------------------------------------------------------- pp_charges ----------------------------------------------\n')
+        file.write(';########################################################################################################################\n')
         file.write('[doc_2]\n')
         file.write('; Документ Начисления платежей\n')
         file.write('name=pp_charges\n')
@@ -65,12 +67,12 @@ def pp_charges(lines:list, path: str):
         file.write('pattern=.+\n')
         file.write('col_config=0\n')
         file.write('row_data=0\n')
-        file.write('func=1,hash\n\n')
+        file.write(f'func={lines["1"][0]["name"].split(";")[0].replace(","," ").replace("+","")},hash\n\n')
         for i, line in enumerate(lines["1"][1:]):
             file.write(f'[pp_charges_5_{i}]\n')
             file.write('; Идентификатор услуги\n')
             file.write(f'; {line["name"].rstrip()}\n')
-            file.write(f'func={2+i},hash\n\n')
+            file.write(f'func={line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()},hash\n\n')
 
         file.write('[pp_charges_6]\n')
         file.write('; кол-во услуги  при однотарифном начислении\n')

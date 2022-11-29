@@ -152,6 +152,7 @@ class GisConfig:
                         'offset_row': self.read_config(f'{name_part}_{i}', 'offset_row', isNumeric=True),
                         'offset_col': self.read_config(f'{name_part}_{i}', 'offset_col', isNumeric=True),
                         'offset_pattern': self.read_config(f'{name_part}_{i}', 'offset_pattern'),
+                        'value': self.read_config(f'{name_part}_{i}', 'value'),
                         'ishead': is_head,
                     }
                 )
@@ -217,16 +218,23 @@ class GisConfig:
                 i = 20
 
     def set_column_conditions(self, i: int) -> NoReturn:
+        ls = list()
         patt = self.__get_pattern(self.read_config(
             f'col_{i}', 'condition_begin_team'))
-        if len(self._condition_team) == 0 and patt:
-            self._condition_team.append(patt)
+        # if len(self._condition_team) == 0 and patt:
+        if patt:
+            # self._condition_team.append(patt)
+            ls.append(patt)
             j = 0
             while self.read_config(f'col_{i}', f'condition_begin_team_{j}'):
-                self._condition_team.append(self.__get_pattern(self.read_config(
+                ls.append(self.__get_pattern(self.read_config(
                     f'col_{i}', f'condition_begin_team_{j}')))
                 j += 1
-            self._condition_team_column = self._columns_heading[i]['name']
+            self._condition_team.append({'col': self._columns_heading[i - self.column_difference[1] if i > self.column_difference[0] else i]['name'],
+                                         'pattern': ls})
+            # if not self._condition_team_column:
+            #     self._condition_team_column = self._columns_heading[i -
+            #                                                         self.column_difference[1] if i > self.column_difference[0] else i]['name']
         if not self._condition_end_table:
             self._condition_end_table = self.read_config(
                 f'col_{i}', 'condition_end_table')
@@ -498,10 +506,11 @@ class GisConfig:
                     else:
                         patt = f'@{name}'
             else:
-                for p in self._condition_team:
-                    patt = patt + \
-                        (('|' if patt else '') +
-                            p) if patt.find(p) == -1 else ''
+                for cond_team in self._condition_team:
+                    for p in cond_team['pattern']:
+                        patt = patt + \
+                            (('|' if patt else '') +
+                                p) if patt.find(p) == -1 else ''
         if doc and col:
             return patt, col
         else:
