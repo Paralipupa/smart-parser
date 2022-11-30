@@ -153,6 +153,7 @@ class GisConfig:
                         'offset_col': self.read_config(f'{name_part}_{i}', 'offset_col', isNumeric=True),
                         'offset_pattern': self.read_config(f'{name_part}_{i}', 'offset_pattern'),
                         'value': self.read_config(f'{name_part}_{i}', 'value'),
+                        'func': self.read_config(f'{name_part}_{i}', 'func'),
                         'ishead': is_head,
                     }
                 )
@@ -221,9 +222,7 @@ class GisConfig:
         ls = list()
         patt = self.__get_pattern(self.read_config(
             f'col_{i}', 'condition_begin_team'))
-        # if len(self._condition_team) == 0 and patt:
         if patt:
-            # self._condition_team.append(patt)
             ls.append(patt)
             j = 0
             while self.read_config(f'col_{i}', f'condition_begin_team_{j}'):
@@ -232,9 +231,6 @@ class GisConfig:
                 j += 1
             self._condition_team.append({'col': self._columns_heading[i - self.column_difference[1] if i > self.column_difference[0] else i]['name'],
                                          'pattern': ls})
-            # if not self._condition_team_column:
-            #     self._condition_team_column = self._columns_heading[i -
-            #                                                         self.column_difference[1] if i > self.column_difference[0] else i]['name']
         if not self._condition_end_table:
             self._condition_end_table = self.read_config(
                 f'col_{i}', 'condition_end_table')
@@ -270,6 +266,7 @@ class GisConfig:
 
 # ========================= Шаблоны =======================================================
 
+
     @fatal_error
     def set_patterns(self) -> NoReturn:
         self._patterns = dict()  # список шаблонов
@@ -301,6 +298,8 @@ class GisConfig:
                 f'doc_{k}', 'required_fields')
             doc['fields'] = list()
             self.set_document_fields(doc)
+            doc_type = self.read_config(f'doc_{k}', 'type')
+            doc['type'] = doc_type if doc_type else 'document'
             self._documents.append(doc)
             k += 1
 
@@ -326,7 +325,10 @@ class GisConfig:
         x = self.read_config(
             f'{name}', 'col_config', isNumeric=True)
         if x:
-            fld['column'] = x
+            fld['column'] = [
+                (y[POS_NUMERIC_VALUE] - self.column_difference[1] if y[POS_NUMERIC_VALUE] > self.column_difference[0] else y[POS_NUMERIC_VALUE],
+                 y[POS_NUMERIC_IS_ABSOLUTE],
+                 y[POS_NUMERIC_IS_NEGATIVE]) for y in x]
         else:
             fld.setdefault('column', x)
         # тип данных в колонке

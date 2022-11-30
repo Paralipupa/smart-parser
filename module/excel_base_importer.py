@@ -25,6 +25,7 @@ class ExcelBaseImporter:
         self.is_file_exists = True
         self.is_hash = True
         self._teams = list()  # список областей с данными
+        self._dictionary = dict()
         self._page_index = 0
         self._page_name = ''
         self._headers = data
@@ -155,10 +156,11 @@ class ExcelBaseImporter:
         b = False
         for p in self.get_condition_team():
             if mapped_record.get(p['col']):
-                for patt in p['pattern']: 
+                for patt in p['pattern']:
                     result = self.get_condition_data(
                         mapped_record[p['col']], patt)
-                    b = False if not result or result.find('error') != -1 else True
+                    b = False if not result or result.find(
+                        'error') != -1 else True
                     if b:
                         if len(self._teams) != 0:
                             # Проверяем значение со значением из предыдущей области (иерархии)
@@ -484,26 +486,26 @@ class ExcelBaseImporter:
     def _check_controll(self, headers: list, patts: list, is_warning: bool = False) -> list:
         for row in range(self._config._max_rows_heading[0][0]):
             if row < len(headers):
-                for pattern in patts:
-                    if pattern['maxrow'] >= row and pattern['pattern']:
-                        if pattern['full']:
+                for p in patts:
+                    if p['maxrow'] >= row and p['pattern']:
+                        if p['full']:
                             s = (' '.join(headers[row])).strip()
                             if s:
-                                result = regular_calc(pattern['pattern'], s)
+                                result = regular_calc(p['pattern'], s)
                                 if result and result.find('error') == -1:
-                                    pattern['find'] = True
-                        else:
+                                    p['find'] = True
+                        elif p['pattern'] != '.+':
                             for s in headers[row]:
                                 if s:
                                     result = regular_calc(
-                                        pattern['pattern'], s)
+                                        p['pattern'], s)
                                     if result and result.find('error') == -1:
-                                        pattern['find'] = True
+                                        p['find'] = True
         i = 0
         s = ''
-        for pattern in patts:
-            if not pattern['find']:
-                s += f"\t{pattern['pattern']}\n"
+        for p in patts:
+            if not p['find']:
+                s += f"\t{p['pattern']}\n"
                 i += 1
         if i == 0:
             return self._check_function()
@@ -770,32 +772,40 @@ class ExcelBaseImporter:
             cols = param['col']
             patterns = param['pattern']
             is_head = param['ishead']
+            func = param.get('func')
             self._parameters.setdefault(
                 name, {'fixed': False, 'value': list()})
-            for pattern in patterns:
-                if pattern:
-                    if pattern[0] == '@':
-                        self._parameters[name]['value'].append(pattern[1:])
-                    else:
-                        for row, col in product(rows, cols):
-                            result = self._get_value_after_validation(
-                                pattern, 'head' if is_head else 'foot', row[0], col[0])
-                            if result:
-                                if param['offset_pattern']:
-                                    if not param['offset_row']:
-                                        param['offset_row'].append((0, False))
-                                    if not param['offset_col']:
-                                        param['offset_col'].append((0, False))
-                                    result = self._get_value_after_validation(param['offset_pattern'],
-                                                                              'head' if is_head else 'foot',
-                                                                              param['offset_row'][0][POS_NUMERIC_VALUE] +
-                                                                              row[0] if not param['offset_row'][0][POS_NUMERIC_IS_ABSOLUTE] else param[
-                                                                                  'offset_row'][0][POS_NUMERIC_VALUE],
-                                                                              param['offset_col'][0][POS_NUMERIC_VALUE] + col[0] if not param['offset_col'][0][POS_NUMERIC_IS_ABSOLUTE] else param['offset_col'][0][POS_NUMERIC_VALUE])
+            if func:
+                value = self.func(fld_param={'func': func})
+                if value:
+                    self._parameters[name]['value'].append(value)
+            else:
+                for pattern in patterns:
+                    if pattern:
+                        if pattern[0] == '@':
+                            self._parameters[name]['value'].append(pattern[1:])
+                        else:
+                            for row, col in product(rows, cols):
+                                result = self._get_value_after_validation(
+                                    pattern, 'head' if is_head else 'foot', row[0], col[0])
                                 if result:
-                                    self._parameters[name]['value'].append(
-                                        param['value'] if param['value'] else result)
-                                    break
+                                    if param['offset_pattern']:
+                                        if not param['offset_row']:
+                                            param['offset_row'].append(
+                                                (0, False))
+                                        if not param['offset_col']:
+                                            param['offset_col'].append(
+                                                (0, False))
+                                        result = self._get_value_after_validation(param['offset_pattern'],
+                                                                                  'head' if is_head else 'foot',
+                                                                                  param['offset_row'][0][POS_NUMERIC_VALUE] +
+                                                                                  row[0] if not param['offset_row'][0][POS_NUMERIC_IS_ABSOLUTE] else param[
+                                            'offset_row'][0][POS_NUMERIC_VALUE],
+                                            param['offset_col'][0][POS_NUMERIC_VALUE] + col[0] if not param['offset_col'][0][POS_NUMERIC_IS_ABSOLUTE] else param['offset_col'][0][POS_NUMERIC_VALUE])
+                                    if result:
+                                        self._parameters[name]['value'].append(
+                                            param['value'] if param.get('value') else result)
+                                        break
 
         return self._parameters[name]
 
@@ -807,12 +817,16 @@ class ExcelBaseImporter:
             self.document_split_one_line(doc, doc_param)
         self._teams.remove(team)
 
-# ---------- Документы --------------------
+################################################################################################################################################
+# --------------------------------------------------- Документы --------------------------------------------------------------------------------
+################################################################################################################################################
     def append_to_collection(self, name: str, doc: dict) -> NoReturn:
         key = self._page_name if self._page_name else 'noname'
         self._collections.setdefault(name, {key: list()})
         self._collections[name].setdefault(key, list())
         self._collections[name][key].append(doc)
+        if self.get_doc_type(name) == 'dictionary' and doc.get('key') and doc.get('value'):
+            self._dictionary[self.func_hash(doc['key'])] = doc['value']
 
 # Формирование документа из полученной порции (отдельной области или иерархии)
     def set_document(self, team: dict, doc_param):
@@ -1007,8 +1021,8 @@ class ExcelBaseImporter:
     def get_condition_end_table(self) -> str:
         return self._config._condition_end_table
 
-    # def get_condition_column(self) -> str:
-    #     return self._config._condition_team_column
+    def get_doc_type(self, name: str) -> str:
+        return ''.join([x['type'] for x in self._config._documents if x['name'] == name])
 
     def get_condition_end_table_column(self) -> str:
         return self._config._condition_end_table_column
@@ -1070,7 +1084,7 @@ class ExcelBaseImporter:
 
 # ---------- Функции --------------------
 
-    def func(self, team: dict, fld_param: dict, row: int, col: int) -> str:
+    def func(self, team: dict = {}, fld_param: dict = {}, row: int = 0, col: int = 0) -> str:
         dic_f = {
             'inn': self.func_inn,
             'period_first': self.func_period_first,
@@ -1089,14 +1103,18 @@ class ExcelBaseImporter:
             'round6': self.func_round6,
             'opposite': self.func_opposite,
             'param': self.func_param,
+            'dictionary': self.func_dictionary,
             'id': self.func_id,
         }
-        self._current_value = fld_param['value']
-        pattern = fld_param['func_pattern'][0]
-        data = fld_param['value_o'] if fld_param['is_offset'] else fld_param['value']
+        self._current_value = fld_param.get('value', '')
+        pattern = fld_param['func_pattern'][0] if fld_param.get(
+            'func_pattern') else ''
+        data = fld_param.get('value_o', '') if fld_param.get(
+            'is_offset') else fld_param.get('value', '')
         try:
-            for name_func_add in fld_param['func'].split(','):
-                value = 0 if fld_param['type'] == 'float' or fld_param['offset_type'] == 'float' else ''
+            for name_func_add in fld_param.get('func', '').split(','):
+                value = 0 if fld_param.get('type', 'str') == 'float' or fld_param.get(
+                    'offset_type', 'str') == 'float' else ''
                 for index, name_func in enumerate(re.split(r"[+-]", name_func_add)):
                     name_func, data_calc, is_check = self.__get_func_name(
                         name_func=name_func, data=data, dic_f=dic_f)
@@ -1137,17 +1155,18 @@ class ExcelBaseImporter:
 
     def __get_func_name(self, name_func: str, data: str, dic_f: dict):
         is_check = False
-        if name_func.find('(') != -1:
+        if name_func.find('(') != -1 and name_func.find(' (') == -1 :
             # если функция с параметром, то заменяем входные данные (data) на этот параметр
             result = regular_calc(
-                r'(?<=\()[\w_0-9-]+(?=\))', name_func)
+                r'(?<=\()[a-zA-Zа-яА-Я_0-9-]+(?=\))', name_func) if name_func.find(' (') == -1 else ''
             if result and result.find('error') == -1:
                 data = result
             try:
                 f = dic_f[name_func[:name_func.find('(')]]
                 name_func = name_func[:name_func.find('(')]
             except:
-                name_func = name_func.replace('(', '- ').replace(')', '')
+                # name_func = name_func.replace('(', '- ').replace(')', '')
+                pass
         if name_func.find('check_') != -1:
             name_func = name_func.replace('check_', '')
             is_check = True
@@ -1219,3 +1238,6 @@ class ExcelBaseImporter:
 
     def func_opposite(self, data: str = '', row: int = -1, col: int = 0, team: dict = {}):
         return str(-data) if isinstance(data, float) else data
+
+    def func_dictionary(self, data: str = '', row: int = -1, col: int = 0, team: dict = {}):
+        return self._dictionary.get(data,'')

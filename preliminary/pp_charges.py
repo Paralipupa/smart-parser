@@ -57,8 +57,18 @@ def pp_charges(lines:list, path: str):
             file.write(f'offset_col_config={COLUMN_BEGIN+1+i}\n\n')
 
         file.write('[pp_charges_4]\n')
-        file.write('; тариф при однотарифном начислении (поля: ГВС, ХВС)\n')
-        file.write('name=tariff\n\n')
+        file.write('; тариф при однотарифном начислении\n')
+        file.write('name=tariff\n')
+        file.write('pattern=.+\n')
+        file.write('col_config=0\n')
+        file.write('row_data=0\n')
+        file.write(f'func=fias+{lines["1"][0]["name"].split(";")[0].replace(","," ").replace("+","")},hash,dictionary\n\n')
+        for i, line in enumerate(lines["1"][1:]):
+            file.write(f'[pp_charges_4_{i}]\n')
+            file.write('; тариф при однотарифном начислении\n')
+            file.write(f'; {line["name"].rstrip()}\n')
+            file.write(f'func=fias+{line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()},hash,dictionary\n\n')
+
 
         file.write('[pp_charges_5]\n')
         file.write('; Идентификатор услуги\n')

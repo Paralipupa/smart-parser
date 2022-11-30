@@ -2,6 +2,7 @@ import sys
 import os
 import logging
 import datetime
+from report.report_000_00 import Report_000_00
 from report.report_001_00 import Report_001_00
 from report.report_002_00 import Report_002_00
 from report.report_003_00 import Report_003_00
@@ -23,6 +24,7 @@ class Parser:
                  hash: str = 'yes'
                  ) -> None:
         self.logs = list()
+        self._dictionary = dict()
         self.name = file_name
         self.inn = inn
         self.config = file_config
@@ -30,6 +32,7 @@ class Parser:
         self.download = path_down
         self.is_hash = False if hash=='no' else True
         self.report = {
+            '000': Report_000_00,
             '001': Report_001_00,
             '002': Report_002_00,
             '003': Report_003_00
@@ -56,7 +59,9 @@ class Parser:
                             rep: ExcelBaseImporter = self.report[t](file_name=file_name['name'],
                                                                     inn=file_name['inn'], config_file=str(file_name['config']))
                             rep.is_hash = self.is_hash
+                            rep._dictionary = self._dictionary.copy()
                             if rep.read():
+                                self._dictionary = rep._dictionary.copy()
                                 rep.write_collections(i)
                                 rep.write_logs(i)
                             else:

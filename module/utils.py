@@ -54,6 +54,7 @@ def get_files(file_name:str, inn: str, file_conf: str) -> list:
         list_files.append(
             {'name': file_name, 'config': file_conf, 'inn': inn, 'warning': list(), 'zip': ''})
     list_files = get_file_config(list_files)
+    list_files = sorted(list_files,key=lambda x : (str(x['config']), str(x['name'])))
 
     return list_files
 
