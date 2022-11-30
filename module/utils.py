@@ -115,7 +115,7 @@ def __config_find(data_file: dict, config_files: list, j: int, m: int) -> dict:
 
 def __config_process(data_file: dict, file_config):
     rep = Report_001_00(file_name=data_file['name'],
-                        config_file=str(file_config), inn=data_file['inn'], data=data_file['records'])
+                        config_file=str(file_config), inn=data_file['inn'])
     if rep.is_file_exists:
         if not rep._config._is_unique:
             if rep.check():
@@ -124,7 +124,6 @@ def __config_process(data_file: dict, file_config):
             elif rep._config._warning:
                 for w in rep._config._warning:
                     data_file['warning'].append(w)
-            data_file['records'] = rep._headers
     if not rep.is_file_exists:
         data_file['warning'].append(
             'ФАЙЛ НЕ НАЙДЕН или ПОВРЕЖДЕН "{}". skip'.format(data_file['name']))

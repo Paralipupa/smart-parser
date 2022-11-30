@@ -89,9 +89,10 @@ class UnionData:
     @fatal_error
     def __get_files(self, path_output: str) -> list:
         files = list()
-        for file in os.listdir(path_output):
-            if file.endswith(".json"):
-                files.append(file)
+        if os.path.isdir(path_output):
+            for file in os.listdir(path_output):
+                if file.endswith(".json"):
+                    files.append(file)
         return files
 
     @warning_error
