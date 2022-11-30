@@ -40,18 +40,15 @@ class UnionData:
                         data[inn[0]][f'{name[0]}@{period[0]}'].append(
                             self.__get_data(path_input, file))
             for inn, item in data.items():
-                for id_period, value in item.items():
-                    if len(value) > 1:
-                        for key, a in value[0].items():
-                            for index in range(1, len(value)):
-                                b = value[index].get(key, None)
-                                if b:
-                                    a = self.__merge(a, b)
-                                    value[index].pop(key)
-                        for index in range(1, len(value)):
-                            value[0].update(value[index])
-                    key = self.__write(path_output, inn, id_period, value[0])
-                    save_directories[key] = path_output
+                for id_period, files in item.items():
+                    file_data = {}
+                    for file in files:
+                        for key_record, record in file.items():
+                            if file_data.get(key_record):
+                                record = self.__merge(record, file_data.get(key_record))
+                            file_data[key_record] = record
+                    key_record = self.__write(path_output, inn, id_period, file_data)
+                    save_directories[key_record] = path_output
             for file in del_files:
                 os.remove(pathlib.Path(path_input, file))
                 os.remove(pathlib.Path(
@@ -68,7 +65,8 @@ class UnionData:
             self.logs.append(
                 f'Найдены не уникальные ключи в {file_name} ({len(m)}) ')
             self.logs.extend(list(map(str, m)))
-            print_message(f'Найдены не уникальные ключи в {file_name} ({len(m)}) ')
+            print_message(
+                f'Найдены не уникальные ключи в {file_name} ({len(m)}) ')
             print_message('\n'.join(map(str, m[:5])))
             if len(m) > 5:
                 print_message('....')
@@ -99,8 +97,8 @@ class UnionData:
     def __merge(self, a: dict, b: dict) -> dict:
         for key, valA in a.items():
             valB = b.get(key, None)
-            if valB and (not valA or valA != valB):
-                if not valA or (valA.replace(' ', '') == valB.replace(' ', '') and len(valA) > len(valB)):
+            if (len(valB.strip()) != 0) and ((len(valA.strip()) == 0) or valA != valB):
+                if (len(valA.strip()) == 0) or (valA.replace(' ', '') == valB.replace(' ', '') and len(valA) < len(valB)):
                     a[key] = valB
         return a
 
