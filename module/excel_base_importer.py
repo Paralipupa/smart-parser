@@ -7,7 +7,6 @@ import uuid
 import csv
 import json
 from ast import Return
-from cachetools import cached, LRUCache
 from typing import NoReturn, Union
 from itertools import product
 from .gisconfig import GisConfig, fatal_error, warning_error, regular_calc, print_message, PATH_LOG
@@ -568,14 +567,12 @@ class ExcelBaseImporter:
                     results.append(name)
         return results
 
-    @cached(cache={})
     def _get_key(self, col: int) -> str:
         for key, value in self._names.items():
             if value['col'] == col:
                 return key
         return ''
 
-    @cached(cache={})
     def _get_value(self, value: str = '', pattern: str = '', type_value: str = '') -> Union[str, int, float]:
         try:
             value = str(value)
@@ -597,7 +594,6 @@ class ExcelBaseImporter:
             result = 0
         return result
 
-    @cached(cache={})
     def _get_value_str(self, value: str, pattern: str) -> str:
         return regular_calc(pattern, value)
 
@@ -613,7 +609,6 @@ class ExcelBaseImporter:
         except:
             return 0
 
-    @cached(cache={})
     def _get_float(self, value: str) -> float:
         try:
             if value:
@@ -651,7 +646,6 @@ class ExcelBaseImporter:
                 'декабр': '12'
                 }
 
-    @cached(cache={})
     def _get_doc_param_fld(self, name: str, fld_name: str):
         doc = next((x for x in self.get_config_documents()
                    if x['name'] == name), None)
