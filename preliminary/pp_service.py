@@ -2,6 +2,17 @@ from settings import *
 
 def pp_service(lines:list, path: str):
 
+    l = []
+    if len(lines['1a'])==0 and len(lines['2a'])==0:
+        l.extend(lines['1'])
+        l.extend(lines['2'])
+    else:
+        l.extend(lines['1a'])
+        l.extend(lines['2a'])
+    ll = l[-1:]
+    l = sorted(l[:-1], key=lambda x: x['name'])
+    l.extend(ll)
+
     with open(f'{path}/ini/5_pp_service.ini', 'w') as file:
         file.write(';########################################################################################################################\n')
         file.write(';----------------------------------------------------------- pp_service -------------------------------------------------\n')
@@ -20,14 +31,14 @@ def pp_service(lines:list, path: str):
 
         file.write('[pp_service_1]\n')
         file.write('; Внутренний идентификатор услуги \n')
-        file.write(f'; {lines["1"][0]["name"]}\n')
+        file.write(f'; {l[0]["name"]}\n')
         file.write('name=internal_id\n')
         file.write('pattern=.+\n')        
 
         file.write('col_config=0\n')
         file.write('row_data=0\n')
-        file.write(f'func={lines["1"][0]["name"].split(";")[0].replace(","," ").replace("+","")},hash\n\n')
-        for i, line in enumerate(lines["1"][1:]):
+        file.write(f'func={l[0]["name"].split(";")[0].replace(","," ").replace("+","")},hash\n\n')
+        for i, line in enumerate(l[1:]):
             file.write(f'[pp_service_1_{i}]\n')
             file.write('; Внутренний идентификатор услуги\n')
             file.write(f'; {line["name"].rstrip()}\n')
@@ -46,8 +57,8 @@ def pp_service(lines:list, path: str):
             file.write('pattern=.+\n')
             file.write('col_config=0\n')
             file.write('row_data=0\n')
-            file.write(f'func={lines["1"][0]["name"].split(";")[0].replace(","," ").replace("+","")}\n\n')
-            for i, line in enumerate(lines["1"][1:]):
+            file.write(f'func={l[0]["name"].split(";")[0].replace(","," ").replace("+","")}\n\n')
+            for i, line in enumerate(l[1:]):
                 file.write(f'[pp_service_{k}_{i}]\n')
                 file.write(f'func={line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()}\n\n')
 

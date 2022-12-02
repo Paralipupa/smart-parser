@@ -1,13 +1,17 @@
-def header(lines:list, path: str):
+import re
+from utils import get_ident, get_reg, get_name
+from settings import *
 
+def header(lines:list, path: str):
+    patts = []
+    names = []
     with open(f'{path}/ini/0_header.ini', 'w') as file:
-        file.write(';---------------ТСЖ "Молодежное"----------------\n')
+        file.write(';---------------ТСЖ "Шустовъ парк"----------------\n')
         file.write('[check]\n')
         file.write('; Поиск ключевого значения по строке(ам) для определения совместимости\n')
         file.write('; входных данных и конфигурации\n')
         file.write('row=0<15\n')
-        file.write('pattern=Параметры\n')
-        file.write('pattern_0=Отбор\n\n')
+        file.write('pattern=Шустовъ парк\n')
 
         file.write('[main]\n')
         file.write('path_output=output\n')
@@ -31,9 +35,20 @@ def header(lines:list, path: str):
         file.write('name=ЛС\n')
         file.write('pattern=^[0-9]{1,6}-[0-9]+(?=,)\n')
         file.write('pattern_0=^[0-9]{1,6}(?=,)\n')
-        file.write('pattern_1=^[0-9]{1,6}-П(?=,)\n\n')
+        file.write('pattern_1=^[0-9]{1,6}-П(?=,)\n')
+        file.write('pattern_2=^[0-9-]{8}$|^[0-9-]{2,3}$\n\n')
 
-        file.write(';---- параметры ------------\n\n')
+        for i, line in enumerate(lines["1a"]):
+            file.write(f'[pattern_{COLUMN_BEGIN+i}]\n')
+            name = get_name(get_ident(line["name"].split(";")[0]), names)
+            file.write(f'name={name}\n')
+            for j, x in enumerate(get_reg(line["name"]).split(';')):
+                file.write(
+                    f'pattern{"_" if j >0 else ""}{str(j-1) if j >0 else ""}={x}\n')
+            file.write(f'\n')
+        file.write(f'pattern_0=.+\n')
+
+        file.write(';--------------------------------------------------- параметры --------------------------------------------------\n\n')
 
         file.write('[headers_0]\n')
         file.write('name=period\n')

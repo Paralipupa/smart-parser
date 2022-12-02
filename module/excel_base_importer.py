@@ -281,11 +281,13 @@ class ExcelBaseImporter:
 
     def check_column(self, item: dict, names: list, row: int, cols_exclude: list = []) -> dict:
         is_find = False
+        patt = ''
         for p in item['pattern']:
-            search_names = self._get_search_names(
-                names, p, cols_exclude if not item['duplicate'] else [])  # колонки в таблице Excel
-            if search_names:
-                break
+            patt = patt + ('|' if patt else '') + p
+        search_names = self._get_search_names(
+            names, patt, cols_exclude if not item['duplicate'] else [])  # колонки в таблице Excel
+            # if search_names:
+            #     break
         if search_names:
             for search_name in search_names:
                 b = True

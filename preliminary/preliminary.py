@@ -10,6 +10,7 @@ from header import header
 from pu import pu
 from puv import puv
 
+
 def getArgs() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument('-n', '--name', nargs='?')
@@ -17,23 +18,55 @@ def getArgs() -> argparse.ArgumentParser:
 
 
 def read(file_name: str) -> list:
-    lines = {'0': [], '1': [], '2': []}
+    # 0 Данные пользователя и ОСВ (accounts, pp)
+    # 1 Начисление платежей  (pp_charges)
+    #   1a Наимменование услуг при иерархической структуре
+    # 2 Показания приборов учета (pu, puv)
+    #   2a Наимменование услуг при иерархической структуре
+    # 3 Мусор
+    # 9 Все вместе
+    lines = {'0': [], '1': [], '1a': [], '2': [], '2a': [], '3': [], '9': []}
     with open(file_name, 'r') as file:
         for line in file:
             if line[0] != ';':
                 if line[:2] == '0:':
-                    lines['0'].extend(
-                        [{'name': x, 'is_unique': True, 'is_optional': False if len(lines['0']) == 0 else True} for x in line[2:].split('\t')])
+                    l = [{'name': x, 'is_unique': True, 'is_optional': False if len(
+                        lines['0']) == 0 else True} for x in line[2:].split('\t')
+                        if x.strip() != '' and not any(y for y in lines['9'] if y['name'].strip() == x.strip())]
+                    lines['0'].extend(l)
+                    lines['9'].extend(l)
                 elif line[:2] == '1:':
-                    lines['1'].extend(
-                        [{'name': x.strip(), 'is_unique': False, 'is_optional': True} for x in line[2:].split('\t')
-                         if x.strip() != '' and not any(y for y in lines['1'] if y['name'].strip() == x.strip())])
+                    l = [{'name': x.strip(), 'is_unique': False, 'is_optional': True} for x in line[2:].split('\t')
+                         if x.strip() != '' and not any(y for y in lines['9'] if y['name'].strip() == x.strip())]
+                    lines['1'].extend(l)
+                    lines['9'].extend(l)
                 elif line[:2] == '2:':
-                    lines['2'].extend(
-                        [{'name': x, 'is_unique': False, 'is_optional': True} for x in line[2:].split('\t')
-                         if x.strip() != '' and not any(y for y in lines['2'] if y['name'].strip() == x.strip())])
+                    l = [{'name': x.strip(), 'is_unique': False, 'is_optional': True} for x in line[2:].split('\t')
+                         if x.strip() != '' and not any(y for y in lines['9'] if y['name'].strip() == x.strip())]
+                    lines['2'].extend(l)
+                    lines['9'].extend(l)
+                elif line[:2] == '3:':
+                    l = [{'name': x.strip(), 'is_unique': False, 'is_optional': True} for x in line[2:].split('\t')
+                         if x.strip() != '' and not any(y for y in lines['9'] if y['name'].strip() == x.strip())]
+                    lines['3'].extend(l)
+                    lines['9'].extend(l)
+                elif line[:3] == '1a:':
+                    l = [{'name': x.strip(), 'is_unique': False, 'is_optional': True} for x in line[3:].split('\t')
+                         if x.strip() != '' and not any(y for y in lines['9'] if y['name'].strip() == x.strip())]
+                    lines['1a'].extend(l)
+                elif line[:3] == '2a:':
+                    l = [{'name': x.strip(), 'is_unique': False, 'is_optional': True} for x in line[3:].split('\t')
+                         if x.strip() != '' and not any(y for y in lines['9'] if y['name'].strip() == x.strip())]
+                    lines['2a'].extend(l)
     lines['1'] = sorted(lines["1"], key=lambda x: x['name'])
-    lines['1'].append({'name': 'Прочие'})
+    lines['2'] = sorted(lines["2"], key=lambda x: x['name'])
+    lines['3'] = sorted(lines["3"], key=lambda x: x['name'])
+    lines['1a'] = sorted(lines["1a"], key=lambda x: x['name'])
+    lines['2a'] = sorted(lines["2a"], key=lambda x: x['name'])
+    if len(lines['1a'])==0 and len(lines['2a'])==0:
+        lines['1'].append({'name': 'Прочие'})
+    else:
+        lines['1a'].append({'name': 'Прочие'})
     return lines
 
 

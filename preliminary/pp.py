@@ -72,7 +72,8 @@ def pp(lines:list, path: str):
         file.write('col_config=0\n')
         file.write('offset_col_config=3\n')
         file.write('offset_type=float\n')
-        file.write('offset_pattern=@currency\n\n')
+        file.write('offset_pattern=@currency\n')
+        file.write('func=round2\n\n')
 
         file.write('[pp_8]\n')
         file.write('; Учтены платежи, поступившие до указанного числа расчетного периода включительно\n')

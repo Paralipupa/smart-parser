@@ -34,7 +34,8 @@ def warning_error(func):
 
 def regular_calc(pattern, value):
     try:
-        result = re.search(pattern, value.strip(), re.IGNORECASE)
+        result = re.search(pattern, value.replace(
+            '\n', '').strip(), re.IGNORECASE)
         if not result:
             return ''
         else:
@@ -211,7 +212,7 @@ class GisConfig:
                             ((heading['left'] and item['col'] == heading['left'][0][POS_NUMERIC_VALUE]) or
                                 (heading['right'] and item['col'] == heading['right'][0][POS_NUMERIC_VALUE])):
                             item['priority'] = True
-                            
+
                 j = -1
                 pattern_dop = 'default'
                 while pattern_dop:
@@ -292,6 +293,8 @@ class GisConfig:
                         self.read_config(part, f'pattern_{j}')
                     j += 1
             k += 1
+            if k<20 and not self.is_section_exist(f'pattern{"_" if k>=0 else ""}{k if k>=0 else ""}'):
+                k = 20
 
 # ========================= Документы =======================================================
     @fatal_error

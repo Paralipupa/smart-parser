@@ -1,14 +1,19 @@
 import re
-from utils import get_ident, get_reg
+from utils import get_ident, get_reg, get_name
 from settings import *
 
 
 def set_columns(lines: list, path: str):
 
     with open(f'{path}/ini/1_col.ini', 'w') as file:
-        file.write(';########################################################################################################################\n')
-        file.write(';-------------------------------------------------------------- колонки -------------------------------------------------\n')
-        file.write(';########################################################################################################################\n')
+        patts = []
+        names = []
+        file.write(
+            ';########################################################################################################################\n')
+        file.write(
+            ';-------------------------------------------------------------- колонки -------------------------------------------------\n')
+        file.write(
+            ';########################################################################################################################\n')
         for i, line in enumerate(lines["0"]):
             file.write(f'[col_{i}]\n')
             if i == 0:
@@ -16,37 +21,64 @@ def set_columns(lines: list, path: str):
                 file.write(f'condition_begin_team=@ЛС\n')
                 file.write('col_data_offset=+0\n')
             else:
-                file.write(f'name={get_ident(line["name"].split(";")[0])}\n')
+                name = get_name(get_ident(line["name"].split(";")[0]), names)
+                file.write(f'name={name}\n')
+            is_duplicate = False
             for j, x in enumerate(get_reg(line["name"]).split(';')):
                 file.write(
                     f'pattern{"_" if j >0 else ""}{str(j-1) if j >0 else ""}={x}\n')
+                if not any([y for y in patts if y == x]):
+                    patts.append(x)
+                else:
+                    is_duplicate = True
             if line["is_optional"]:
                 file.write(f'is_optional=true\n')
-            file.write('is_unique=true\n\n')
+            if is_duplicate:
+                file.write(f'is_duplicate=true\n')
+            file.write(
+                f'is_unique={"true" if not is_duplicate and line["name"].find(";")==-1 else "false"}\n\n')
 
-        for i, line in enumerate(lines["1"][:-1]):
+        for i, line in enumerate(lines["1"]):
             file.write(f'[col_{COLUMN_BEGIN+i}]\n')
-            x = get_ident(line["name"].split(";")[0])
-            file.write(f'name={x}\n')
+            name = get_name(get_ident(line["name"].split(";")[0]), names)
+            file.write(f'name={name}\n')
             for j, x in enumerate(get_reg(line["name"]).split(';')):
                 file.write(
                     f'pattern{"_" if j >0 else ""}{str(j-1) if j >0 else ""}={x}\n')
-            file.write('border_column_left=2\n')
-            file.write('border_column_right=4\n')
-            file.write('is_optional=true\n\n')
-        line = lines["1"][i+1]
-        file.write(f'[col_{COLUMN_BEGIN+1+i}]\n')
-        file.write(f'name={get_ident(line["name"])}\n')
-        file.write(f'pattern=.+\n')
-        file.write('border_column_left=2\n')
-        file.write('border_column_right=4\n')
-        file.write('is_only_after_stable=true\n\n')
+            if len(lines['1a'])==0 and len(lines['2a'])==0:
+                file.write('border_column_left=2\n')
+                file.write('border_column_right=4\n')
+            file.write('is_optional=true\n')
+            if i < len(lines['1'])-1:
+                file.write('\n')
+        if len(lines['1a'])==0 and len(lines['2a'])==0:
+            file.write('is_only_after_stable=true\n\n')
+        else:
+            file.write('\n')
 
+        if lines["2"]:
+            file.write(
+                ';--------------------------------------------------------------------------------------------------------------------\n')
         for i, line in enumerate(lines["2"]):
             file.write(f'[col_{COLUMN_BEGIN+i+len(lines["1"])}]\n')
-            x = get_ident(line["name"].split(";")[0])
-            file.write(f'name={x}\n')
+            name = get_name(get_ident(line["name"].split(";")[0]), names)
+            file.write(f'name={name}\n')
             for j, x in enumerate(get_reg(line["name"]).split(';')):
                 file.write(
                     f'pattern{"_" if j >0 else ""}{str(j-1) if j >0 else ""}={x}\n')
             file.write('is_optional=true\n\n')
+
+        if len(lines['1a'])==0 and len(lines['2a'])==0:
+            if lines["3"]:
+                file.write(
+                    f'[col_{COLUMN_BEGIN+len(lines["1"])+len(lines["2"])}]\n')
+                name = get_name(
+                    get_ident(lines["3"][0]["name"].split(";")[0]), names)
+                file.write(f'name=Мусор_{name}\n')
+                k = 0
+                for i, line in enumerate(lines["3"]):
+                    for j, x in enumerate(get_reg(line["name"]).split(';')):
+                        file.write(
+                            f'pattern{"_" if k >0 else ""}{str(k-1) if k >0 else ""}={x}\n')
+                        k += 1
+                file.write('is_optional=true\n\n')

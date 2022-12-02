@@ -77,6 +77,7 @@ def accounts(lines:list, path: str):
         file.write('pattern=@0\n')
         file.write('col_config=0\n')
         file.write('row_data=0\n\n')
+        file.write('func=spacerepl\n\n')
 
         file.write('[accounts_11]\n')
         file.write('; ГИС. Идентификатор ЛС (20)\n')
@@ -121,6 +122,7 @@ def accounts(lines:list, path: str):
         file.write('pattern=@0\n')
         file.write('col_config=0\n')
         file.write('row_data=0\n\n')
+        file.write('func=spacerepl\n\n')
 
         file.write('[accounts_18]\n')
         file.write('; Признак нежилого помещения (0 1)\n')

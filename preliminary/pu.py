@@ -1,10 +1,26 @@
+import re
+from utils import get_ident, get_reg, get_name
+from settings import *
+
 def pu(lines:list, path: str):
 
-    with open(f'{path}/ini/3_pu.ini', 'w') as file:
+    names = []
+    l = []
+    if len(lines['1a'])==0 and len(lines['2a'])==0:
+        l.extend(lines['1'])
+        l.extend(lines['2'])
+    else:
+        l.extend(lines['1a'])
+        l.extend(lines['2a'])
+    ll = l[-1:]
+    l = sorted(l[:-1], key=lambda x: x['name'])
+    l.extend(ll)
+
+    with open(f'{path}/ini/6_pu.ini', 'w') as file:
         file.write(';########################################################################################################################\n')
         file.write(';---------------------------------------------------------------- pu ----------------------------------------------------\n')
         file.write(';########################################################################################################################\n')
-        file.write('[doc_3]\n')
+        file.write('[doc_4]\n')
         file.write('; Приборы учета (ПУ) \n')
         file.write('name=pu\n\n')
 
@@ -21,16 +37,19 @@ def pu(lines:list, path: str):
         file.write('name=internal_id\n')
         file.write('pattern=@0\n')
         file.write('col_config=0\n')
-        file.write('offset_col_config=0\n')
-        file.write('offset_pattern=.+\n')
-        if len(lines["2"]) > 0:
-            file.write(f'func=id+{lines["2"][0]["name"].replace(","," ").replace("+","")},spacerepl,hash\n\n')
-            for i, line in enumerate(lines["2"][1:]):
-                file.write(f'[pu_1_{i}]\n')
-                file.write('; Внутренний идентификатор ПУ\n')
-                file.write(f'func=id+{line["name"].replace(","," ").replace("+","").rstrip()},spacerepl,hash\n\n')
+        if not (len(lines['1a'])==0 and len(lines['2a'])==0):
+            file.write('offset_col_config=20\n')
+            name = get_name(get_ident(l[0]["name"].split(";")[0]), names)
+            file.write(f'offset_pattern=@{name}\n')
         else:
-            file.write(f'func=id,spacerepl,hash\n\n')
+            file.write('row_data=0\n')
+        file.write(f'func=id+{l[0]["name"].split(";")[0].replace(","," ").replace("+","")}+ПУ,spacerepl,hash\n\n')
+        for i, line in enumerate(l[1:]):
+            file.write(f'[pu_1_{i}]\n')
+            if not (len(lines['1a'])==0 and len(lines['2a'])==0):
+                name = get_name(get_ident(line["name"].split(";")[0]), names)
+                file.write(f'offset_pattern=@{name}\n')
+            file.write(f'func=id+{line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()}+ПУ,spacerepl,hash\n\n')
 
         file.write('[pu_2]\n')
         file.write('; Внутренний идентификатор ЛС\n')
@@ -98,21 +117,15 @@ def pu(lines:list, path: str):
 
         file.write('[pu_17]\n')
         file.write('; Идентификатор услуги\n')
-        file.write('name=service_internal_id \n')
-        file.write('pattern=@0\n')
+        file.write(f'; {l[0]["name"]}\n')
+        file.write('name=service_internal_id\n')
+        file.write('pattern=.+\n')
         file.write('col_config=0\n')
-        file.write('offset_col_config=0\n')
-        file.write('offset_pattern=.+\n')
-        if len(lines["2"]) > 0:
-            file.write(f'func=id+{lines["2"][0]["name"].replace(","," ").replace("+","")},spacerepl,hash\n\n')
-            for i, line in enumerate(lines["2"][1:]):
-                file.write(f'[pu_17_{i}]\n')
-                file.write('; Идентификатор услуги\n')
-                file.write(f'func=id+{line["name"].replace(","," ").replace("+","").rstrip()},spacerepl,hash\n\n')
-        else:
-            file.write(f'func=id,spacerepl,hash\n\n')
-
-        file.write('[pu_18]\n')
-        file.write('; Дата завершения действия ПУ\n')
-        file.write('name=stop_date\n')
+        file.write('row_data=0\n')
+        file.write(f'func={l[0]["name"].split(";")[0].replace(","," ").replace("+","")},hash\n\n')
+        for i, line in enumerate(l[1:]):
+            file.write(f'[pu_17_{i}]\n')
+            file.write('; Идентификатор услуги\n')
+            file.write(f'; {line["name"].rstrip()}\n')
+            file.write(f'func={line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()},hash\n\n')
 
