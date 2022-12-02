@@ -192,6 +192,6 @@ def write_list(files):
         file.write('\n\n')
         for item in files:
             if item['warning']:
-                s = ' '.join([x for x in item['warning']]).strip()
-                file.write(f"{item['inn']} \t {item['name']} \t {s}\n")
+                s = ' '.join([f'{x}\n' for x in item['warning']]).strip()
+                file.write(f"{item['inn']} \t {item['name']}: \n {s}")
                 file.write('\n')

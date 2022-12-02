@@ -192,6 +192,7 @@ class GisConfig:
                     'col': len(self._columns_heading),
                     'col_data': self.read_config(f'col_{i}', 'col_data_offset', isNumeric=True),
                     'active': False,
+                    'priority': False,
                     'duplicate': b1,
                     'optional': b2,
                     'unique': b3,
@@ -202,6 +203,15 @@ class GisConfig:
                 }
                 heading['alias'] = alias if alias else heading['name']
                 heading['pattern'].append(pattern)
+                if heading['left'] or heading['right']:
+                    for item in self._columns_heading:
+                        # Если заданы границы для текущего поля, то эти граничные поля
+                        # должны обрабатываться в первую очередь (check_columns)
+                        if not item['priority'] and \
+                            ((heading['left'] and item['col'] == heading['left'][0][POS_NUMERIC_VALUE]) or
+                                (heading['right'] and item['col'] == heading['right'][0][POS_NUMERIC_VALUE])):
+                            item['priority'] = True
+                            
                 j = -1
                 pattern_dop = 'default'
                 while pattern_dop:
@@ -265,7 +275,6 @@ class GisConfig:
 
 
 # ========================= Шаблоны =======================================================
-
 
     @fatal_error
     def set_patterns(self) -> NoReturn:

@@ -137,16 +137,6 @@ class ExcelBaseImporter:
             return False
         return self._check_controll(self._headers, patts, is_warning)
 
-    def get_condition_data(self, values: list, pattern: str) -> str:
-        result = ''
-        for val in values:
-            if val['row'] == 0:
-                value = regular_calc(pattern, val['value'])
-                if value == '' or result.find('error') != -1:
-                    return ''
-                result += value
-        return result
-
     def check_condition_team(self, mapped_record: list) -> bool:
         if not self.get_condition_team():
             return True
@@ -156,7 +146,7 @@ class ExcelBaseImporter:
         for p in self.get_condition_team():
             if mapped_record.get(p['col']):
                 for patt in p['pattern']:
-                    result = self.get_condition_data(
+                    result = self._get_condition_data(
                         mapped_record[p['col']], patt)
                     b = False if not result or result.find(
                         'error') != -1 else True
@@ -164,7 +154,7 @@ class ExcelBaseImporter:
                         if len(self._teams) != 0:
                             # Проверяем значение со значением из предыдущей области (иерархии)
                             # если не совпадает, то фиксируем начало новой области (иерархии)
-                            pred = self.get_condition_data(
+                            pred = self._get_condition_data(
                                 self._teams[-1][p['col']], patt)
                             b = (result != pred)
                         if b:
@@ -265,22 +255,27 @@ class ExcelBaseImporter:
     def check_columns(self, names: list, row: int) -> bool:
         is_find = False
         if names:
+            last_cols = []
             # список уже добавленных колонок, которые нужно исключить при следующем прохождении
             cols_exclude = list()
             for x in [x['indexes'] for x in self._names.values()]:
                 cols_exclude.extend([y[POS_INDEX_VALUE] for y in x])
-            # сначала проверяем обязательные колонки
+            # сначала проверяем обязательные и приоритетные колонки
             for item in self.get_columns_heading():
-                if (not item['active'] or item['duplicate']) and not item['optional'] and item['pattern'][0]:
+                if (not item['active'] or item['duplicate'])  and item['pattern'][0] and (not item['optional'] or item['priority'] ):
                     if self.check_column(item, names, row, cols_exclude):
                         is_find = True
-            # потом проверяем не обязательные колонки (is_optional=true)
+            # потом проверяем остальные колонки
             for item in self.get_columns_heading():
-                if (not item['active'] or item['duplicate']) and item['optional'] and item['pattern'][0]:
-                    b = not item['after_stable']
-                    if not b and self.check_stable_columns() and (row in self._get_rows_header() or item['duplicate']):
-                        b = True
-                    if b and self.check_column(item, names, row, cols_exclude):
+                if (not item['active'] or item['duplicate']) and item['pattern'][0] and item['optional'] and not item['priority']:
+                    if item['after_stable']:
+                        last_cols.append(item)
+                    elif self.check_column(item, names, row, cols_exclude):
+                        is_find = True
+            # последнии колонки (after_stable = True)
+            for item in last_cols:
+                if self.check_stable_columns() and (row in self._get_rows_header() or item['duplicate']):
+                    if self.check_column(item, names, row, cols_exclude):
                         is_find = True
         return is_find
 
@@ -297,7 +292,7 @@ class ExcelBaseImporter:
                 if item['offset']['pattern'][0]:
                     b = self.check_column_offset(item, search_name['col'])
                 if b:
-                    col_left = self._get_border(item, 'left', 0)
+                    col_left = self._get_border(item, 'left', search_name['col'])
                     col_right = self._get_border(
                         item, 'right', search_name['col'])
                     if col_left <= search_name['col'] <= col_right:
@@ -313,14 +308,16 @@ class ExcelBaseImporter:
                                 index = val[POS_NUMERIC_VALUE] + \
                                     search_name['col'] if not val[POS_NUMERIC_IS_ABSOLUTE] else 0
                                 # добавляем номер колонки в таблице с данными для суммирования значений
-                                item['indexes'].append(
-                                    (index, val[POS_NUMERIC_IS_NEGATIVE]))
-                                self._names[key]['indexes'].append(
-                                    (index, val[POS_NUMERIC_IS_NEGATIVE]))
+                                if not ((index, val[POS_NUMERIC_IS_NEGATIVE]) in self._names[key]['indexes']):
+                                    item['indexes'].append(
+                                        (index, val[POS_NUMERIC_IS_NEGATIVE]))
+                                    self._names[key]['indexes'].append(
+                                        (index, val[POS_NUMERIC_IS_NEGATIVE]))
                         else:
-                            item['indexes'].append((search_name['col'], False))
-                            self._names[key]['indexes'].append(
-                                (search_name['col'], False))
+                            if not ((search_name['col'], False) in self._names[key]['indexes']):
+                                item['indexes'].append((search_name['col'], False))
+                                self._names[key]['indexes'].append(
+                                    (search_name['col'], False))
                         item['row'] = row
                         is_find = True
                         cols_exclude.append(search_name['col'])
@@ -416,6 +413,16 @@ class ExcelBaseImporter:
         return (self.colontitul['status'] == 1)
 
     @warning_error
+    def _get_condition_data(self, values: list, pattern: str) -> str:
+        result = ''
+        for val in values:
+            if val['row'] == 0:
+                value = regular_calc(pattern, val['value'])
+                if value == '' or result.find('error') != -1:
+                    return ''
+                result += value
+        return result
+
     def _get_data_xls(self):
         ReaderClass = get_file_reader(self._parameters['filename']['value'][0])
         data_reader = ReaderClass(self._parameters['filename']['value'][0], self._page_name, 0,
@@ -429,9 +436,12 @@ class ExcelBaseImporter:
 
     def _get_border(self, item: dict, name: str, col: int = 0) -> int:
         if item[name]:
-            name_field = self._get_key(item[name][0][0])
+            name_field = self._get_key(item[name][0][POS_NUMERIC_VALUE])
             if name_field:
                 col = self._names[name_field]['indexes'][0][POS_INDEX_VALUE]
+            else:
+                col = col + 1 if name == 'left' else col -1
+                self._config._warning.append(f'"{item["name"]}" - не найдена граница border_column_{name}={item[name][0][POS_NUMERIC_VALUE]}')
         return col
 
     def _get_rows_header(self) -> set:
@@ -508,9 +518,9 @@ class ExcelBaseImporter:
                 i += 1
         if i == 0:
             return self._check_function()
-        if (100 - round(i/len(patts) * 100, 0)) > 95:
-            self._config._warning.append('\nфайл "{0}"\nсооответствует шаблону "{1}"\nболее, чем на 95%\nНе найдены:\n{2}'.format(
-                self._parameters['filename']['value'][0], self._parameters['config']['value'][0], s))
+        # if (100 - round(i/len(patts) * 100, 0)) > 95:
+        #     self._config._warning.append('\nфайл "{0}"\nсооответствует шаблону "{1}"\nболее, чем на 95%\nНе найдены:\n{2}'.format(
+        #         self._parameters['filename']['value'][0], self._parameters['config']['value'][0], s))
         if is_warning:
             self._config._warning.append('файл "{0}" не сооответствует шаблону "{1}". skip'.format(
                 self._parameters['filename']['value'][0], self._parameters['config']['value'][0]))
@@ -1098,6 +1108,7 @@ class ExcelBaseImporter:
             'opposite': self.func_opposite,
             'param': self.func_param,
             'dictionary': self.func_dictionary,
+            'to_date': self.func_to_date,
             'id': self.func_id,
         }
         self._current_value = fld_param.get('value', '')
@@ -1188,6 +1199,17 @@ class ExcelBaseImporter:
 
     def func_period_year(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
         return self._parameters['period']['value'][0][6:]
+
+    def func_to_date(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
+        patts = ['%d-%m-%Y', '%d.%m.%Y', '%d/%m/%Y', '%Y-%m-%d',
+                 '%d-%m-%y', '%d.%m.%y', '%d/%m/%y', '%B %Y']
+        for p in patts:
+            try:
+                d = datetime.datetime.strptime(data, p)
+                return data
+            except:
+                pass
+        return ''
 
     def func_hash(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
         return _hashit(str(data).encode('utf-8')) if self.is_hash else data
