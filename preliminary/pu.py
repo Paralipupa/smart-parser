@@ -1,22 +1,11 @@
-import re
-from utils import get_ident, get_reg, get_name
+from utils import get_ident, get_name,get_lines
 from settings import *
 
-def pu(lines:list, path: str):
-
+def pu(lines:list, path: str)->str:
     names = []
-    l = []
-    if len(lines['1a'])==0 and len(lines['2a'])==0:
-        l.extend(lines['1'])
-        l.extend(lines['2'])
-    else:
-        l.extend(lines['1a'])
-        l.extend(lines['2a'])
-    ll = l[-1:]
-    l = sorted(l[:-1], key=lambda x: x['name'])
-    l.extend(ll)
-
-    with open(f'{path}/ini/6_pu.ini', 'w') as file:
+    l = get_lines(lines)
+    file_name = f'{path}/ini/6_pu.ini'
+    with open(file_name, 'w') as file:
         file.write(';########################################################################################################################\n')
         file.write(';---------------------------------------------------------------- pu ----------------------------------------------------\n')
         file.write(';########################################################################################################################\n')
@@ -128,4 +117,4 @@ def pu(lines:list, path: str):
             file.write('; Идентификатор услуги\n')
             file.write(f'; {line["name"].rstrip()}\n')
             file.write(f'func={line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()},hash\n\n')
-
+    return file_name

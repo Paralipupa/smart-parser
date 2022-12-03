@@ -1,28 +1,18 @@
-import re
-from utils import get_ident, get_reg, get_name
+from utils import get_ident, get_name,get_lines
 from settings import *
 
-def pp_charges(lines:list, path: str):    
+def pp_charges(lines:list, path: str) -> str:    
     names = []
-    l = []
-    if len(lines['1a'])==0 and len(lines['2a'])==0:
-        l.extend(lines['1'])
-        l.extend(lines['2'])
-    else:
-        l.extend(lines['1a'])
-        l.extend(lines['2a'])
-    ll = l[-1:]
-    l = sorted(l[:-1], key=lambda x: x['name'])
-    l.extend(ll)
-
-    with open(f'{path}/ini/4_pp_charges.ini', 'w') as file:
+    l = get_lines(lines)
+    file_name = f'{path}/ini/4_pp_charges.ini'
+    with open(file_name, 'w') as file:
         file.write(';########################################################################################################################\n')
         file.write(';-------------------------------------------------------------- pp_charges ----------------------------------------------\n')
         file.write(';########################################################################################################################\n')
         file.write('[doc_2]\n')
         file.write('; Документ Начисления платежей\n')
         file.write('name=pp_charges\n')
-        file.write('required_fields=calc_value\n\n')
+        file.write('required_fields=calc_value,recalculation\n\n')
 
         file.write('[pp_charges_0]\n')
         file.write('; ИНН, ОГРН или OrgID\n')
@@ -96,7 +86,7 @@ def pp_charges(lines:list, path: str):
             file.write(f'pattern=@{name}\n')
             file.write('col_config=20\n')
             file.write(f'offset_col_config=21\n')
-            file.write('offset_pattern=@currency\n\n')
+            file.write('offset_pattern=.+\n\n')
             for i, line in enumerate(l[1:]):
                 file.write(f'[pp_charges_4_{i}]\n')
                 file.write('; тариф при однотарифном начислении\n')
@@ -143,8 +133,9 @@ def pp_charges(lines:list, path: str):
             name = get_name(get_ident(l[0]["name"].split(";")[0]), names)
             file.write(f'pattern=@{name}\n')
             file.write('col_config=20\n')
-            file.write(f'offset_col_config=23\n')
+            file.write(f'offset_col_config=11\n')
             file.write('offset_pattern=@currency\n\n')
+            file.write('offset_type=float\n\n')
             for i, line in enumerate(l[1:]):
                 file.write(f'[pp_charges_7_{i}]\n')
                 file.write('; тариф при однотарифном начислении\n')
@@ -161,7 +152,7 @@ def pp_charges(lines:list, path: str):
             name = get_name(get_ident(l[0]["name"].split(";")[0]), names)
             file.write(f'pattern=@{name}\n')
             file.write('col_config=20\n')
-            file.write(f'offset_col_config=2\n')
+            file.write(f'offset_col_config=10\n')
         else:
             file.write('pattern=@0\n')
             file.write('col_config=0\n')
@@ -178,5 +169,4 @@ def pp_charges(lines:list, path: str):
                 file.write(f'pattern=@{name}\n\n')
             else:
                 file.write(f'offset_col_config={COLUMN_BEGIN+1+i}\n\n')
-
-
+    return file_name

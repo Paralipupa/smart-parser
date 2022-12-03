@@ -1,19 +1,10 @@
+from utils import get_lines
 from settings import *
 
 def pp_service(lines:list, path: str):
-
-    l = []
-    if len(lines['1a'])==0 and len(lines['2a'])==0:
-        l.extend(lines['1'])
-        l.extend(lines['2'])
-    else:
-        l.extend(lines['1a'])
-        l.extend(lines['2a'])
-    ll = l[-1:]
-    l = sorted(l[:-1], key=lambda x: x['name'])
-    l.extend(ll)
-
-    with open(f'{path}/ini/5_pp_service.ini', 'w') as file:
+    l = get_lines(lines)
+    file_name = f'{path}/ini/5_pp_service.ini'
+    with open(file_name, 'w') as file:
         file.write(';########################################################################################################################\n')
         file.write(';----------------------------------------------------------- pp_service -------------------------------------------------\n')
         file.write(';########################################################################################################################\n')
@@ -64,4 +55,5 @@ def pp_service(lines:list, path: str):
 
         file.write('[pp_service_4]\n')
         file.write('; код услуги в ГИС\n')	
-        file.write('name=gis_code\n')
+        file.write('name=gis_code\n\n')
+    return file_name

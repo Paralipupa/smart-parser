@@ -9,6 +9,7 @@ from columns import set_columns
 from header import header
 from pu import pu
 from puv import puv
+from utils import write_config
 
 
 def getArgs() -> argparse.ArgumentParser:
@@ -54,10 +55,12 @@ def read(file_name: str) -> list:
                     l = [{'name': x.strip(), 'is_unique': False, 'is_optional': True} for x in line[3:].split('\t')
                          if x.strip() != '' and not any(y for y in lines['9'] if y['name'].strip() == x.strip())]
                     lines['1a'].extend(l)
+                    lines['9'].extend(l)
                 elif line[:3] == '2a:':
                     l = [{'name': x.strip(), 'is_unique': False, 'is_optional': True} for x in line[3:].split('\t')
                          if x.strip() != '' and not any(y for y in lines['9'] if y['name'].strip() == x.strip())]
                     lines['2a'].extend(l)
+                    lines['9'].extend(l)
     lines['1'] = sorted(lines["1"], key=lambda x: x['name'])
     lines['2'] = sorted(lines["2"], key=lambda x: x['name'])
     lines['3'] = sorted(lines["3"], key=lambda x: x['name'])
@@ -71,14 +74,16 @@ def read(file_name: str) -> list:
 
 
 if __name__ == "__main__":
+    names = []
     args = getArgs()
     namespace = args.parse_args(sys.argv[1:])
     lines = read(namespace.name)
-    header(lines, os.path.dirname(__file__))
-    set_columns(lines, os.path.dirname(__file__))
-    accounts(lines, os.path.dirname(__file__))
-    pp(lines, os.path.dirname(__file__))
-    pp_charges(lines, os.path.dirname(__file__))
-    pp_service(lines, os.path.dirname(__file__))
-    pu(lines, os.path.dirname(__file__))
-    puv(lines, os.path.dirname(__file__))
+    names.append(header(lines, os.path.dirname(__file__))) 
+    names.append(set_columns(lines, os.path.dirname(__file__)))
+    names.append(accounts(lines, os.path.dirname(__file__)))
+    names.append(pp(lines, os.path.dirname(__file__)))
+    names.append(pp_charges(lines, os.path.dirname(__file__)))
+    names.append(pp_service(lines, os.path.dirname(__file__)))
+    names.append(pu(lines, os.path.dirname(__file__)))
+    names.append(puv(lines, os.path.dirname(__file__)))
+    write_config(names, os.path.dirname(__file__))

@@ -2,13 +2,16 @@ import re
 from utils import get_ident, get_reg, get_name
 from settings import *
 
-def header(lines:list, path: str):
+
+def header(lines: list, path: str) -> str:
     patts = []
     names = []
-    with open(f'{path}/ini/0_header.ini', 'w') as file:
+    file_name = f'{path}/ini/0_header.ini'
+    with open(file_name, 'w') as file:
         file.write(';---------------ТСЖ "Шустовъ парк"----------------\n')
         file.write('[check]\n')
-        file.write('; Поиск ключевого значения по строке(ам) для определения совместимости\n')
+        file.write(
+            '; Поиск ключевого значения по строке(ам) для определения совместимости\n')
         file.write('; входных данных и конфигурации\n')
         file.write('row=0<15\n')
         file.write('pattern=Шустовъ парк\n')
@@ -25,7 +28,9 @@ def header(lines:list, path: str):
 
         file.write('[pattern]\n')
         file.write('name=period\n')
-        file.write('pattern=(?<=Начало периода: )[0-9]{2}\.{0-9}{2}\.[0-9]{4}\n\n')
+        file.write(
+            'pattern=(?<=Начало периода: )[0-9]{2}\.{0-9}{2}\.[0-9]{4}\n')
+        file.write('pattern_0=(?<=с )\s*[0-9]{2}\.[0-9]{2}\.[0-9]{4}\n\n')
 
         file.write('[pattern_0]\n')
         file.write('name=currency\n')
@@ -48,7 +53,8 @@ def header(lines:list, path: str):
             file.write(f'\n')
         file.write(f'pattern_0=.+\n')
 
-        file.write(';--------------------------------------------------- параметры --------------------------------------------------\n\n')
+        file.write(
+            ';--------------------------------------------------- параметры --------------------------------------------------\n\n')
 
         file.write('[headers_0]\n')
         file.write('name=period\n')
@@ -58,8 +64,9 @@ def header(lines:list, path: str):
 
         file.write('[headers_1]\n')
         file.write('name=inn\n')
-        file.write('pattern=@4727000113\n\n')
+        file.write('pattern=@5044110874\n\n')
 
         file.write('[headers_2]\n')
         file.write('name=timezone\n')
         file.write('pattern=@+3\n\n')
+    return file_name

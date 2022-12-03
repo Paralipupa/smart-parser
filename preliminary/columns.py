@@ -3,9 +3,10 @@ from utils import get_ident, get_reg, get_name
 from settings import *
 
 
-def set_columns(lines: list, path: str):
+def set_columns(lines: list, path: str) -> str:
 
-    with open(f'{path}/ini/1_col.ini', 'w') as file:
+    file_name = f'{path}/ini/1_col.ini'
+    with open(file_name, 'w') as file:
         patts = []
         names = []
         file.write(
@@ -82,3 +83,4 @@ def set_columns(lines: list, path: str):
                             f'pattern{"_" if k >0 else ""}{str(k-1) if k >0 else ""}={x}\n')
                         k += 1
                 file.write('is_optional=true\n\n')
+    return file_name
