@@ -4,7 +4,7 @@ import fileinput
 def get_ident(name: str) -> str:
     # name = [item.capitalize() for item in name]
     result = "".join(c for c in name.title() if c.isalnum())
-    result = result.replace('Итого', '')
+    result = result.replace('Итого ', '')
     return result
 
 
@@ -30,7 +30,6 @@ def get_lines(lines: list) -> list:
     if len(lines['1a']) == 0 and len(lines['2a']) == 0:
         ll = lines['1'][-1:]
         l.extend(lines['1'][:-1])
-        l.extend(lines['1'])
         l.extend(lines['2'])
     else:
         ll = lines['1a'][-1:]
@@ -45,3 +44,13 @@ def write_config(filenames: list, path: str):
     with open(file_name, 'w') as fout, fileinput.input(filenames) as fin:
         for line in fin:
             fout.write(line)
+
+def sorted_lines(lines:list) -> list:
+    lines['1'] = sorted(lines["1"], key=lambda x: x['name'])
+    lines['2'] = sorted(lines["2"], key=lambda x: x['name'])
+    lines['3'] = sorted(lines["3"], key=lambda x: x['name'])
+    lines['1a'] = sorted(lines["1a"], key=lambda x: x['name'])
+    lines['2a'] = sorted(lines["2a"], key=lambda x: x['name'])
+    return lines
+
+

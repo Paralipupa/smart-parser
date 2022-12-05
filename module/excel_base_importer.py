@@ -54,8 +54,8 @@ class ExcelBaseImporter:
     def read(self) -> bool:
         if not self.is_verify(self._parameters['filename']['value'][0]):
             return False
-        print_message('Файл {} ({})'.format(
-            self._parameters['filename']['value'][0], self._parameters['config']['value'][0]))
+        # print_message('Файл {} ({})'.format(
+        #     self._parameters['filename']['value'][0], self._parameters['config']['value'][0]))
         if not self.get_col_start():
             self.set_col_start(0)
         for col_start in self.get_col_start():
@@ -390,7 +390,7 @@ class ExcelBaseImporter:
             if result and result.find('error') == -1:
                 year = result
                 month = next((val for key, val in self._get_months().items() if re.search(
-                    key+'[а-я]+\s', item, re.IGNORECASE)), None)
+                    key+'[а-я]{0,5}\s', item, re.IGNORECASE)), None)
                 if month:
                     ls.append(f'01.{month}.{year}')
                 else:
@@ -1113,7 +1113,7 @@ class ExcelBaseImporter:
             'to_date': self.func_to_date,
             'id': self.func_id,
         }
-        self._current_value = fld_param.get('value', '')
+        self._current_value = fld_param.get('value', '') 
         pattern = fld_param['func_pattern'][0] if fld_param.get(
             'func_pattern') else ''
         data = fld_param.get('value_o', '') if fld_param.get(

@@ -8,13 +8,17 @@ def header(lines: list, path: str) -> str:
     names = []
     file_name = f'{path}/ini/0_header.ini'
     with open(file_name, 'w') as file:
-        file.write(';---------------ТСЖ "Шустовъ парк"----------------\n')
+        file.write(
+            f';--------------- {lines["param"].get("name",[""])[0] } ----------------\n')
         file.write('[check]\n')
         file.write(
             '; Поиск ключевого значения по строке(ам) для определения совместимости\n')
         file.write('; входных данных и конфигурации\n')
         file.write('row=0<15\n')
-        file.write('pattern=Шустовъ парк\n')
+        if lines["param"].get("check"):
+            for i, p in enumerate(lines["param"]["check"]) :
+                file.write(f'pattern{"_" if i>0 else ""}{i-1 if i>0 else ""}={p}\n')
+        file.write('\n')
 
         file.write('[main]\n')
         file.write('path_output=output\n')
@@ -22,26 +26,39 @@ def header(lines: list, path: str) -> str:
         file.write('page_name=\n')
         file.write('page_index=0\n')
         file.write('max_columns=150\n')
-        file.write('max_rows_heading=20\n\n')
+        file.write('max_rows_heading=20\n')
+        file.write('\n')
 
         file.write(';---- шаблоны регулярных выражений ------------\n\n')
 
         file.write('[pattern]\n')
         file.write('name=period\n')
-        file.write(
-            'pattern=(?<=Начало периода: )[0-9]{2}\.{0-9}{2}\.[0-9]{4}\n')
-        file.write('pattern_0=(?<=с )\s*[0-9]{2}\.[0-9]{2}\.[0-9]{4}\n\n')
+        if lines["param"].get("period"):
+            for i, p in enumerate(lines["param"]["period"]) :
+                file.write(f'pattern{"_" if i>0 else ""}{i-1 if i>0 else ""}={p}\n')
+        else:
+            file.write(
+                'pattern=[0-9]{2}\.{0-9}{2}\.[0-9]{4}\n')
+            file.write('pattern_0=(?<=за )[А-Яа-яЁё]+\s[0-9]{4}\n')
+        file.write('\n')
 
         file.write('[pattern_0]\n')
         file.write('name=currency\n')
-        file.write('pattern=^-?\d{1,7}(?:[\.,]\d{1,3})?$\n\n')
+        file.write('pattern=^-?\d{1,7}(?:[\.,]\d{1,3})?$\n')
+        file.write('\n')
 
         file.write('[pattern_1]\n')
         file.write('name=ЛС\n')
-        file.write('pattern=^[0-9]{1,6}-[0-9]+(?=,)\n')
-        file.write('pattern_0=^[0-9]{1,6}(?=,)\n')
-        file.write('pattern_1=^[0-9]{1,6}-П(?=,)\n')
-        file.write('pattern_2=^[0-9-]{8}$|^[0-9-]{2,3}$\n\n')
+        if lines["param"].get("ЛС"):
+            for i, p in enumerate(lines["param"]["ЛС"]) :
+                file.write(f'pattern{"_" if i>0 else ""}{i-1 if i>0 else ""}={p}\n')
+        else:
+            file.write('pattern=^[0-9]{1,6}-[0-9]+(?=,)\n')
+            file.write('pattern_0=^[0-9]{1,6}(?=,)\n')
+            file.write('pattern_1=^[0-9]{1,6}-П(?=,)\n')
+            file.write('pattern_2=^[0-9-]{8}$|^[0-9-]{2,3}$\n')
+            file.write('pattern_3=(?<=л\/с №).+$\n')
+        file.write('\n')
 
         for i, line in enumerate(lines["1a"]):
             file.write(f'[pattern_{COLUMN_BEGIN+i}]\n')
@@ -51,7 +68,9 @@ def header(lines: list, path: str) -> str:
                 file.write(
                     f'pattern{"_" if j >0 else ""}{str(j-1) if j >0 else ""}={x}\n')
             file.write(f'\n')
-        file.write(f'pattern_0=.+\n')
+        if (len(lines["1a"]) > 1 and lines["1a"][-1]['name'] == 'Прочие'):
+            file.write(f'pattern_0=.+\n')
+        file.write('\n')
 
         file.write(
             ';--------------------------------------------------- параметры --------------------------------------------------\n\n')
@@ -64,9 +83,20 @@ def header(lines: list, path: str) -> str:
 
         file.write('[headers_1]\n')
         file.write('name=inn\n')
-        file.write('pattern=@5044110874\n\n')
+        if lines["param"].get("inn",[""])[0]:
+            file.write(f'pattern=@{lines["param"].get("inn",[""])[0]}\n')
+        file.write('\n')
 
         file.write('[headers_2]\n')
         file.write('name=timezone\n')
         file.write('pattern=@+3\n\n')
+
+        if lines["param"].get("fias",""):
+            file.write('[headers_3]\n')
+            file.write('name=fias\n')
+            if lines["param"].get("fias"):
+                for i, p in enumerate(lines["param"]["fias"]) :
+                    file.write(f'pattern{"_" if i>0 else ""}{i-1 if i>0 else ""}={p}\n')
+            file.write('\n')
+
     return file_name

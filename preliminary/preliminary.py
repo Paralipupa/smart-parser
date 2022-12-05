@@ -9,7 +9,7 @@ from columns import set_columns
 from header import header
 from pu import pu
 from puv import puv
-from utils import write_config
+from utils import write_config, sorted_lines
 
 
 def getArgs() -> argparse.ArgumentParser:
@@ -26,7 +26,10 @@ def read(file_name: str) -> list:
     #   2a Наимменование услуг при иерархической структуре
     # 3 Мусор
     # 9 Все вместе
-    lines = {'0': [], '1': [], '1a': [], '2': [], '2a': [], '3': [], '9': []}
+    parameters = ['name', 'check', 'inn', 'fias', 'period', 'ЛС', 
+                  'border_column_left', 'border_column_right']
+    lines = {'0': [], '1': [], '1a': [], '2': [],
+             '2a': [], '3': [], '9': [], 'param': {}, 'dic': {}}
     with open(file_name, 'r') as file:
         for line in file:
             if line[0] != ';':
@@ -61,12 +64,13 @@ def read(file_name: str) -> list:
                          if x.strip() != '' and not any(y for y in lines['9'] if y['name'].strip() == x.strip())]
                     lines['2a'].extend(l)
                     lines['9'].extend(l)
-    lines['1'] = sorted(lines["1"], key=lambda x: x['name'])
-    lines['2'] = sorted(lines["2"], key=lambda x: x['name'])
-    lines['3'] = sorted(lines["3"], key=lambda x: x['name'])
-    lines['1a'] = sorted(lines["1a"], key=lambda x: x['name'])
-    lines['2a'] = sorted(lines["2a"], key=lambda x: x['name'])
-    if len(lines['1a'])==0 and len(lines['2a'])==0:
+                else:
+                    for p in parameters:
+                        if line[:len(p)] == p:
+                            lines['param'].setdefault(p,[])
+                            lines['param'][p].append(line[len(p)+1:].strip()) 
+    lines = sorted_lines(lines)
+    if len(lines['1a']) == 0 and len(lines['2a']) == 0:
         lines['1'].append({'name': 'Прочие'})
     else:
         lines['1a'].append({'name': 'Прочие'})
@@ -78,7 +82,7 @@ if __name__ == "__main__":
     args = getArgs()
     namespace = args.parse_args(sys.argv[1:])
     lines = read(namespace.name)
-    names.append(header(lines, os.path.dirname(__file__))) 
+    names.append(header(lines, os.path.dirname(__file__)))
     names.append(set_columns(lines, os.path.dirname(__file__)))
     names.append(accounts(lines, os.path.dirname(__file__)))
     names.append(pp(lines, os.path.dirname(__file__)))

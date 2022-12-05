@@ -43,11 +43,9 @@ def regular_calc(pattern, value):
     except Exception as ex:
         return f"error in regular: '{pattern}' ({str(ex)})"
 
-
 def print_message(msg: str, end: str = '', flush: bool = False):
     if IS_MESSAGE_PRINT:
         print(msg, end=end, flush=flush)
-
 
 class GisConfig:
 

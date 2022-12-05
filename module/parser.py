@@ -64,18 +64,18 @@ class Parser:
                                 self._dictionary = rep._dictionary.copy()
                                 rep.write_collections(i)
                                 rep.write_logs(i)
-                            else:
-                                if rep._config._warning:
-                                    logging.warning(
-                                        f"{file_name['inn']} - {file_name['name']}  не все поля найдены см.logs/")
+                            # else:
+                            #     if rep._config._warning:
+                            #         logging.warning(
+                            #             f"{file_name['inn']} - {file_name['name']}  не все поля найдены см.logs/")
                             file_name['warning'] += rep._config._warning
-                    else:
-                        if len(file_name['warning']) != 0:
-                            logging.warning(
-                                f"{file_name['inn']} - {file_name['name']}")
-                        else:
-                            logging.warning(
-                                f"{file_name['inn']} - {file_name['name']} не найден файл конфигурации.")
+                    # else:
+                    #     if len(file_name['warning']) != 0:
+                    #         logging.warning(
+                    #             f"{file_name['inn']} - {file_name['name']}")
+                    #     else:
+                    #         logging.warning(
+                    #             f"{file_name['inn']} - {file_name['name']} не найден файл конфигурации.")
                 write_list(list_files)
                 if self.union:
                     u = UnionData()
