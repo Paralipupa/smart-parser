@@ -27,6 +27,10 @@ def header(lines: list, path: str) -> str:
         file.write('page_index=0\n')
         file.write('max_columns=150\n')
         file.write('max_rows_heading=20\n')
+        if lines['param'].get('border_column_left'):
+            file.write(f'border_column_left={lines["param"]["border_column_left"][0]}\n')
+        if lines['param'].get('border_column_right'):
+            file.write(f'border_column_right={lines["param"]["border_column_right"][0]}\n')
         file.write('\n')
 
         file.write(';---- шаблоны регулярных выражений ------------\n\n')

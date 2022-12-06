@@ -1,6 +1,7 @@
 import sys
 import os
 import argparse
+import configparser
 from pp_service import pp_service
 from pp_charges import pp_charges
 from pp import pp
@@ -9,7 +10,7 @@ from columns import set_columns
 from header import header
 from pu import pu
 from puv import puv
-from utils import write_config, sorted_lines
+from utils import write_config, sorted_lines, set_lines, set_parameters
 
 
 def getArgs() -> argparse.ArgumentParser:
@@ -18,7 +19,24 @@ def getArgs() -> argparse.ArgumentParser:
     return parser
 
 
-def read(file_name: str) -> list:
+def read_from_config(file_name: str) -> list:
+    lines = set_lines()
+    config: configparser.ConfigParser = configparser.ConfigParser()
+    config.read(file_name)
+    i = 20
+    while config.has_section(f'col_{i}'):
+        if config[f'col_{i}'].get('title', ''):
+            x = config[f'col_{i}'].get('title', '')
+            is_optional = config[f'col_{i}'].get('is_optional', 'False')
+            pattern = config[f'col_{i}'].get('pattern', 'False')
+            lines['1'].extend([{'name': x.strip(), 'is_unique': False,
+                              'is_optional': True if is_optional else False
+                                }])
+        i += 1
+    return lines
+
+
+def read_from_text(file_name: str) -> list:
     # 0 Данные пользователя и ОСВ (accounts, pp)
     # 1 Начисление платежей  (pp_charges)
     #   1a Наимменование услуг при иерархической структуре
@@ -26,10 +44,8 @@ def read(file_name: str) -> list:
     #   2a Наимменование услуг при иерархической структуре
     # 3 Мусор
     # 9 Все вместе
-    parameters = ['name', 'check', 'inn', 'fias', 'period', 'ЛС', 
-                  'border_column_left', 'border_column_right']
-    lines = {'0': [], '1': [], '1a': [], '2': [],
-             '2a': [], '3': [], '9': [], 'param': {}, 'dic': {}}
+    parameters = set_parameters()
+    lines = set_lines()
     with open(file_name, 'r') as file:
         for line in file:
             if line[0] != ';':
@@ -67,8 +83,8 @@ def read(file_name: str) -> list:
                 else:
                     for p in parameters:
                         if line[:len(p)] == p:
-                            lines['param'].setdefault(p,[])
-                            lines['param'][p].append(line[len(p)+1:].strip()) 
+                            lines['param'].setdefault(p, [])
+                            lines['param'][p].append(line[len(p)+1:].strip())
     lines = sorted_lines(lines)
     if len(lines['1a']) == 0 and len(lines['2a']) == 0:
         lines['1'].append({'name': 'Прочие'})
@@ -81,7 +97,8 @@ if __name__ == "__main__":
     names = []
     args = getArgs()
     namespace = args.parse_args(sys.argv[1:])
-    lines = read(namespace.name)
+    lines = read_from_text(namespace.name)
+    # lines = read_from_config(f'{os.path.dirname(__file__)}/ini/gis_config.ini')
     names.append(header(lines, os.path.dirname(__file__)))
     names.append(set_columns(lines, os.path.dirname(__file__)))
     names.append(accounts(lines, os.path.dirname(__file__)))
@@ -90,4 +107,4 @@ if __name__ == "__main__":
     names.append(pp_service(lines, os.path.dirname(__file__)))
     names.append(pu(lines, os.path.dirname(__file__)))
     names.append(puv(lines, os.path.dirname(__file__)))
-    write_config(names, os.path.dirname(__file__))
+    write_config(names, os.path.dirname(__file__),'gis_config.ini')

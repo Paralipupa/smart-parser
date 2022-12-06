@@ -43,9 +43,11 @@ def regular_calc(pattern, value):
     except Exception as ex:
         return f"error in regular: '{pattern}' ({str(ex)})"
 
+
 def print_message(msg: str, end: str = '', flush: bool = False):
     if IS_MESSAGE_PRINT:
         print(msg, end=end, flush=flush)
+
 
 class GisConfig:
 
@@ -75,6 +77,18 @@ class GisConfig:
         self._condition_end_table_column: str = ''
         # список заголовков колонок таблицы
         self._columns_heading: list[dict] = []
+        self.set_main()
+        self.set_patterns()
+        self.set_check()
+        self.set_header()
+        self.set_parameters()
+        self.set_table_columns()
+        self.set_documents()
+        self._is_unique = len(self._page_name) != 0 or len(
+            self._page_index) != 1 or self._page_index[0][0] != 0
+        self._is_init = True
+
+    def set_main(self):
         self._row_start = self.read_config(
             'main', 'row_start', isNumeric=True)    #
         self._col_start = self.read_config(
@@ -91,15 +105,10 @@ class GisConfig:
         # необрабатываемые строки таблицы
         self._rows_exclude = self.read_config(
             'main', 'rows_exclude', isNumeric=True)
-        self.set_patterns()
-        self.set_check()
-        self.set_header()
-        self.set_parameters()
-        self.set_table_columns()
-        self.set_documents()
-        self._is_unique = len(self._page_name) != 0 or len(
-            self._page_index) != 1 or self._page_index[0][0] != 0
-        self._is_init = True
+        self._border_column_left = self.read_config(
+            'main', 'border_column_left', isNumeric=True)  #
+        self._border_column_right = self.read_config(
+            'main', 'border_column_right', isNumeric=True)  #
 
     def set_header(self):
         self._header = {'row': [0], 'col': [0], 'pattern': ''}
@@ -118,10 +127,12 @@ class GisConfig:
             self.read_config('check', 'pattern'))
         self._check['func'] = self.read_config('check', 'func')
         self._check['func_pattern'] = self.read_config('check', 'func_pattern')
+        self._check['pattern'] = [{'pattern': self.read_config(
+            'check', f'pattern'), 'is_find': False}]
         i = 0
         while self.read_config('check', f'pattern_{i}'):
-            self._check[f'pattern_{i}'] = self.read_config(
-                'check', f'pattern_{i}')
+            self._check['pattern'].append({'pattern': self.read_config(
+                'check', f'pattern_{i}'), 'is_find': False})
             i += 1
 
     @fatal_error
@@ -291,7 +302,7 @@ class GisConfig:
                         self.read_config(part, f'pattern_{j}')
                     j += 1
             k += 1
-            if k<20 and not self.is_section_exist(f'pattern{"_" if k>=0 else ""}{k if k>=0 else ""}'):
+            if k < 20 and not self.is_section_exist(f'pattern{"_" if k>=0 else ""}{k if k>=0 else ""}'):
                 k = 20
 
 # ========================= Документы =======================================================
