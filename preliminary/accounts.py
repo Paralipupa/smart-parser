@@ -152,8 +152,9 @@ def accounts(lines: list, path: str) -> str:
             file.write('pattern=@0\n')
             file.write('col_config=0\n')
             file.write(
-                f'offset_col_config={lines["dic"].get("total_square", {"col":8})["col"]}\n')
-            file.write('offset_pattern=.+\n\n')
+                f'offset_col_config={lines["dic"].get("living_person_number", {"col":8})["col"]}\n')
+            file.write('offset_pattern=.+\n')
+        file.write('\n')
 
         file.write('[accounts_16]\n')
         file.write('; Часовой пояс. Кол-во часов + или - от UTC\n')

@@ -16,20 +16,22 @@ def set_columns(lines: list, path: str) -> str:
         file.write(
             ';########################################################################################################################\n')
         for i, line in enumerate(lines["0"]):
-            index = line['name'].find("@")
-            if index != -1:
-                x: str = line['name'][index+1:]
-                line['name'] = line['name'][:index]
-                index = x.find('@')
+            index = line['name'].find("::")
+            patt: str = line['name'][index+2:] if index != -1 else ''
+            ls = line['name'].split('@')
+            line['name'] = ls[0]
+            for x in ls[1:]:
+                index = x.find("::")
                 if index != -1:
-                    lines['dic'][x[:index].strip()] = {'col': i, 'pattern':x[index+1:].strip()}
+                    lines['dic'][x[:index].strip()] = {'col': i, 'pattern':x[index+2:].strip()}
+                elif patt:
+                    lines['dic'][x.strip()]= {'col': i, 'pattern': patt}
                 else:
                     lines['dic'][x.strip()]= {'col': i}
             file.write(f'[col_{i}]\n')
             if i == 0:
                 file.write(f'name=ЛС\n')
                 file.write(f'condition_begin_team=@ЛС\n')
-                file.write('col_data_offset=+0\n')
             else:
                 name= get_name(get_ident(line["name"].split(";")[0]), names)
                 file.write(f'name={name}\n')
@@ -46,7 +48,8 @@ def set_columns(lines: list, path: str) -> str:
             if is_duplicate:
                 file.write(f'is_duplicate=true\n')
             file.write(
-                f'is_unique={"true" if not is_duplicate and line["name"].find(";")==-1 else "false"}\n\n')
+                f'is_unique={"true" if not is_duplicate and line["name"].find(";")==-1 else "false"}\n')
+            file.write('\n')
 
         for i, line in enumerate(lines["1"]):
             index= line['name'].find("@")
@@ -76,9 +79,8 @@ def set_columns(lines: list, path: str) -> str:
             if i < len(lines['1'])-1:
                 file.write('\n')
         if len(lines['1a']) == 0 and len(lines['2a']) == 0:
-            file.write('is_only_after_stable=true\n\n')
-        else:
-            file.write('\n')
+            file.write('is_only_after_stable=true\n')
+        file.write('\n')
 
         if lines["2"]:
             file.write(
@@ -95,7 +97,8 @@ def set_columns(lines: list, path: str) -> str:
             for j, x in enumerate(get_reg(line["name"]).split(';')):
                 file.write(
                     f'pattern{"_" if j >0 else ""}{str(j-1) if j >0 else ""}={x}\n')
-            file.write('is_optional=true\n\n')
+            file.write('is_optional=true\n')
+        file.write('\n')
 
         if len(lines['1a']) == 0 and len(lines['2a']) == 0:
             if lines["3"]:
@@ -110,5 +113,6 @@ def set_columns(lines: list, path: str) -> str:
                         file.write(
                             f'pattern{"_" if k >0 else ""}{str(k-1) if k >0 else ""}={x}\n')
                         k += 1
-                file.write('is_optional=true\n\n')
+                file.write('is_optional=true\n')
+        file.write('\n')
     return file_name

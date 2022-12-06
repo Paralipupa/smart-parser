@@ -88,7 +88,7 @@ def pp_charges(lines: list, path: str) -> str:
                 file.write(f'pattern=@{name}\n\n')
             else:
                 file.write(f'offset_col_config={COLUMN_BEGIN+1+i}\n')
-        file.write('\n')
+            file.write('\n')
 
         names = []
         file.write('[pp_charges_4]\n')
@@ -110,7 +110,8 @@ def pp_charges(lines: list, path: str) -> str:
                     file.write(f'; {line["name"].rstrip()}\n')
                     name = get_name(
                         get_ident(line["name"].split(";")[0]), names)
-                    file.write(f'pattern=@{name}\n\n')
+                    file.write(f'pattern=@{name}\n')
+                    file.write('\n')
         else:
             file.write('pattern=.+\n')
             file.write('col_config=0\n')
@@ -122,7 +123,8 @@ def pp_charges(lines: list, path: str) -> str:
                 file.write('; тариф при однотарифном начислении\n')
                 file.write(f'; {line["name"].rstrip()}\n')
                 file.write(
-                    f'func=fias+{line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()},hash,dictionary\n\n')
+                    f'func=fias+{line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()},hash,dictionary\n')
+                file.write('\n')
 
         names = []
         file.write('[pp_charges_5]\n')
@@ -133,13 +135,15 @@ def pp_charges(lines: list, path: str) -> str:
         file.write('col_config=0\n')
         file.write('row_data=0\n')
         file.write(
-            f'func={l[0]["name"].split(";")[0].replace(","," ").replace("+","")},hash\n\n')
+            f'func={l[0]["name"].split(";")[0].replace(","," ").replace("+","")},hash\n')
+        file.write('\n')        
         for i, line in enumerate(l[1:]):
             file.write(f'[pp_charges_5_{i}]\n')
             file.write('; Идентификатор услуги\n')
             file.write(f'; {line["name"].rstrip()}\n')
             file.write(
-                f'func={line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()},hash\n\n')
+                f'func={line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()},hash\n')
+            file.write('\n')
 
         file.write('[pp_charges_6]\n')
         file.write('; кол-во услуги  при однотарифном начислении\n')
@@ -159,14 +163,19 @@ def pp_charges(lines: list, path: str) -> str:
                 file.write(
                     f'offset_col_config={lines["dic"].get("recalculation", {"col":2})["col"]}\n')
                 file.write('offset_pattern=@currency\n')
-                file.write('offset_type=float\n\n')
+                file.write('offset_type=float\n')
+                file.write('func=round2\n')
+                file.write('\n')
                 for i, line in enumerate(l[1:]):
                     file.write(f'[pp_charges_7_{i}]\n')
                     file.write('; перерасчет\n')
                     file.write(f'; {line["name"].rstrip()}\n')
                     name = get_name(
                         get_ident(line["name"].split(";")[0]), names)
-                    file.write(f'pattern=@{name}\n\n')
+                    file.write(f'pattern=@{name}\n')
+                    file.write('\n')
+        else:
+            file.write('\n')
 
         names = []
         file.write('[pp_charges_8]\n')
@@ -186,14 +195,17 @@ def pp_charges(lines: list, path: str) -> str:
             file.write('row_data=0\n')
             file.write(f'offset_col_config={COLUMN_BEGIN}\n')
         file.write('offset_pattern=@currency\n')
-        file.write('offset_type=float\n\n')
+        file.write('offset_type=float\n')
+        file.write('func=round2\n')
+        file.write('\n')
         for i, line in enumerate(l[1:]):
             file.write(f'[pp_charges_8_{i}]\n')
             file.write('; Сумма начисления при однотарифном начислении\n')
             file.write(f'; {line["name"].rstrip()}\n')
             if not (len(lines['1a']) == 0 and len(lines['2a']) == 0):
                 name = get_name(get_ident(line["name"].split(";")[0]), names)
-                file.write(f'pattern=@{name}\n\n')
+                file.write(f'pattern=@{name}\n')
             else:
-                file.write(f'offset_col_config={COLUMN_BEGIN+1+i}\n\n')
+                file.write(f'offset_col_config={COLUMN_BEGIN+1+i}\n')
+            file.write('\n')
     return file_name
