@@ -19,7 +19,7 @@ class UnionData:
     def __init__(self) -> None:
         self.logs = list()
 
-    def start(self, path_input: str, path_output: str) -> list:
+    def start(self, path_input: str, path_output: str, file_output: str) -> list:
         save_directories = dict()
         files: list[str] = self.__get_files(path_input)
         if files:
@@ -54,7 +54,7 @@ class UnionData:
                 os.remove(pathlib.Path(
                     path_input, file.replace('json', 'csv')))
             self.__write_logs()
-            return self.__make_archive(path_output, save_directories)
+            return self.__make_archive(path_output, file_output, save_directories)
         return []
 
     def __check_unique(self, file_name: str, arr: list) -> NoReturn:
@@ -124,8 +124,8 @@ class UnionData:
         return key
 
     @fatal_error
-    def __make_archive(self, path_output: str, dirs: list) -> str:
-        filename_arch = f'output_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.zip'
+    def __make_archive(self, path_output: str, filename_arch: str, dirs: list) -> str:
+        # filename_arch = f'output_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.zip'
         arch_zip = zipfile.ZipFile(
             pathlib.Path(path_output, filename_arch), 'w')
         for key, val in dirs.items():
