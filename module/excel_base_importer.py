@@ -819,8 +819,8 @@ class ExcelBaseImporter:
                 in ('pp_charges', 'pp_service')]
         for doc in docs:
             flds = [x for x in doc['fields'] if x['name'] in (
-                'internal_id', 'calc_value', 'tariff', 'service_internal_id', 'recalculation', 'accounting_period_total')]
-            for fld in flds:kind
+                'internal_id', 'calc_value', 'tariff', 'service_internal_id', 'recalculation', 'accounting_period_total','name','kind')]
+            for fld in flds:
                 if fld['sub']:
                     ls = []
                     for key, name in self._columns.items():
