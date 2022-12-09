@@ -44,7 +44,7 @@ def pp_service(lines:list, path: str):
             else:
                 file.write('; вид в 1с (полное наименование)\n')
                 file.write('; Строка 200\n')
-                file.write('name=kindoffset\n')
+                file.write('name=kind\n')
             file.write('pattern=.+\n')
             file.write('col_config=0\n')
             file.write('row_data=0\n')

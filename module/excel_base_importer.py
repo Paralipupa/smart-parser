@@ -820,7 +820,7 @@ class ExcelBaseImporter:
         for doc in docs:
             flds = [x for x in doc['fields'] if x['name'] in (
                 'internal_id', 'calc_value', 'tariff', 'service_internal_id', 'recalculation', 'accounting_period_total')]
-            for fld in flds:
+            for fld in flds:kind
                 if fld['sub']:
                     ls = []
                     for key, name in self._columns.items():
