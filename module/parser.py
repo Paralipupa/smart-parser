@@ -21,6 +21,7 @@ class Parser:
                  file_config: str = '',
                  union: str = PATH_OUTPUT,
                  path_down: str = PATH_OUTPUT,
+                 file_down: str = 'download',
                  hash: str = 'yes'
                  ) -> None:
         self.logs = list()
@@ -29,7 +30,8 @@ class Parser:
         self.inn = inn
         self.config = file_config
         self.union = union
-        self.download = path_down
+        self.download_path = path_down
+        self.download_file = file_down
         self.is_hash = False if hash=='no' else True
         self.report = {
             '000': Report_000_00,
@@ -45,7 +47,7 @@ class Parser:
                     'run with parameters:  [--name|-n]=<file.lst>|<file.xsl>|<file.zip> [[--inn|-i]=<inn>] [[--config|-c]=<config.ini>] [[--union|-u]=<path>')
             else:
                 u = UnionData()
-                return u.start(self.union, self.download)
+                return u.start(self.union, self.download_path)
         else:
             list_files = get_files(self.name, self.inn, self.config)
             i = 0
@@ -74,12 +76,12 @@ class Parser:
                     #         logging.warning(
                     #             f"{file_name['inn']} - {file_name['name']}")
                     #     else:
-                    #         logging.warning(
+                    #         logging.warning(8000/
                     #             f"{file_name['inn']} - {file_name['name']} не найден файл конфигурации.")
                 write_list(list_files)
                 if self.union:
                     u = UnionData()
-                    return u.start(self.union, self.download)
+                    return u.start(self.union, self.download_path, self.download_file)
         return ''
 
     @staticmethod
