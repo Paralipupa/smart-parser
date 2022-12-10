@@ -86,6 +86,12 @@ def read_from_text(file_name: str) -> list:
                         p = line[:k]
                         lines['param'].setdefault(p, [])
                         lines['param'][p].append(line[len(p)+1:].strip())
+                elif line[:7] == 'header_':
+                    k = line.find(':')
+                    if k > 7:
+                        p = line[:k]
+                        lines['param'].setdefault(p, [])
+                        lines['param'][p].append(line[len(p)+1:].strip())
                 else:
                     for p in parameters:
                         if line[:len(p)] == p:

@@ -6,3 +6,4 @@ tmp/*
 logs/*
 documents/*
 output.zip
+settings_local.py

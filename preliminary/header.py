@@ -36,7 +36,10 @@ def header(lines: list, path: str) -> str:
         file.write(';---- шаблоны регулярных выражений ------------\n\n')
         file.write('[pattern]\n')
         file.write('name=currency\n')
-        file.write('pattern=^-?\d{1,7}(?:[\.,]\d{1,3})?$\n')
+        if lines['param'].get('pattern_currency'):
+            file.write(f"pattern={lines['param'].get('pattern_currency')}\n")
+        else:
+            file.write('pattern=^-?\d{1,7}(?:[\.,]\d{1,3})?$\n')
         file.write('\n')
 
         k = 0
@@ -45,9 +48,19 @@ def header(lines: list, path: str) -> str:
                 file.write(f'[pattern_{k}]\n')
                 file.write(f'name={key[8:]}\n')
                 for i, p in enumerate(val) :
-                    file.write(f'pattern{"_" if i>0 else ""}{i-1 if i>0 else ""}={p}\n')
+                    index = p.find('@')
+                    if index > 0:
+                        file.write(f'pattern{"_" if i>0 else ""}{i-1 if i>0 else ""}={p[:index] if index != -1 else p }\n')
+                    else:
+                        file.write(f'pattern{"_" if i>0 else ""}{i-1 if i>0 else ""}={p}\n')
                 file.write('\n')
                 k += 1
+
+        if not lines['param'].get('pattern_timezone'):
+            file.write(f'[pattern_{k}]\n')
+            file.write('name=timezone\n')
+            file.write('pattern=@+3\n\n')
+            k += 1
 
         for i, line in enumerate(lines["1a"]):
             file.write(f'[pattern_{COLUMN_BEGIN+i}]\n')
@@ -69,12 +82,31 @@ def header(lines: list, path: str) -> str:
                 file.write(f'[headers_{k}]\n')
                 file.write(f'name={key[8:]}\n')
                 file.write(f'pattern=@{key[8:]}\n')
+                for i, p in enumerate(val) :
+                    index = p.find('@')
+                    if index != -1:
+                        file.write(f'value={p[index+1:]}\n')
+                file.write('\n')
+                k += 1
+            elif key[:7] == 'header_':
+                file.write(f'[headers_{k}]\n')
+                file.write(f'name={key[7:]}\n')
+                for i, p in enumerate(val) :
+                    index = p.find('@')
+                    if index != -1:
+                        if index>0:
+                            file.write(f'pattern={p[:index]}\n')
+                        file.write(f'func={p[index+1:]}\n')
+                    else:
+                        file.write(f'pattern={p[:index]}\n')
+
                 file.write('\n')
                 k += 1
 
-        file.write(f'[headers_{k}]\n')
-        file.write('name=timezone\n')
-        file.write('pattern=@+3\n\n')
-        k += 1
+        if not lines['param'].get('pattern_timezone'):
+            file.write(f'[headers_{k}]\n')
+            file.write('name=timezone\n')
+            file.write('pattern=@timezone\n\n')
+            k += 1
 
     return file_name

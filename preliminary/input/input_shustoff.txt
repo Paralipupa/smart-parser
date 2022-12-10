@@ -1,5 +1,7 @@
 ;Лицевой счет;Сальдо начальное;Начисление;Оплата;Сальдо конечное;Пени;Адрес;Квартира;Проживает;Площадь
 ;Услуга@service	ОбъёмУслуги@rr1	Тариф@tariff	Сумма перерасчета@recalculation	Начисленов указ.периоде(руб.);Сумма перерасчета@accounting_period_total
+;accounts: @address	@room_number	@living_person_number	@total_square	@account_identifier	@account_number
+;pp: @credit	@saldo	@payment_value	@payment_date	@bill_value
 name:ТСЖ Шустовъ парк
 pattern_inn:@5044110874
 pattern_check:Шустовъ парк

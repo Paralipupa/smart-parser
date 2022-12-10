@@ -3,11 +3,21 @@ from module.utils import getArgs
 from module.parser import Parser
 from datetime import datetime
 from module.settings import *
+import shutil
 
 if __name__ == "__main__":
+
+    if IS_DELETE_TMP:
+        if os.path.isdir(PATH_LOG):
+            shutil.rmtree(PATH_LOG)
+        if os.path.isdir(PATH_OUTPUT):
+            shutil.rmtree(PATH_OUTPUT)
+        if os.path.isdir(PATH_TMP):
+            shutil.rmtree(PATH_TMP)
+
     args = getArgs()
     namespace = args.parse_args(sys.argv[1:])
     parser = Parser(file_name=namespace.name, inn=namespace.inn, file_config=namespace.config,
-                    union=namespace.union, path_down=PATH_OUTPUT, hash=namespace.hash, 
+                    union=namespace.union, path_down=PATH_OUTPUT, hash=namespace.hash,
                     file_down=f'output_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.zip')
     parser.start()

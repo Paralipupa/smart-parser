@@ -106,6 +106,8 @@ def set_columns(lines: list, path: str) -> str:
         if len(lines['1a']) == 0 and len(lines['2a']) == 0:
             if lines["3"]:
                 file.write(
+                    ';--------------------------------------------------------------------------------------------------------------------\n')
+                file.write(
                     f'[col_{COLUMN_BEGIN+len(lines["1"])+len(lines["2"])}]\n')
                 name = get_name(
                     get_ident(lines["3"][0]["name"].split(";")[0]), names)

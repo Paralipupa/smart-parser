@@ -1,6 +1,5 @@
 import logging, os
 
-# ENCONING = 'utf-8'
 ENCONING = 'windows-1251'
 
 DOCUMENTS = 'accounts pp pp_charges pp_service pu puv'
@@ -25,6 +24,9 @@ POS_PAGE_VALUE = 0
 POS_PAGE_IS_FIX = 1
 
 IS_MESSAGE_PRINT = True
+IS_DELETE_TMP=False
 
 db_logger = logging.getLogger('parser')
 
+if os.path.exists(os.path.join(os.path.dirname(__file__),'settings_local.py')):
+    from module.settings_local import *

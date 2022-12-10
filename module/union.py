@@ -65,11 +65,6 @@ class UnionData:
             self.logs.append(
                 f'Найдены не уникальные ключи в {file_name} ({len(m)}) ')
             self.logs.extend(list(map(str, m)))
-            # print_message(
-            #     f'Найдены не уникальные ключи в {file_name} ({len(m)}) ')
-            # print_message('\n'.join(map(str, m[:5])))
-            # if len(m) > 5:
-            #     print_message('....')
 
     @fatal_error
     def __get_data(self, path_output: str, file_name: str) -> dict:
@@ -98,7 +93,7 @@ class UnionData:
         for key, valA in a.items():
             valB = b.get(key, None)
             if (len(valB.strip()) != 0) and ((len(valA.strip()) == 0) or valA != valB):
-                if (len(valA.strip()) == 0) or (valA.replace(' ', '') == valB.replace(' ', '') and len(valA) < len(valB)):
+                if (len(valA.strip()) == 0) or (len(valA.replace(' ', '')) < len(valB.replace(' ', ''))):
                     a[key] = valB
         return a
 
