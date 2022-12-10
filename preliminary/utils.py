@@ -7,12 +7,10 @@ def set_lines() -> list:
 
 
 def set_parameters() -> list:
-    return ['name', 'check', 'inn', 'fias', 'period', 'ЛС',
-            'border_column_left', 'border_column_right']
+    return ['name',  'border_column_left', 'border_column_right']
 
 
 def get_ident(name: str) -> str:
-    # name = [item.capitalize() for item in name]
     result = "".join(c for c in name.title() if c.isalnum())
     result = result.replace('Итого ', '')
     return result
@@ -50,7 +48,7 @@ def get_lines(lines: list) -> list:
     return l
 
 
-def write_config(filenames: list, path: str, output:str='gis_config.ini'):
+def write_config(filenames: list, path: str, output: str = 'gis_config.ini'):
     file_name = f'{path}/ini/{output}'
     with open(file_name, 'w') as fout, fileinput.input(filenames) as fin:
         for line in fin:

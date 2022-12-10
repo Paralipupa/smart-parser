@@ -21,7 +21,7 @@ class Parser:
                  file_config: str = '',
                  union: str = PATH_OUTPUT,
                  path_down: str = PATH_OUTPUT,
-                 file_down: str = 'download',
+                 file_down: str = 'output',
                  hash: str = 'yes'
                  ) -> None:
         self.logs = list()

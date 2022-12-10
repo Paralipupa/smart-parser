@@ -10,7 +10,7 @@ from columns import set_columns
 from header import header
 from pu import pu
 from puv import puv
-from utils import write_config, sorted_lines, set_lines, set_parameters
+from utils import write_config, sorted_lines, set_lines, set_parameters, get_ident
 
 
 def getArgs() -> argparse.ArgumentParser:
@@ -25,12 +25,12 @@ def read_from_config(file_name: str) -> list:
     config.read(file_name)
     i = 20
     while config.has_section(f'col_{i}'):
-        if config[f'col_{i}'].get('title', ''):
-            x = config[f'col_{i}'].get('title', '')
+        if config[f'col_{i}'].get('pattern', ''):
             is_optional = config[f'col_{i}'].get('is_optional', 'False')
             pattern = config[f'col_{i}'].get('pattern', 'False')
-            lines['1'].extend([{'name': x.strip(), 'is_unique': False,
-                              'is_optional': True if is_optional else False
+            lines['1'].extend([{'name': get_ident(pattern).strip(), 'is_unique': False,
+                              'is_optional': True if is_optional else False,
+                              'pattern': pattern
                                 }])
         i += 1
     return lines
@@ -80,6 +80,12 @@ def read_from_text(file_name: str) -> list:
                          if x.strip() != '' and not any(y for y in lines['9'] if y['name'].strip() == x.strip())]
                     lines['2a'].extend(l)
                     lines['9'].extend(l)
+                elif line[:8] == 'pattern_':
+                    k = line.find(':')
+                    if k > 8:
+                        p = line[:k]
+                        lines['param'].setdefault(p, [])
+                        lines['param'][p].append(line[len(p)+1:].strip())
                 else:
                     for p in parameters:
                         if line[:len(p)] == p:

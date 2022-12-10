@@ -124,6 +124,7 @@ def __config_process(data_file: dict, file_config):
             elif rep._config._warning:
                 for w in rep._config._warning:
                     data_file['warning'].append(w)
+            data_file['config'] = ''
     if not rep.is_file_exists:
         data_file['warning'].append(
             'ФАЙЛ НЕ НАЙДЕН или ПОВРЕЖДЕН "{}". skip'.format(data_file['name']))

@@ -99,9 +99,13 @@ class GisConfig:
         # максимальное кол-во просматриваемых колонок
         self._max_cols = self.read_config(
             'main', 'max_columns', isNumeric=True)
+        if len(self._max_cols) == 0:
+            self._max_cols = [(150, True, False)]
         # максимальное кол-во строк до таблицы
         self._max_rows_heading = self.read_config(
             'main', 'max_rows_heading', isNumeric=True)
+        if len(self._max_rows_heading) == 0:
+            self._max_rows_heading = [(20, True, False)]
         # необрабатываемые строки таблицы
         self._rows_exclude = self.read_config(
             'main', 'rows_exclude', isNumeric=True)
@@ -167,6 +171,10 @@ class GisConfig:
                         'ishead': is_head,
                     }
                 )
+                if len(self._parameters[name][-1]['row']) == 0:
+                    self._parameters[name][-1]['row'] =  [ (x, True, False) for x in range(self._max_rows_heading[0][POS_NUMERIC_VALUE])]
+                if len(self._parameters[name][-1]['col']) == 0:
+                    self._parameters[name][-1]['col'] = [ (x, True, False) for x in range(self._max_cols[0][POS_NUMERIC_VALUE])]
                 j = 0
                 p = 'default'
                 while p:

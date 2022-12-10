@@ -36,7 +36,6 @@ def set_columns(lines: list, path: str) -> str:
             else:
                 name = get_name(get_ident(line["name"].split(";")[0]), names)
                 file.write(f'name={name}\n')
-            file.write(f'title={line["name"]}\n')
             is_duplicate = False
             for j, x in enumerate(get_reg(line["name"]).split(';')):
                 file.write(
@@ -62,7 +61,6 @@ def set_columns(lines: list, path: str) -> str:
             file.write(f'[col_{COLUMN_BEGIN+i}]\n')
             name = get_name(get_ident(line["name"].split(";")[0]), names)
             file.write(f'name={name}\n')
-            file.write(f'title={line["name"]}\n')
             is_duplicate = False
             for j, x in enumerate(get_reg(line["name"]).split(';')):
                 file.write(
@@ -99,7 +97,6 @@ def set_columns(lines: list, path: str) -> str:
             file.write(f'[col_{COLUMN_BEGIN+i+len(lines["1"])}]\n')
             name = get_name(get_ident(line["name"].split(";")[0]), names)
             file.write(f'name={name}\n')
-            file.write(f'title={line["name"]}\n')
             for j, x in enumerate(get_reg(line["name"]).split(';')):
                 file.write(
                     f'pattern{"_" if j >0 else ""}{str(j-1) if j >0 else ""}={x}\n')

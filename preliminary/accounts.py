@@ -44,8 +44,11 @@ def accounts(lines: list, path: str) -> str:
         file.write('[accounts_3]\n')
         file.write('; Идентификатор дома GUID\n')
         file.write('name=fias\n')
-        if lines["param"].get("fias"):
-            file.write('funct=fias\n')
+        if lines["param"].get("pattern_fias"):
+            file.write('pattern=@0\n')
+            file.write('col_config=0\n')
+            file.write('row_data=0\n')
+            file.write('func=fias\n')
         file.write('\n')
 
         file.write('[accounts_4]\n')
@@ -59,8 +62,7 @@ def accounts(lines: list, path: str) -> str:
             if lines["dic"].get("room_number"):
                 file.write(
                     f'func=_+кв.+column_value({lines["dic"].get("room_number", {"col":7})["col"]})\n')
-        elif lines["param"].get("address"):
-            file.write('pattern=@')
+        elif lines["param"].get("pattern_address"):
             file.write(f'col_config=0\n')
             file.write('row_data=0\n')
             if lines["dic"].get("room_number"):
@@ -116,7 +118,7 @@ def accounts(lines: list, path: str) -> str:
             else:
                 file.write('offset_pattern=.+\n')
         else:
-            file.write('pattern=[0-9]+-?[A-Za-zА-Яа-я]\n')
+            file.write('pattern=[0-9]+-?[A-Za-zА-Яа-я]?\n')
             file.write('col_config=0\n')
             file.write('row_data=0\n')
         file.write('func=spacerepl\n')
