@@ -79,7 +79,7 @@ class Parser:
                     PATH_LOG, self.output_path), files=list_files)
                 if self.union:
                     u = UnionData()
-                    return u.start(path_input=os.path.join(PATH_OUTPUT, self.output_path),
+                    return u.start(path_input=os.path.join(PATH_OUTPUT[len(BASE_DIR)+1:], self.output_path),
                                    path_output=self.download_path,
                                    path_logs=os.path.join(
                                        PATH_LOG, self.output_path),
