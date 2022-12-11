@@ -8,6 +8,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 PATH_LOG = os.path.join(BASE_DIR, 'logs')
 PATH_OUTPUT = os.path.join(BASE_DIR, 'output')
+PATH_DOWNLOAD = os.path.join(BASE_DIR, 'download')
 PATH_CONFIG = os.path.join(BASE_DIR, 'config')
 PATH_TMP = os.path.join(BASE_DIR, 'tmp')
 

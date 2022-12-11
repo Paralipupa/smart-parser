@@ -1,12 +1,12 @@
 from datetime import datetime
-import logging
 import re
 import os
 import pathlib
 import json
 import csv
 import zipfile
-from typing import NoReturn, Final
+import shutil
+from typing import NoReturn
 from collections import Counter
 from .gisconfig import fatal_error, warning_error, print_message, PATH_LOG
 from .settings import *
@@ -19,7 +19,7 @@ class UnionData:
     def __init__(self) -> None:
         self.logs = list()
 
-    def start(self, path_input: str, path_output: str, file_output: str) -> list:
+    def start(self, path_input: str, path_output: str, path_logs: str, file_output: str) -> list:
         save_directories = dict()
         files: list[str] = self.__get_files(path_input)
         if files:
@@ -45,17 +45,16 @@ class UnionData:
                     for file in files:
                         for key_record, record in file.items():
                             if file_data.get(key_record):
-                                record = self.__merge(record, file_data.get(key_record))
+                                record = self.__merge(
+                                    record, file_data.get(key_record))
                             file_data[key_record] = record
-                    key_record = self.__write(path_output, inn, id_period, file_data)
-                    save_directories[key_record] = path_output
-            for file in del_files:
-                os.remove(pathlib.Path(path_input, file))
-                os.remove(pathlib.Path(
-                    path_input, file.replace('json', 'csv')))
-            self.__write_logs()
-            return self.__make_archive(path_output, file_output, save_directories)
-        return []
+                    key_record = self.__write(
+                        path_input, inn, id_period, file_data)
+                    save_directories[key_record] = path_input
+            self.__write_logs(path_output=path_logs)
+            self.__make_archive(path_output, file_output, save_directories)
+            if os.path.isdir(path_input):
+                shutil.rmtree(path_input)
 
     def __check_unique(self, file_name: str, arr: list) -> NoReturn:
         setarr = set(arr)
@@ -120,7 +119,6 @@ class UnionData:
 
     @fatal_error
     def __make_archive(self, path_output: str, filename_arch: str, dirs: list) -> str:
-        # filename_arch = f'output_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.zip'
         arch_zip = zipfile.ZipFile(
             pathlib.Path(path_output, filename_arch), 'w')
         for key, val in dirs.items():
@@ -134,13 +132,13 @@ class UnionData:
         return filename_arch
 
     @fatal_error
-    def __write_logs(self, num: int = 0) -> NoReturn:
+    def __write_logs(self, num: int = 0, path_output: str = 'logs') -> NoReturn:
         if len(self.logs) == 0:
             return
-        os.makedirs(PATH_LOG, exist_ok=True)
+        os.makedirs(path_output, exist_ok=True)
         i = 0
         file_output = pathlib.Path(
-            PATH_LOG, f'union_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log')
+            path_output, f'union_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log')
         with open(f'{file_output}.log', 'w', encoding=ENCONING) as file:
             for log in self.logs:
                 file.write(f'{log}\n')

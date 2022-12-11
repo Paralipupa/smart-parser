@@ -189,12 +189,12 @@ def get_inn(filename: str) -> str:
     return ''
 
 
-def write_list(files):
+def write_list(path_output: str, files: list):
 
-    os.makedirs(PATH_LOG, exist_ok=True)
+    os.makedirs(path_output, exist_ok=True)
 
     file_output = pathlib.Path(
-        PATH_LOG, f'session{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log')
+        path_output, f'session{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log')
     with open(file_output, 'w', encoding=ENCONING) as file:
         for item in files:
             if item['config']:

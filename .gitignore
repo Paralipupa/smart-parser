@@ -2,6 +2,7 @@
 .venv/*
 .vscode/*
 output/*
+download/*
 tmp/*
 logs/*
 documents/*
