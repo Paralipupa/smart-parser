@@ -10,6 +10,7 @@ from .settings import *
 
 config_files = []
 
+
 def getArgs() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument('-n', '--name', nargs='?')
@@ -33,7 +34,7 @@ def get_config_files():
     return files
 
 
-def get_files(file_name:str, inn: str, file_conf: str) -> list:
+def get_files(file_name: str, inn: str, file_conf: str) -> list:
     global config_files
     config_files = get_config_files()
     list_files = list()
@@ -46,7 +47,8 @@ def get_files(file_name:str, inn: str, file_conf: str) -> list:
 
     if zip_files:
         for file_name in zip_files:
-            file_name['inn'] = inn if inn else get_inn(filename=file_name['file'])
+            file_name['inn'] = inn if inn else get_inn(
+                filename=file_name['file'])
             file_name['config'] = [
                 file_conf] if file_conf else file_name['config']
             list_files += get_extract_files(archive_file=file_name)
@@ -54,7 +56,8 @@ def get_files(file_name:str, inn: str, file_conf: str) -> list:
         list_files.append(
             {'name': file_name, 'config': file_conf, 'inn': inn, 'warning': list(), 'zip': ''})
     list_files = get_file_config(list_files)
-    list_files = sorted(list_files,key=lambda x : (str(x['config']), str(x['name'])))
+    list_files = sorted(list_files, key=lambda x: (
+        str(x['config']), str(x['name'])))
 
     return list_files
 
@@ -106,7 +109,8 @@ def __config_find(data_file: dict, config_files: list, j: int, m: int) -> dict:
     for conf_file in config_files:
         print_message('Поиск конфигураций: {}%   \r'.format(
             round((j*len(config_files)+i)/(m*len(config_files))*100, 0)), end='', flush=True)
-        data_file = __config_process(data_file, pathlib.Path(PATH_CONFIG, f'{conf_file}'))
+        data_file = __config_process(
+            data_file, pathlib.Path(PATH_CONFIG, f'{conf_file}'))
         if data_file['config']:
             break
         i += 1
@@ -130,19 +134,25 @@ def __config_process(data_file: dict, file_config):
             'ФАЙЛ НЕ НАЙДЕН или ПОВРЕЖДЕН "{}". skip'.format(data_file['name']))
     return data_file
 
+
 def get_extract_files(archive_file: str, extract_dir: str = PATH_TMP) -> list:
     if not os.path.exists(archive_file['file']):
         return []
-    z = zipfile.ZipFile(archive_file['file'], 'r')
-    z.extractall(extract_dir)
-    list_files = list()
+    list_files = []
+    names = []
+    with zipfile.ZipFile(archive_file['file'], 'r') as zip_file:
+        names = [text_file.filename for text_file in zip_file.infolist()]
+        for z in names:
+            if not os.path.exists(os.path.join(extract_dir, z)):
+                zip_file.extract(z, extract_dir)
     i = 0
-    for name in z.namelist():
+    for name in names:
         try:
             old_name = pathlib.Path(extract_dir, name)
             new_name = get_name_decoder(str(old_name))
             s = get_path_decoder(old_name)
-            os.rename(s, new_name)
+            if not os.path.exists(new_name):
+                os.rename(s, new_name)
         except Exception as ex:
             pass
         if re.search('\.xls', new_name):
