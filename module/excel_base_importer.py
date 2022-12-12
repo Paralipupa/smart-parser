@@ -456,7 +456,7 @@ class ExcelBaseImporter:
         for val in values:
             if val['row'] == 0:
                 value = regular_calc(pattern, val['value'])
-                if value == '' or result.find('error') != -1:
+                if (value == '' and result == '' and pattern.find(r'^\s*$') != -1) or result.find('error') != -1:
                     return ''
                 result += value
         return result
