@@ -119,6 +119,7 @@ class UnionData:
 
     @fatal_error
     def __make_archive(self, path_output: str, filename_arch: str, dirs: list) -> str:
+        os.makedirs(path_output, exist_ok=True)
         arch_zip = zipfile.ZipFile(
             pathlib.Path(path_output, filename_arch), 'w')
         for key, val in dirs.items():
