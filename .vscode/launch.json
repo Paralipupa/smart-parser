@@ -1,0 +1,55 @@
+{
+    // Используйте IntelliSense, чтобы узнать о возможных атрибутах.
+    // Наведите указатель мыши, чтобы просмотреть описания существующих атрибутов.
+    // Для получения дополнительной информации посетите: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "main.py",
+            "type": "python",
+            "request": "launch",
+            "program": "main.py",
+            // "args": ["-n=files.lst",
+                // "args": ["-n=/home/chip/work/qqube/input/Gefest/Тарифы Гефест.xlsx",
+                // "args": ["-n=/home/chip/work/qqube/input/Gefest/Ведомость_начислений_Санкт_Петербург,_6_я_В_О_линия,_д_1_25_лит.xlsx",
+                // "args": ["-n=/home/chip/work/qqube/input/Gefest/Ведомость_начислений_Санкт_Петербург,_11_я_В_О_линия,_д_26_лит_Е.xlsx",
+                // "args": ["-n=/home/chip/work/qqube/input/Gefest/Ведомость_начислений_Санкт_Петербург,_Кадетская_В_О_линия,_д_19.xlsx",
+                // "args": ["-n=/home/chip/work/qqube/input/Gefest/Ведомость_начислений_Санкт_Петербург,_Малый_В_О_пр_кт,_д_9_лит_К.xlsx",
+                // "args": ["-n=/home/chip/work/qqube/input/Gefest/Оборотно_сальдовая_ведомость_по_лицевым_счетам_за_Октябрь_2022_17.xlsx",
+                // "args": ["-n=/home/chip/work/qqube/input/Druzhba/Отчёт_Ведомость_начислений_по_жителям_1.xlsx",
+                // "args": ["-n=/home/chip/work/qqube/input/Druzhba/ОСВ_г_Санкт_Петербург,_ул_Дыбенко,_д_42.xlsx",
+                // "args": ["-n=/home/chip/work/qqube/input/Molod/оборотно-сальдовая ком усл.xlsx",
+                // "args": ["-n=/home/chip/work/qqube/input/Molod/оборотно-сальдовая кап рем ЖП.xlsx",
+                // "args": ["-n=/home/chip/work/qqube/input/Molod/оборотно-сальдовая кап рем НП.xlsx",
+                // "args": ["-n=/home/chip/work/qqube/input/Shustoff/80.10.06 ШУСТОВЪ ПАРК ноябрь 22.xls",
+                "args": ["-n=/home/chip/work/qqube/input/Shustoff/80.10.08 ШУСТОВЪ ПАРК ноябрь 22.xls",
+                // "args": ["-n=/home/chip/work/qqube/input/sib/Сводная_ведомость_за_январь_2022_Сибирская,_32.xls",
+                // "args": ["-n=/home/chip/work/qqube/input/Akademia/СВ01.xlsx",
+                // "-c=config/gisconfig_002_00druzhba_ocb.ini",
+                // "-c=config/gisconfig_002_00druzhba.ini",
+                // "-c=config/gisconfig_002_00molod_a.ini",
+                // "-c=config/gisconfig_002_00shustov_park_80,10,06.ini",
+                // "-c=config/gisconfig_002_00shustov_park_80,10,08.ini",
+                "-c=config/gisconfig_002_00shustov_park.ini",
+                // "-c=config/gisconfig_002_00gefest.ini",
+                // "-c=config/gisconfig_002_00akademia.ini",
+                // "-c=config/gisconfig_000_00gefest.ini",
+                "-x=no",
+                "-u=output",
+                // "-i=7801636143",
+                // "-i=7801636143",
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Preliminary",
+            "type": "python",
+            "request": "launch",
+            "program": "preliminary/preliminary.py",
+            "args": ["-n=preliminary/input/input.txt"],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+    ]
+}

@@ -1,6 +1,5 @@
 *.pyc
 .venv/*
-.vscode/*
 output/*
 download/*
 tmp/*
