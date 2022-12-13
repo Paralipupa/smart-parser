@@ -64,7 +64,7 @@ def get_files(file_name: str, inn: str, file_conf: str) -> list:
 
 def get_list_files(name: str) -> list:
     l = list()
-    with open(name, "r") as f:
+    with open(name, "r", encoding="utf-8") as f:
         lines = f.readlines()
         for line in lines:
             if line.strip() and line.strip()[0] != ';':

@@ -3,6 +3,7 @@ from email.policy import strict
 import os
 import re
 import traceback
+import codecs
 from dataclasses import replace
 from datetime import datetime
 from typing import NoReturn, Union
@@ -60,7 +61,7 @@ class GisConfig:
             self._warning.append('file not found {}. skip'.format(filename))
             return
         self._config = configparser.ConfigParser()
-        self._config.read(filename)
+        self._config.read(filename, encoding="utf-8")
         self._config_name = filename
         # разрыв между порядковыми номерами колонок
         self.column_difference = (0, 0)

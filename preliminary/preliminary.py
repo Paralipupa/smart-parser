@@ -22,7 +22,7 @@ def getArgs() -> argparse.ArgumentParser:
 def read_from_config(file_name: str) -> list:
     lines = set_lines()
     config: configparser.ConfigParser = configparser.ConfigParser()
-    config.read(file_name)
+    config.read(file_name, encoding="utf-8")
     i = 20
     while config.has_section(f'col_{i}'):
         if config[f'col_{i}'].get('pattern', ''):

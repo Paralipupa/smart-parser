@@ -126,9 +126,11 @@ class UnionData:
             path = pathlib.Path(val, key)
             for folder, subfolders, files in os.walk(path):
                 for file in files:
-                    if file.endswith('.csv'):
-                        arch_zip.write(os.path.join(
-                            folder, file), os.path.join(re.findall('(?<=\/)[0-9a-z_]+$', folder)[0], file), compress_type=zipfile.ZIP_DEFLATED)
+                    name = re.findall(f'(?<=\{os.path.sep})[0-9a-z_]+$', folder)
+                    if name:
+                        if file.endswith('.csv'):
+                            arch_zip.write(os.path.join(
+                                folder, file), os.path.join(name[0], file), compress_type=zipfile.ZIP_DEFLATED)
 
         arch_zip.close()
         return filename_arch
