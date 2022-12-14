@@ -5,11 +5,21 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Test",
+            "type": "python",
+            "request": "launch",
+            "program": "test/config_test.py",
+            "args": ["-v"],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
             "name": "main.py",
             "type": "python",
             "request": "launch",
             "program": "main.py",
-            "args": ["-n=files.lst",
+            "args": [
+                "-n=files.lst",
                 // "args": ["-n=/home/chip/work/qqube/input/Gefest/Тарифы Гефест.xlsx",
                 // "args": ["-n=/home/chip/work/qqube/input/Gefest/Ведомость_начислений_Санкт_Петербург,_6_я_В_О_линия,_д_1_25_лит.xlsx",
                 // "args": ["-n=/home/chip/work/qqube/input/Gefest/Ведомость_начислений_Санкт_Петербург,_11_я_В_О_линия,_д_26_лит_Е.xlsx",
@@ -47,7 +57,9 @@
             "type": "python",
             "request": "launch",
             "program": "preliminary/preliminary.py",
-            "args": ["-n=preliminary/input/input.txt"],
+            "args": [
+                "-n=preliminary/input/input.txt"
+            ],
             "console": "integratedTerminal",
             "justMyCode": true
         },

@@ -53,14 +53,14 @@ class CsvFile(DataFile):
 class XlsFile(DataFile):
     def __init__(self, fname, sheet_name, first_line, address_columns, page_index=0):
         super(XlsFile, self).__init__(fname, sheet_name, first_line, address_columns)
-        self._book = xlrd.open_workbook(fname, logfile=open(os.devnull, 'w'))
-        # self._book = xlrd.open_workbook(fname, logfile=open(os.devnull, 'w'), ignore_workbook_corruption=True)
-        if self._sheet_name:
-            sheet = self._book.sheet_by_name(self._sheet_name)
-        else:
-            sheet = self._book.sheets()[page_index]
-        self._rows = (sheet.row(index) for index in range(first_line,
-                                                          sheet.nrows))
+        # with xlrd.open_workbook(fname, logfile=open(os.devnull, 'w')) as wb:
+        with xlrd.open_workbook(fname) as wb:
+            if self._sheet_name:
+                sheet = wb.sheet_by_name(self._sheet_name)
+            else:
+                sheet = wb.sheets()[page_index]
+            self._rows = (sheet.row(index) for index in range(first_line,
+                                                            sheet.nrows))
 
     @staticmethod
     def get_cell_text(cell):
