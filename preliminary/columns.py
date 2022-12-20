@@ -70,10 +70,12 @@ def set_columns(lines: list, path: str) -> str:
                 else:
                     is_duplicate = True
             if len(lines['1a']) == 0 and len(lines['2a']) == 0:
-                file.write(
-                    f'border_column_left={lines["param"].get("border_column_left", ["2"])[0]}\n')
-                file.write(
-                    f'border_column_right={lines["param"].get("border_column_right", ["4"])[0]}\n')
+                if lines["param"].get("border_column_left"):
+                    file.write(
+                        f'border_column_left={lines["param"].get("border_column_left", ["2"])[0]}\n')
+                if lines["param"].get("border_column_right"):
+                    file.write(
+                        f'border_column_right={lines["param"].get("border_column_right", ["4"])[0]}\n')
             file.write('is_optional=true\n')
             if is_duplicate:
                 file.write(f'is_duplicate=true\n')

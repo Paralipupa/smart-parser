@@ -81,8 +81,13 @@ def pp(lines:list, path: str):
         file.write('pattern=@0\n')
         file.write('col_config=0\n')
         file.write('row_data=0\n')
-        file.write('func=period_last\n')
-        file.write('depends_on=payment_value\n\n')
+        if lines["dic"].get("payment_date"):
+            file.write(f'offset_col_config={lines["dic"].get("payment_date", {"col":5})["col"]}\n')
+            file.write('offset_pattern=.+\n')
+        else:
+            file.write('func=period_last\n')
+        file.write('depends_on=payment_value\n')
+        file.write('\n')
 
         file.write('[pp_9]\n')
         file.write('; Сумма счета, учетом задолженности/переплаты\n')
