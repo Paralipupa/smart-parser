@@ -70,12 +70,15 @@ class UnionData:
         data = dict()
         file_output = pathlib.Path(path_output, file_name)
         with open(file_output, mode='r', encoding=ENCONING) as file:
-            data = json.load(file)
-            if data:
-                # список в словарь
-                keys = [x['internal_id'] for x in data]
-                self.__check_unique(file_name, keys)
-                data = dict(zip(keys, data))
+            try:
+                data = json.load(file)
+                if data:
+                    # список в словарь
+                    keys = [x['internal_id'] for x in data]
+                    self.__check_unique(file_name, keys)
+                    data = dict(zip(keys, data))
+            except Exception as ex:
+                print_message(f"{ex}")
         return data
 
     @fatal_error

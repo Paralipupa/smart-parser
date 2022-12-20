@@ -52,7 +52,7 @@ def pu(lines:list, path: str)->str:
         file.write('pattern=@0\n')
         file.write('col_config=0\n')
         file.write('row_data=0\n')
-        file.write('func=id,spacerepl,hash\n')
+        file.write('func=spacerepl,hash\n')
         file.write('\n')
 
         file.write('[pu_3]\n')

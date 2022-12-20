@@ -8,7 +8,7 @@
             "name": "Test",
             "type": "python",
             "request": "launch",
-            "program": "test/config_test.py",
+            "program": "test/test.py",
             "args": ["-v"],
             "console": "integratedTerminal",
             "justMyCode": true

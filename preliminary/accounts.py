@@ -31,7 +31,7 @@ def accounts(lines: list, path: str) -> str:
         file.write('pattern=@0\n')
         file.write('col_config=0\n')
         file.write('row_data=0\n')
-        file.write('func=id+К,spacerepl,hash\n\n')
+        file.write('func=_+К,spacerepl,hash\n\n')
 
         file.write('[accounts_2]\n')
         file.write('; Внутренний идентификатор ЛС\n')
@@ -39,7 +39,7 @@ def accounts(lines: list, path: str) -> str:
         file.write('pattern=@0\n')
         file.write('col_config=0\n')
         file.write('row_data=0\n')
-        file.write('func=id,spacerepl,hash\n\n')
+        file.write('func=spacerepl,hash\n\n')
 
         file.write('[accounts_3]\n')
         file.write('; Идентификатор дома GUID\n')

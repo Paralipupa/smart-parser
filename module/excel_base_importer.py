@@ -127,7 +127,7 @@ class ExcelBaseImporter:
                         self.check_body(record, row)
                     row += 1
                     if row % 100 == 0:
-                        print_message('Обработано: {}   \r'.format(
+                        print_message('         Обработано: {}                          \r'.format(
                             row), end='', flush=True)
                 self.done()
                 self._page_index += 1

@@ -5,6 +5,8 @@ name:ТСЖ Гефест
 border_column_left:2
 border_column_right:5
 pattern_inn:@7801636143
+pattern_account_number:@40702810955040003172
+pattern_bik:@044030653
 pattern_check:Гефест
 pattern_check:Оборотно-сальдовая ведомость по лицевым счетам|Ведомость начислений
 pattern_period:(?<=за )[А-Яа-яЁё]+\s[0-9]{4}
@@ -17,6 +19,7 @@ pattern_fias_11:11-я В[.]О[.] линия@dd152032-3cb5-4497-bb92-c2331c68beb7
 pattern_fias_Кадетская:Кадетская В[.]О[.] линия@f93f3cbb-947d-422c-9581-e63c136d6055
 pattern_fias_Малый:Малый В[.]О[.] пр-кт@dd0c6749-c088-4bd2-b23d-f8a2ffe005c2
 header_fias:@fias_6+fias_11+fias_Кадетская+fias_Малый
+
 0:№ пом.;№ кв.;ФИО;Плательщик
 0:Сальдо  вход.	Начислено;Всего начислено	Оплачено	Сальдо  исх.
 0:Пени;В т.ч.  пени	Адрес@address	№ пом.@room_number	Проживает;Прож@living_person_number	Площадь;Общая площадь@total_square

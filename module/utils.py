@@ -3,6 +3,7 @@ import os
 import re
 import argparse
 import pathlib
+import hashlib
 from datetime import datetime
 from report.report_001_00 import Report_001_00
 from .gisconfig import print_message, PATH_OUTPUT, PATH_LOG, PATH_TMP, PATH_CONFIG
@@ -42,6 +43,7 @@ def get_files(file_name: str, inn: str, file_conf: str) -> list:
     config_files = get_config_files()
     list_files = list()
     zip_files = list()
+    print_message('', flush=True)
 
     if file_name.find('.lst') != -1:
         zip_files = get_list_files(file_name)
@@ -79,7 +81,7 @@ def get_list_files(name: str) -> list:
                 if index != -1:
                     try:
                         patt = r"(?<=;)(?:(?:\s*[0-9]{3}(?:(?:_[0-9]{2}[a-z0-9_]*)|\s*)))?"
-                        result = re.findall(                        
+                        result = re.findall(
                             patt, line)
                     except Exception as ex:
                         pass
@@ -115,7 +117,7 @@ def __config_find(data_file: dict, config_files: list, j: int, m: int) -> dict:
     ls = list()
     i = 0
     for conf_file in config_files:
-        print_message('Поиск конфигураций: {}%   \r'.format(
+        print_message('          Поиск конфигураций: {}%   \r'.format(
             round((j*len(config_files)+i)/(m*len(config_files))*100, 0)), end='', flush=True)
         data_file = __config_process(
             data_file, pathlib.Path(PATH_CONFIG, f'{conf_file}'))
@@ -143,7 +145,7 @@ def __config_process(data_file: dict, file_config):
     return data_file
 
 
-def get_extract_files(archive_file: str, extract_dir: str = PATH_TMP) -> list:
+def get_extract_files(archive_file: str, extract_dir: str = PATH_TMP, ext: str = r'.xls') -> list:
     if not os.path.exists(archive_file['file']):
         return []
     list_files = []
@@ -163,16 +165,16 @@ def get_extract_files(archive_file: str, extract_dir: str = PATH_TMP) -> list:
                 os.rename(s, new_name)
         except Exception as ex:
             pass
-        if re.search('\.xls', new_name):
-            conf = archive_file['config'][i] if archive_file['config'] else ''
+        if re.search(ext, new_name):
+            conf = archive_file['config'][i] if archive_file.get(
+                'config') else ''
             list_files.append({'name': new_name,
-                              'inn': archive_file['inn'],
+                              'inn': archive_file.get('inn', ''),
                                'config': conf,
                                'warning': list(),
-                               'zip': archive_file['file']})
-            if i < len(archive_file['config'])-1:
+                               'zip': archive_file.get('file', '')})
+            if i < len(archive_file.get('config', ''))-1:
                 i += 1
-
     return list_files
 
 
@@ -214,3 +216,16 @@ def write_list(path_output: str, files: list):
                 s = ' '.join([f'{x}\n' for x in item['warning']]).strip()
                 file.write(f"{item['inn']} \t {item['name']}: \n {s}")
                 file.write('\n')
+
+
+def get_hash_file(file_name: str):
+    BUF_SIZE = 65536  # lets read stuff in 64kb chunks!
+    md5 = hashlib.md5()
+
+    with open(file_name, 'rb') as f:
+        while True:
+            data = f.read(BUF_SIZE)
+            if not data:
+                break
+            md5.update(data)
+    return md5.hexdigest()

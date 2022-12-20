@@ -31,7 +31,7 @@ def pp(lines:list, path: str):
         file.write('pattern=@0\n')
         file.write('col_config=0\n')
         file.write('row_data=0\n')
-        file.write('func=id,spacerepl,hash\n\n')
+        file.write('func=spacerepl,hash\n\n')
 
         file.write('[pp_3]\n')
         file.write('; ГИС. Идентификатор ПП\n')
@@ -96,10 +96,40 @@ def pp(lines:list, path: str):
 
         file.write('[pp_10]\n')
         file.write('; Номер расчетного счета\n')
-        file.write('name=account_number\n\n')
+        file.write('name=account_number\n')
+        if lines['param'].get('pattern_account_number',''):
+            file.write('pattern=@0\n')
+            file.write('col_config=0\n')
+            file.write('row_data=0\n') 
+            file.write(f'offset_col_config=0\n')
+            file.write('offset_pattern=@0\n')
+            file.write(f"func={lines['param']['pattern_account_number'][0][1:]},spacerepl,hash\n")    
+            file.write('\n')
+            for i, line in enumerate(lines['param']['pattern_account_number'][1:]):
+                file.write(f'[pp_10_{i}]\n')
+                file.write('; Номер расчетного счета\n')
+                file.write(f"func={line[1:]},spacerepl,hash\n")    
+                file.write('\n')
+        file.write('\n')
 
         file.write('[pp_11]\n')
         file.write('; БИК банка\n')
-        file.write('name=bank_bik\n\n')
+        file.write('name=bank_bik\n')
+        if lines['param'].get('pattern_bik',''):
+            file.write('pattern=@0\n')
+            file.write('col_config=0\n')
+            file.write('row_data=0\n') 
+            file.write(f'offset_col_config=0\n')
+            file.write('offset_pattern=@0\n')
+            file.write(f"func={lines['param']['pattern_bik'][0][1:]},spacerepl,hash\n")    
+            file.write('\n')
+            for i, line in enumerate(lines['param']['pattern_bik'][1:]):
+                file.write(f'[pp_11_{i}]\n')
+                file.write('; БИК банка\n')
+                file.write(f"func={line[1:]},spacerepl,hash\n")    
+                file.write('\n')
+        file.write('\n')
+        file.write('\n')
+
     return file_name
 

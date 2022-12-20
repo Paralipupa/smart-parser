@@ -45,7 +45,7 @@ def regular_calc(pattern, value):
         return f"error in regular: '{pattern}' ({str(ex)})"
 
 
-def print_message(msg: str, end: str = '', flush: bool = False):
+def print_message(msg: str, end: str = '\n', flush: bool = False):
     if IS_MESSAGE_PRINT:
         print(msg, end=end, flush=flush)
 
