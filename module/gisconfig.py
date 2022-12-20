@@ -6,6 +6,7 @@ import traceback
 import codecs
 from dataclasses import replace
 from datetime import datetime
+from .exceptions import InnMismatchException, FatalException
 from typing import NoReturn, Union
 from .settings import *
 
@@ -14,13 +15,15 @@ def fatal_error(func):
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
+        except InnMismatchException as ex:
+            raise  InnMismatchException
         except Exception as ex:
             s = ''
             if args and isinstance(args[0], GisConfig):
                 s += ('Error in '+args[0]._config_name if hasattr(
                     args[0], '_config_name') else '') + ':\n'
-            db_logger.warning(s+traceback.format_exc())
-            exit()
+            # db_logger.warning(s+traceback.format_exc())
+            raise FatalException(s+traceback.format_exc())
     return wrapper
 
 

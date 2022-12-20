@@ -10,6 +10,7 @@ from .utils import get_files, write_list, getArgs
 from .excel_base_importer import ExcelBaseImporter
 from .gisconfig import regular_calc, PATH_OUTPUT, PATH_LOG
 from .union import UnionData
+from .exceptions import InnMismatchException, FatalException
 from .settings import *
 
 
@@ -42,48 +43,55 @@ class Parser:
         }
 
     def start(self) -> list:
-        if not self.name:
-            if not self.union:
-                logging.warning(
-                    'run with parameters:  [--name|-n]=<file.lst>|<file.xsl>|<file.zip> [[--inn|-i]=<inn>] [[--config|-c]=<config.ini>] [[--union|-u]=<path>')
-            else:
-                u = UnionData()
-                return u.start(path_input=os.path.join(PATH_OUTPUT, self.output_path),
-                                path_output=self.download_path,
-                                path_logs=os.path.join(
-                                    PATH_LOG, self.output_path),
-                                file_output=self.download_file)
-
-        else:
-            list_files = get_files(self.name, self.inn, self.config)
-            i = 0
-            if list_files:
-                for file_name in list_files:
-                    i += 1
-                    if file_name['config']:
-                        if file_name['config'] != '000':
-                            t = regular_calc(
-                                '[0-9]{3}(?=_)', str(file_name['config']))
-                            rep: ExcelBaseImporter = self.report[t](file_name=file_name['name'],
-                                                                    inn=file_name['inn'], config_file=str(file_name['config']))
-                            rep.is_hash = self.is_hash
-                            rep._dictionary = self._dictionary.copy()
-                            if rep.read():
-                                self._dictionary = rep._dictionary.copy()
-                                rep.write_collections(num=i, path_output=os.path.join(
-                                    PATH_OUTPUT, self.output_path))
-                                rep.write_logs(num=i, path_output=os.path.join(
-                                    PATH_LOG, self.output_path))
-                            file_name['warning'] += rep._config._warning
-                write_list(path_output=os.path.join(
-                    PATH_LOG, self.output_path), files=list_files)
-                if self.union:
+        try:
+            if not self.name:
+                if not self.union:
+                    logging.warning(
+                        'run with parameters:  [--name|-n]=<file.lst>|<file.xsl>|<file.zip> [[--inn|-i]=<inn>] [[--config|-c]=<config.ini>] [[--union|-u]=<path>')
+                else:
                     u = UnionData()
                     return u.start(path_input=os.path.join(PATH_OUTPUT, self.output_path),
-                                   path_output=self.download_path,
-                                   path_logs=os.path.join(
-                                       PATH_LOG, self.output_path),
-                                   file_output=self.download_file)
+                                    path_output=self.download_path,
+                                    path_logs=os.path.join(
+                                        PATH_LOG, self.output_path),
+                                    file_output=self.download_file)
+
+            else:
+                list_files = get_files(self.name, self.inn, self.config)
+                i = 0
+                if list_files:
+                    for file_name in list_files:
+                        i += 1
+                        if file_name['config']:
+                            if file_name['config'] != '000':
+                                t = regular_calc(
+                                    '[0-9]{3}(?=_)', str(file_name['config']))
+                                rep: ExcelBaseImporter = self.report[t](file_name=file_name['name'],
+                                                                        inn=file_name['inn'], config_file=str(file_name['config']))
+                                rep.is_hash = self.is_hash
+                                rep._dictionary = self._dictionary.copy()
+                                if rep.read():
+                                    self._dictionary = rep._dictionary.copy()
+                                    rep.write_collections(num=i, path_output=os.path.join(
+                                        PATH_OUTPUT, self.output_path))
+                                    rep.write_logs(num=i, path_output=os.path.join(
+                                        PATH_LOG, self.output_path))
+                                file_name['warning'] += rep._config._warning
+                    write_list(path_output=os.path.join(
+                        PATH_LOG, self.output_path), files=list_files)
+                    if self.union:
+                        u = UnionData()
+                        return u.start(path_input=os.path.join(PATH_OUTPUT, self.output_path),
+                                    path_output=self.download_path,
+                                    path_logs=os.path.join(
+                                        PATH_LOG, self.output_path),
+                                    file_output=self.download_file)
+        except InnMismatchException as ex:
+            return f"{ex}"
+        except FatalException as ex:
+            return f"{ex._message}"
+        except Exception as ex:
+            return f"{ex}"
         return self.download_path
 
     @staticmethod

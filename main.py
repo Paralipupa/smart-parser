@@ -20,4 +20,5 @@ if __name__ == "__main__":
     parser = Parser(file_name=namespace.name, inn=namespace.inn, file_config=namespace.config,
                     union=namespace.union, path_down='download', hash=namespace.hash,
                     file_down=f'{namespace.inn if namespace.inn else "output"}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.zip')
-    parser.start()
+    mess = parser.start()
+    print(mess)

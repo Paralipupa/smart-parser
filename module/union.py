@@ -55,6 +55,7 @@ class UnionData:
             self.__make_archive(path_output, file_output, save_directories)
             if os.path.isdir(path_input):
                 shutil.rmtree(path_input)
+        return os.path.join(path_output, file_output) 
 
     def __check_unique(self, file_name: str, arr: list) -> NoReturn:
         setarr = set(arr)

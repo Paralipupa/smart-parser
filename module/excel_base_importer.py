@@ -10,6 +10,7 @@ from ast import Return
 from typing import NoReturn, Union
 from itertools import product
 from .gisconfig import GisConfig, fatal_error, warning_error, regular_calc, print_message, PATH_LOG
+from module.exceptions import InnMismatchException
 from .file_readers import get_file_reader
 from preliminary.utils import get_ident, get_reg
 from .settings import *
@@ -772,6 +773,11 @@ class ExcelBaseImporter:
         if not self._parameters['address']['value']:
             self._parameters['address']['value'].append('')
         self.colontitul['is_parameters'] = True
+        if self._parameters['inn']['value'][0] != '0000000000' and self._config._parameters.get('inn'):
+            l = [x for x in self._config._parameters['inn'] if x['pattern'][0].find(self._parameters['inn']['value'][0]) !=-1 ]
+            if not l:
+                raise InnMismatchException
+
 
     def _set_parameter(self, name: str):
         for param in self.get_config_parameters(name):
