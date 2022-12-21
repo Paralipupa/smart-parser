@@ -15,7 +15,7 @@ def accounts(lines: list, path: str) -> str:
         file.write('[doc_0]\n')
         file.write('; Лицевые счета\n')
         file.write('name=accounts\n')
-        file.write('required_fields=internal_id\n\n')
+        file.write('required_fields=address,account_number,living_person_number,total_square\n\n')
 
         file.write('[accounts_0]\n')
         file.write('; ИНН, ОГРН или OrgID\n')

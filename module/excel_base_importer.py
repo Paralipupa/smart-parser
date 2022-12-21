@@ -456,7 +456,8 @@ class ExcelBaseImporter:
         result = ''
         for val in values:
             if val['row'] == 0:
-                value = regular_calc(pattern, val['value'])
+                patt = pattern.split('|')[0] if result == '' else pattern
+                value = regular_calc(patt, val['value'])
                 if (value == '' and result == '' and pattern.find(r'^\s*$') != -1) or result.find('error') != -1:
                     return ''
                 result += value
@@ -730,7 +731,7 @@ class ExcelBaseImporter:
                                 for x in d['fields'] if x['name'] == name_field), '')
                 for item in doc[name_field]:
                     val = self._get_value(str(item['value']), '.+', fld_type)
-                    if val:
+                    if ((fld_type=='' or fld_type=='str') and val.strip() != '') or ((fld_type=='float' or fld_type=='int') and val != 0):
                         s.add(item['row'])
         return s
 
@@ -778,7 +779,6 @@ class ExcelBaseImporter:
             if not l:
                 raise InnMismatchException
 
-
     def _set_parameter(self, name: str):
         for param in self.get_config_parameters(name):
             rows = param['row']
@@ -802,7 +802,7 @@ class ExcelBaseImporter:
                                 result = self._get_value_after_validation(
                                     pattern, 'head' if is_head else 'foot', row[0], col[0])
                                 if result:
-                                    if param['offset_pattern']:
+                                    if param['offset_pattern']: 
                                         if not param['offset_row']:
                                             param['offset_row'].append(
                                                 (0, False))

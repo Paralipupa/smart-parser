@@ -69,7 +69,4 @@ class TestGisConfig(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    try:
-        unittest.main()
-    except Exception as ex:
-        print(f'{ex}')
+    unittest.main()

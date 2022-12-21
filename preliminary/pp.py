@@ -7,7 +7,7 @@ def pp(lines:list, path: str):
         file.write('[doc_1]\n')
         file.write('; Платежный документ \n')
         file.write('name=pp\n')
-        file.write('required_fields=bill_value\n\n')
+        file.write('required_fields=bill_value,payment_value\n\n')
 
         file.write('[pp_0]\n')
         file.write(';ИНН, ОГРН или OrgID\n')
