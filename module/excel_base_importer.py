@@ -89,8 +89,6 @@ class ExcelBaseImporter:
     def read(self) -> bool:
         if not self.is_verify(self._parameters['filename']['value'][0]):
             return False
-        # print_message('Файл {} ({})'.format(
-        #     self._parameters['filename']['value'][0], self._parameters['config']['value'][0]))
         if not self.get_col_start():
             self.set_col_start(0)
         for col_start in self.get_col_start():
@@ -116,6 +114,10 @@ class ExcelBaseImporter:
                         f"\nОШИБКА чтения файла {self._parameters['filename']['value'][0]}")
                     continue
                 for record in data_reader:
+                    if row < 100 and row % 10 == 0:
+                        print_message('         {} Обработано: {}                          \r'.format(
+                            self.func_inn(), row), end='', flush=True)
+
                     record = record[self._col_start:]
                     if self.colontitul['status'] != 2:
                         # Область до или после таблицы
@@ -128,8 +130,8 @@ class ExcelBaseImporter:
                         self.check_body(record, row)
                     row += 1
                     if row % 100 == 0:
-                        print_message('         Обработано: {}                          \r'.format(
-                            row), end='', flush=True)
+                        print_message('         {} Обработано: {}                          \r'.format(
+                            self.func_inn(), row), end='', flush=True)
                 self.done()
                 self._page_index += 1
         return True
