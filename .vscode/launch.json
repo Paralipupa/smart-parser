@@ -9,7 +9,7 @@
             "type": "python",
             "request": "launch",
             "program": "test/test.py",
-            "args": ["-v"],
+            "env": {"PYTHONPATH":"${workspaceFolder}"},
             "console": "integratedTerminal",
             "justMyCode": true
         },

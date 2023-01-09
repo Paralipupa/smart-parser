@@ -1,5 +1,6 @@
 import unittest
-import os, sys
+import os
+import sys
 from shutil import rmtree
 import filecmp
 import difflib as df
@@ -11,30 +12,48 @@ from module.settings import ENCONING
 
 class TestGisConfig(unittest.TestCase):
 
-    def __diff(self, path1: str, path2: str, files: list):
+    def __diff(self, path_new: str, path_old: str, files: list) -> list:
+        path_log = os.path.join(os.path.join(os.path.dirname(os.path.dirname(path_old)), 'log'))
+        os.makedirs(path_log, exist_ok=True)
+        for f in os.listdir(path_log):
+            os.remove(os.path.join(path_log, f))
         miss_lines = list()
-        for file in files:
-            miss_lines.append({'name':file,'value':list()})
-            file1 = open(os.path.join(path1,file), "r", encoding=ENCONING)
-            file2 = open(os.path.join(path2,file), "r", encoding=ENCONING)
-            lines1 = file1.readlines()
-            lines1 = [line.rstrip('\n') for line in lines1]
-            lines2 = file2.readlines()
-            lines2 = [line.rstrip('\n') for line in lines2]
-
-            if len(lines1) == len(lines2):
+        files_new = []
+        for f in files:
+            miss_lines.append({'name': f, 'value': list()})
+            with open(os.path.join(path_new, f), "r", encoding=ENCONING) as file1:
+                lines1 = file1.readlines()
+                lines1 = [line.rstrip('\n') for line in lines1]
+            with open(os.path.join(path_old, f), "r", encoding=ENCONING) as file2:
+                lines2 = file2.readlines()
+                lines2 = [line.rstrip('\n') for line in lines2]
+            if len(lines1) >= len(lines2):
                 for line in lines1:
                     if not line.strip() in lines2:
                         miss_lines[-1]['value'].append(line)
-                        l = [i for i,x in enumerate(lines2) if line.split(';')[1] in x]
+                        l = [i for i, x in enumerate(
+                            lines2) if line.split(';')[1] in x]
                         if l:
                             miss_lines[-1]['value'].append(lines2[l[0]])
                         else:
-                            miss_lines[-1]['value'].append('не найден')
+                            miss_lines[-1]['value'].append(';'.join(['' for x in line.split(';')]))
+            else:
+                for line in lines2:
+                    if not line.strip() in lines1:
+                        l = [i for i, x in enumerate(
+                            lines1) if line.split(';')[1] in x]
+                        if l:
+                            miss_lines[-1]['value'].append(lines1[l[0]])
+                        else:
+                            miss_lines[-1]['value'].append(';'.join(['' for x in line.split(';')]))
+                        miss_lines[-1]['value'].append(line)
         for item in miss_lines:
-            with open(os.path.join(os.path.dirname(path2),f"{item['name']}.log"), 'w' ) as file:
-                file.writelines( map (lambda x: x + '\n', item['value']) );
-        return miss_lines
+            if item['value']:
+                files_new.append(item['name'])
+                with open(os.path.join(path_log, f"{item['name']}"), 'a', encoding=ENCONING) as f:
+                    f.writelines(
+                        map(lambda x: x + '\n', item['value']))
+        return files_new
 
     def __check(self) -> tuple:
         path_download = os.path.join(
@@ -66,13 +85,13 @@ class TestGisConfig(unittest.TestCase):
             common_files,
         )
         if mismatch:
-            self.__diff(path_download, path_origin, mismatch)
+            mismatch = self.__diff(path_download, path_origin, mismatch)
         if os.path.isdir(path_download):
             rmtree(path_download)
         if os.path.isdir(path_origin):
             rmtree(path_origin)
 
-        return mismatch, errors
+        return mismatch, []
 
     def setUp(self):
         self.parser = Parser(file_name=os.path.join(BASE_DIR, 'test', 'input', 'common.zip'),
@@ -81,28 +100,28 @@ class TestGisConfig(unittest.TestCase):
                              union='output',
                              path_down=os.path.join(BASE_DIR, 'test', 'download'))
 
-    # def test_druzhba(self):
-    #     self.parser.name = os.path.join(
-    #         BASE_DIR, 'test', 'input', 'druzhba.zip')
-    #     self.parser.download_file = 'druzhba.zip'
-    #     self.parser.start()
-    #     hash_origin, hash_download = self.__check()
-    #     self.assertEqual(hash_origin, hash_download)
+    def test_druzhba(self):
+        self.parser.name = os.path.join(
+            BASE_DIR, 'test', 'input', 'druzhba.zip')
+        self.parser.download_file = 'druzhba.zip'
+        self.parser.start()
+        hash_origin, hash_download = self.__check()
+        self.assertEqual(hash_origin, hash_download)
 
-    # def test_gefest(self):
-    #     self.parser.name = os.path.join(
-    #         BASE_DIR, 'test', 'input', 'gefest.zip')
-    #     self.parser.download_file = 'gefest.zip'
-    #     self.parser.start()
-    #     hash_origin, hash_download = self.__check()
-    #     self.assertEqual(hash_origin, hash_download)
+    def test_gefest(self):
+        self.parser.name = os.path.join(
+            BASE_DIR, 'test', 'input', 'gefest.zip')
+        self.parser.download_file = 'gefest.zip'
+        self.parser.start()
+        hash_origin, hash_download = self.__check()
+        self.assertEqual(hash_origin, hash_download)
 
-    # def test_molod(self):
-    #     self.parser.name = os.path.join(BASE_DIR, 'test', 'input', 'molod.zip')
-    #     self.parser.download_file = 'molod.zip'
-    #     self.parser.start()
-    #     hash_origin, hash_download = self.__check()
-    #     self.assertEqual(hash_origin, hash_download)
+    def test_molod(self):
+        self.parser.name = os.path.join(BASE_DIR, 'test', 'input', 'molod.zip')
+        self.parser.download_file = 'molod.zip'
+        self.parser.start()
+        hash_origin, hash_download = self.__check()
+        self.assertEqual(hash_origin, hash_download)
 
     def test_shustoff(self):
         self.parser.name = os.path.join(
