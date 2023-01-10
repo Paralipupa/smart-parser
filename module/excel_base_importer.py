@@ -885,7 +885,8 @@ class ExcelBaseImporter:
         self._collections[name].setdefault(key, list())
         self._collections[name][key].append(doc)
         if self.get_doc_type(name) == 'dictionary' and doc.get('key') and doc.get('value'):
-            self._dictionary[self.func_hash(doc['key'])] = doc['value']
+            param = {'value': doc['key'], 'func': 'hash'}
+            self._dictionary[self.func(fld_param=param)] = doc['value']
 
 # Формирование документа из полученной порции (отдельной области или иерархии)
     def set_document(self, team: dict, doc_param):
@@ -1002,7 +1003,7 @@ class ExcelBaseImporter:
 
         os.makedirs(path_output, exist_ok=True)
 
-        self._current_value = ''
+        self._current_id = ''
         id = self.func_id()
         inn = self.func_inn()
         for name, pages in self._collections.items():
@@ -1030,6 +1031,7 @@ class ExcelBaseImporter:
         if not self.is_init() or len(self._collections) == 0:
             return
         os.makedirs(path_output, exist_ok=True)
+        self._current_id = ''
         id = self.func_id()
         inn = self.func_inn()
         i = 0
@@ -1171,153 +1173,191 @@ class ExcelBaseImporter:
             'id': self.func_id,
         }
         self._current_value = list()
+        self._current_id = ''
 
+    def __get_index_find_any(self, text: str, delimeters: str) -> int:
+        a = []
+        for item in delimeters:
+            index = text.find(item)
+            if index != -1:
+                a.append(index)
+        return min(a) if a else -1
+
+    def __get_func_list(self, part: str, names: str):
+        self._current_value_func.setdefault(part, {})
+        list_sub = re.findall('[a-z_0-9]+\(.+\)', names)
+        for item in list_sub:
+            ind_s = item.find('(')
+            ind_e = item.find(')')
+            func = item[:ind_s]
+            arg = item[ind_s+1:ind_e]
+            hash = _hashit(func.encode('utf-8'))[:8]
+            if not self._current_value_func[part].get(hash):
+                self._current_value_func[part][hash] = {
+                    'name': func, 'type': 'sub', 'input': '', 'output': ''}
+                arg_hash = self.__get_func_list(hash, arg)
+                self._current_value_func[hash]['expression'] = arg_hash
+                names = names.replace(item, hash)
+        names_new = ''
+        while True:
+            index = self.__get_index_find_any(names, '+-,')
+            delim = ''
+            if index == -1:
+                item = names
+                names = ''
+            else:
+                item = names[:index]
+                delim = names[index:index+1]
+                names = names[index+1:]
+            hash = _hashit(item.encode('utf-8'))[:8]
+            self._current_value_func[part][hash] = {
+                'name': item, 'type': '', 'input': '', 'output': ''}
+            names_new += f'{hash}{delim}'
+            if not names:
+                break
+        return names_new
+
+    def __recalc_expression(self, part: str) -> NoReturn:
+        for item in self._current_value_func[part]['expression'].split(','):
+            value = self._current_value_empty
+            for index, hash in enumerate(re.split(r"[+-]", item)):
+                name = self._current_value_func[part][hash]['name']
+                if self._current_value_func[part].get(name):
+                    self._current_value.append(value)
+                    self.__recalc_expression(name)
+                    name = self._current_value_func[part][name]['name']
+                if self.funcs.get(name.strip()):
+                    f = self.funcs.get(name.strip())
+                    x = f()
+                    if isinstance(value, float) or isinstance(value, int):
+                        if item.find(f'-{name}') != -1 and index != 0:
+                            value -= self._get_value(x, '.+', 'float')
+                        else:
+                            value += self._get_value(x, '.+', 'float')
+                    else:
+                        value += x + ' '
+                else:
+                    if self._parameters.get(name):
+                        value = value.strip() + \
+                            (self._parameters[name]['value'][-1]
+                                if len(self._parameters[name]['value']) > 0 else '')
+                    elif name == '_':
+                        value = value.strip() + (' ' if value else '') + \
+                            self._current_value[-1]
+                    else:
+                        if isinstance(value, str):
+                            value = value.strip() + (' ' if value else '') + name
+                if self._current_value_func[part].get(self._current_value_func[part][hash]['name']):
+                    self._current_value.pop()
+            self._current_value.pop()
+            self._current_value.append(value.rstrip() if isinstance(value, str) else value)
 
     def func(self, team: dict = {}, fld_param: dict = {}, row: int = 0, col: int = 0) -> str:
-        self._current_value = fld_param.get('value', '')
-        pattern = fld_param['func_pattern'][0] if fld_param.get(
+        self._current_id = fld_param.get('value', '')
+        self._current_value = list()
+        if fld_param.get('is_offset'):
+            value = fld_param.get('value_o', '')
+            self._current_value_type = fld_param.get('offset_type', 'str')
+        else:
+            value = fld_param.get('value', '')
+            self._current_value_type = fld_param.get('type', 'str')
+        self._current_value_pattern = fld_param['func_pattern'][0] if fld_param.get(
             'func_pattern') else ''
-        data = fld_param.get('value_o', '') if fld_param.get(
-            'is_offset') else fld_param.get('value', '')
-        try:
-            for name_func_add in fld_param.get('func', '').split(','):
-                value = 0 if fld_param.get('type', 'str') == 'float' or fld_param.get(
-                    'offset_type', 'str') == 'float' else ''
-                for index, name_func in enumerate(re.split(r"[+-]", name_func_add)):
-                    name_func, data_calc, is_check = self.__get_func_name(
-                        name_func=name_func, data=data)
-                    try:
-                        f = self.funcs[name_func.strip()]
-                    except Exception as ex:
-                        if self._parameters.get(name_func, []):
-                            value = value.strip() + \
-                                (self._parameters[name_func]['value'][-1]
-                                 if self._parameters[name_func]['value'] else '')
-                        elif name_func == '_':
-                            value = value.strip() + (' ' if value else '') + data
-                        else:
-                            value = value.strip() + (' ' if value else '') + name_func
-                    else:
-                        if is_check:
-                            if f(data_calc, row, col, team):
-                                value += data_calc + ' '
-                        else:
-                            x = f(data_calc, row, col, team)
-                            if isinstance(value, float) or isinstance(value, int):
-                                if name_func_add.find(f'-{name_func}') != -1 and index != 0:
-                                    value -= self._get_value(x, '.+', 'float')
-                                else:
-                                    value += self._get_value(x, '.+', 'float')
-                            else:
-                                value += x + ' '
-                data = str(value).strip()
-                self._current_value = data
-                if pattern:
-                    if isinstance(value, float):
-                        data = data.replace(' ', '').replace(',', '.')
-                    data = regular_calc(pattern, data)
-                    pattern = ''  # шаблон проверки применятся только один раз
-            return data.strip()
-        except Exception as ex:
-            return f'error {name_func}: {str(ex)}'
+        self._current_value_empty = 0 if self._current_value_type == 'float' else ''
+        self._current_value_team = team
+        self._current_value_row = row
+        self._current_value_col = col
+        self._current_value_param = fld_param
+        self._current_value_func = {}
+        part = '00000000'
+        m = fld_param.get('func', '')
+        m = self.__get_func_list(part, m)
+        self._current_value_func[part]['expression'] = m
+        self._current_value.append(value)
+        self.__recalc_expression(part)
+        value = self._current_value.pop()
+        return str(value).strip()
 
-    def __get_func_name(self, name_func: str, data: str):
-        is_check = False
-        if name_func.find('(') != -1 and name_func.find(' (') == -1:
-            # если функция с параметром, то заменяем входные данные (data) на этот параметр
-            result = regular_calc(
-                r'(?<=\()[a-zA-Zа-яА-Я_0-9-]+(?=\))', name_func) if name_func.find(' (') == -1 else ''
-            if result and result.find('error') == -1:
-                data = result
-            try:
-                f = self.funcs[name_func[:name_func.find('(')]]
-                name_func = name_func[:name_func.find('(')]
-            except:
-                # name_func = name_func.replace('(', '- ').replace(')', '')
-                pass
-        if name_func.find('check_') != -1:
-            name_func = name_func.replace('check_', '')
-            is_check = True
-        return name_func, data, is_check
 
-    def func_inn(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
+    def func_inn(self):
         if self._parameters['inn']['value'][0] != '0000000000':
             return self._parameters['inn']['value'][0]
         else:
             return self._parameters['inn']['value'][-1]
 
-    def func_period_first(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
+    def func_period_first(self):
         period = datetime.datetime.strptime(
             self._parameters['period']['value'][-1], '%d.%m.%Y')
         return period.replace(day=1).strftime('%d.%m.%Y')
 
-    def func_period_last(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
+    def func_period_last(self):
         period = datetime.datetime.strptime(
             self._parameters['period']['value'][-1], '%d.%m.%Y')
         next_month = period.replace(day=28) + datetime.timedelta(days=4)
         return (next_month - datetime.timedelta(days=next_month.day)).strftime('%d.%m.%Y')
 
-    def func_period_month(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
+    def func_period_month(self):
         return self._parameters['period']['value'][0][3:5]
 
-    def func_period_year(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
+    def func_period_year(self):
         return self._parameters['period']['value'][0][6:]
 
-    def func_to_date(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
+    def func_to_date(self):
         patts = ['%d-%m-%Y', '%d.%m.%Y', '%d/%m/%Y', '%Y-%m-%d',
                  '%d-%m-%y', '%d.%m.%y', '%d/%m/%y', '%B %Y']
         for p in patts:
             try:
-                d = datetime.datetime.strptime(data, p)
-                return data
+                d = datetime.datetime.strptime(self._current_value[-1], p)
+                return self._current_value[-1]
             except:
                 pass
         return ''
 
-    def func_hash(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
-        return _hashit(str(data).encode('utf-8')) if self.is_hash else data
+    def func_hash(self):
+        return _hashit(str(self._current_value[-1]).encode('utf-8')) if self.is_hash else self._current_value[-1]
 
-    def func_uuid(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
-        return str(uuid.uuid5(uuid.NAMESPACE_X500, data))
+    def func_uuid(self):
+        return str(uuid.uuid5(uuid.NAMESPACE_X500, self._current_value[-1]))
 
-    def func_id(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
+    def func_id(self):
         d = self._parameters['period']['value'][0]
-        return f'{str(self._current_value).strip()}_{d[3:5]}{d[6:]}'  # _mmyyyy
+        return f'{str(self._current_id).strip()}_{d[3:5]}{d[6:]}'  # _mmyyyy
 
-    def func_column_name(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
-        if col != -1:
-            return self.get_columns_heading(col, 'alias')
+    def func_column_name(self):
+
+        if self._current_value_col != -1:
+            return self.get_columns_heading(self._current_value_, 'alias')
         return ''
 
-    def func_column_value(self, data: str = '', row: int = -1, col: int = 0, team: dict = {}):
-        value = next((x[row]['value']
-                     for x in team.values() if x[row]['col'] == int(data)), '')
+    def func_column_value(self):
+        value = next((x[self._current_value_row]['value']
+                     for x in self._current_value_team.values() if x[self._current_value_row]['col'] == int(self._current_value[-1])), '')
         return value
 
-    def func_param(self, data: str = '', row: int = -1, col: int = -1, team: dict = {}):
+    def func_param(self):
         m = ''
-        for item in self._parameters[data]['value']:
+        for item in self._parameters[self._current_value[-1]]['value']:
             m += (item.strip() + ' ') if isinstance(item, str) else ''
         return f'{m.strip()}'
 
-    def func_spacerem(self, data: str = '', row: int = -1, col: int = 0, team: dict = {}):
-        return data.strip().replace(' ', '')
+    def func_spacerem(self):
+        return self._current_value[-1].strip().replace(' ', '')
 
-    def func_spacerepl(self, data: str = '', row: int = -1, col: int = 0, team: dict = {}):
-        return data.strip().replace(' ', '_')
+    def func_spacerepl(self):
+        return self._current_value[-1].strip().replace(' ', '_')
 
-    def func_round2(self, data: str = '', row: int = -1, col: int = 0, team: dict = {}):
-        return str(round(data, 2)) if isinstance(data, float) else data
+    def func_round2(self):
+        return str(round(self._current_value[-1], 2)) if isinstance(self._current_value[-1], float) else str(self._current_value[-1])
 
-    def func_round4(self, data: str = '', row: int = -1, col: int = 0, team: dict = {}):
-        return str(round(data, 4)) if isinstance(data, float) else data
+    def func_round4(self):
+        return str(round(self._current_value[-1], 4)) if isinstance(self._current_value[-1], float) else self._current_value[-1]
 
-    def func_round6(self, data: str = '', row: int = -1, col: int = 0, team: dict = {}):
-        return str(round(data, 6)) if isinstance(data, float) else data
+    def func_round6(self):
+        return str(round(self._current_value[-1], 6)) if isinstance(self._current_value[-1], float) else self._current_value[-1]
 
-    def func_opposite(self, data: str = '', row: int = -1, col: int = 0, team: dict = {}):
-        return str(-data) if isinstance(data, float) else data
+    def func_opposite(self):
+        return str(-self._current_value) if isinstance(self._current_value, float) else self._current_value
 
-    def func_dictionary(self, data: str = '', row: int = -1, col: int = 0, team: dict = {}):
-        return self._dictionary.get(data, '')
-        # return data+'('+self._dictionary.get(data,'')+')'
+    def func_dictionary(self):
+        return self._dictionary.get(self._current_value[-1], '')
+        # return self._current_value[-1]+'('+self._dictionary.get(self._current_value[-1],'')+')'

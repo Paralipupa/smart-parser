@@ -116,7 +116,12 @@
 ;../input/Shustoff/Attachments_info@psgkh.ru_2022-12-07_12-58-45.zip
 ;test/input/shustoff.zip
 ;test/input/gefest.zip
+<<<<<<< HEAD
 test/input/molod.zip
+=======
+;test/input/molod.zip
+test/input/druzhba.zip
+>>>>>>> func
 ;../input/Gefest/gefest.zip
 ;../input/Gefest/gefest11.zip
 ;../input/Gefest/gefest_test.zip
