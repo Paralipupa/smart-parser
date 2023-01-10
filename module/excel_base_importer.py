@@ -42,6 +42,7 @@ class ExcelBaseImporter:
         self._parameters['config'] = {'fixed': True, 'value': [config_file]}
         self._collections = dict()  # коллекция выходных таблиц
         self._config = GisConfig(config_file)
+        self.__set_functions()
 
     def check(self, is_warning: bool = False) -> bool:
         if not self.is_verify(self._parameters['filename']['value'][0]):
@@ -1146,9 +1147,8 @@ class ExcelBaseImporter:
 ################################################################################################################################################
 # ----------------------------------------------------- Функции --------------------------------------------------------------------------------
 ################################################################################################################################################
-
-    def func(self, team: dict = {}, fld_param: dict = {}, row: int = 0, col: int = 0) -> str:
-        dic_f = {
+    def __set_functions(self) -> NoReturn:
+        self.funcs = {
             'inn': self.func_inn,
             'period_first': self.func_period_first,
             'period_last': self.func_period_last,
@@ -1170,6 +1170,86 @@ class ExcelBaseImporter:
             'to_date': self.func_to_date,
             'id': self.func_id,
         }
+        self._current_value = list()
+
+    # def __get_index_find_any(self, text: str, delimeters: str) -> int:
+    #     a = []
+    #     for item in delimeters:
+    #         index = text.find(item)
+    #         if index != -1:
+    #             a.append(index)
+    #     return min(a) if a else -1
+
+    # def __get_func_list(self, part: str, names: str):
+    #     self._current_value_func.setdefault(part, {})
+    #     list_sub = re.findall('[a-z]+\(.+\)', names)
+    #     for item in list_sub:
+    #         ind_s = item.find('(')
+    #         ind_e = item.find(')')
+    #         func = item[:ind_s]
+    #         arg = item[ind_s+1:ind_e]
+    #         hash = _hashit(func.encode('utf-8'))[:8]
+    #         if not self._current_value_func[part].get(hash):
+    #             self._current_value_func[part][hash] = {
+    #                 'name': func, 'type': 'sub', 'input': '', 'output': ''}
+    #             arg_hash = self.__get_func_list(hash, arg)
+    #             self._current_value_func[hash]['expression'] = arg_hash
+    #             names = names.replace(item, hash)
+    #     names_new = ''
+    #     while True:
+    #         index = self.__get_index_find_any(names, '+-,')
+    #         delim = ''
+    #         if index == -1:
+    #             item = names
+    #             names = ''
+    #         else:
+    #             item = names[:index]
+    #             delim = names[index:index+1]
+    #             names = names[index+1:]
+    #         hash = _hashit(item.encode('utf-8'))[:8]
+    #         self._current_value_func[part][hash] = {
+    #             'name': item, 'type': '', 'input': '', 'output': ''}
+    #         names_new += f'{hash}{delim}'
+    #         if not names:
+    #             break
+    #     return names_new
+
+    # def __recalc_expression(self, part: str) -> NoReturn:
+    #     for item in self._current_value_func[part]['expression'].split(','):
+    #         value = self._current_value_empty
+    #         for index, hash in enumerate(re.split(r"[+-]", item)):
+    #             name = self._current_value_func[part][hash]['name']
+    #             if self._current_value_func[part].get(name):
+    #                 self._current_value.append(value)
+    #                 self.__recalc_expression(name)
+    #                 name = self._current_value_func[part][name]['name']
+    #             if self.dic_f.get(name.strip()):
+    #                 f = self.dic_f.get(name.strip())
+    #                 x = f()
+    #                 if isinstance(value, float) or isinstance(value, int):
+    #                     if item.find(f'-{name}') != -1 and index != 0:
+    #                         value -= self._get_value(x, '.+', 'float')
+    #                     else:
+    #                         value += self._get_value(x, '.+', 'float')
+    #                 else:
+    #                     value += x + ' '
+    #             else:
+    #                 if self._parameters.get(name):
+    #                     value = value.strip() + \
+    #                         (self._parameters[name]['value'][-1]
+    #                             if len(self._parameters[name]['value']) > 0 else '')
+    #                 elif name == '_':
+    #                     value = value.strip() + (' ' if value else '') + \
+    #                         self._current_value[-1]
+    #                 else:
+    #                     if isinstance(value, str):
+    #                         value = value.strip() + (' ' if value else '') + name
+    #             if self._current_value_func[part].get(self._current_value_func[part][hash]['name']):
+    #                 self._current_value.pop()
+    #         self._current_value.pop()
+    #         self._current_value.append(value)
+
+    def func(self, team: dict = {}, fld_param: dict = {}, row: int = 0, col: int = 0) -> str:
         self._current_value = fld_param.get('value', '')
         pattern = fld_param['func_pattern'][0] if fld_param.get(
             'func_pattern') else ''
@@ -1181,9 +1261,9 @@ class ExcelBaseImporter:
                     'offset_type', 'str') == 'float' else ''
                 for index, name_func in enumerate(re.split(r"[+-]", name_func_add)):
                     name_func, data_calc, is_check = self.__get_func_name(
-                        name_func=name_func, data=data, dic_f=dic_f)
+                        name_func=name_func, data=data)
                     try:
-                        f = dic_f[name_func.strip()]
+                        f = self.funcs[name_func.strip()]
                     except Exception as ex:
                         if self._parameters.get(name_func, []):
                             value = value.strip() + \
@@ -1217,7 +1297,7 @@ class ExcelBaseImporter:
         except Exception as ex:
             return f'error {name_func}: {str(ex)}'
 
-    def __get_func_name(self, name_func: str, data: str, dic_f: dict):
+    def __get_func_name(self, name_func: str, data: str):
         is_check = False
         if name_func.find('(') != -1 and name_func.find(' (') == -1:
             # если функция с параметром, то заменяем входные данные (data) на этот параметр
@@ -1226,7 +1306,7 @@ class ExcelBaseImporter:
             if result and result.find('error') == -1:
                 data = result
             try:
-                f = dic_f[name_func[:name_func.find('(')]]
+                f = self.funcs[name_func[:name_func.find('(')]]
                 name_func = name_func[:name_func.find('(')]
             except:
                 # name_func = name_func.replace('(', '- ').replace(')', '')

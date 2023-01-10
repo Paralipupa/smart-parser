@@ -4,6 +4,7 @@
 **/input/
 **/download/
 test/download/*
+test/log/*
 tmp/*
 logs/*
 documents/*

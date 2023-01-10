@@ -1,9 +1,6 @@
 import unittest
 import os
-import sys
 from shutil import rmtree
-import filecmp
-import difflib as df
 from module.utils import get_extract_files, get_hash_file
 from module.parser import Parser
 from module.settings import BASE_DIR
@@ -13,10 +10,6 @@ from module.settings import ENCONING
 class TestGisConfig(unittest.TestCase):
 
     def __diff(self, path_new: str, path_old: str, files: list) -> list:
-        path_log = os.path.join(os.path.join(os.path.dirname(os.path.dirname(path_old)), 'log'))
-        os.makedirs(path_log, exist_ok=True)
-        for f in os.listdir(path_log):
-            os.remove(os.path.join(path_log, f))
         miss_lines = list()
         files_new = []
         for f in files:
@@ -47,6 +40,7 @@ class TestGisConfig(unittest.TestCase):
                         else:
                             miss_lines[-1]['value'].append(';'.join(['' for x in line.split(';')]))
                         miss_lines[-1]['value'].append(line)
+        path_log = os.path.join(os.path.join(os.path.dirname(__file__), 'log'))
         for item in miss_lines:
             if item['value']:
                 files_new.append(item['name'])
@@ -79,13 +73,7 @@ class TestGisConfig(unittest.TestCase):
         common_files = [file_name for file_name in common]
 
         # Сравниваем общие файлы каталогов
-        match, mismatch, errors = filecmp.cmpfiles(
-            path_download,
-            path_origin,
-            common_files,
-        )
-        if mismatch:
-            mismatch = self.__diff(path_download, path_origin, mismatch)
+        mismatch = self.__diff(path_download, path_origin, common_files)
         if os.path.isdir(path_download):
             rmtree(path_download)
         if os.path.isdir(path_origin):
@@ -133,4 +121,8 @@ class TestGisConfig(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    path_log = os.path.join(os.path.join(os.path.dirname(__file__), 'log'))
+    os.makedirs(path_log, exist_ok=True)
+    for f in os.listdir(path_log):
+        os.remove(os.path.join(path_log, f))
     unittest.main()

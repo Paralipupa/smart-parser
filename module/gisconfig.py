@@ -232,7 +232,8 @@ class GisConfig:
                         if not item['priority'] and \
                             ((heading['left'] and item['col'] == heading['left'][0][POS_NUMERIC_VALUE]) or
                                 (heading['right'] and item['col'] == heading['right'][0][POS_NUMERIC_VALUE])):
-                            item['priority'] = True
+                            # item['priority'] = True
+                            pass
 
                 j = -1
                 pattern_dop = 'default'
