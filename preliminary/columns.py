@@ -16,6 +16,12 @@ def set_columns(lines: list, path: str) -> str:
         file.write(
             ';########################################################################################################################\n')
         for i, line in enumerate(lines["0"]):
+            if line['name'].find(">") != -1:
+                lines["param"]["border_column_left"] = [i]
+                line['name'] = line['name'].replace('>','')
+            if line['name'].find("<") != -1:
+                lines["param"]["border_column_right"] = [i]
+                line['name'] = line['name'].replace('<','')
             index = line['name'].find("::")
             patt: str = line['name'][index+2:] if index != -1 else ''
             ls = line['name'].split('@')
