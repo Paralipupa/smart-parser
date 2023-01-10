@@ -85,7 +85,7 @@ class TestGisConfig(unittest.TestCase):
         self.parser = Parser(file_name=os.path.join(BASE_DIR, 'test', 'input', 'common.zip'),
                              file_down=os.path.join(
                                  BASE_DIR, 'test', 'download', 'test.zip'),
-                             union='output',
+                             union='output', hash='no',
                              path_down=os.path.join(BASE_DIR, 'test', 'download'))
 
     def test_druzhba(self):
