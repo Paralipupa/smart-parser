@@ -1003,7 +1003,7 @@ class ExcelBaseImporter:
 
         os.makedirs(path_output, exist_ok=True)
 
-        self._current_value = ''
+        self._current_id = ''
         id = self.func_id()
         inn = self.func_inn()
         for name, pages in self._collections.items():
@@ -1031,6 +1031,7 @@ class ExcelBaseImporter:
         if not self.is_init() or len(self._collections) == 0:
             return
         os.makedirs(path_output, exist_ok=True)
+        self._current_id = ''
         id = self.func_id()
         inn = self.func_inn()
         i = 0
@@ -1172,6 +1173,7 @@ class ExcelBaseImporter:
             'id': self.func_id,
         }
         self._current_value = list()
+        self._current_id = ''
 
     def __get_index_find_any(self, text: str, delimeters: str) -> int:
         a = []
@@ -1183,7 +1185,7 @@ class ExcelBaseImporter:
 
     def __get_func_list(self, part: str, names: str):
         self._current_value_func.setdefault(part, {})
-        list_sub = re.findall('[a-z_]+\(.+\)', names)
+        list_sub = re.findall('[a-z_0-9]+\(.+\)', names)
         for item in list_sub:
             ind_s = item.find('(')
             ind_e = item.find(')')
@@ -1248,9 +1250,10 @@ class ExcelBaseImporter:
                 if self._current_value_func[part].get(self._current_value_func[part][hash]['name']):
                     self._current_value.pop()
             self._current_value.pop()
-            self._current_value.append(value)
+            self._current_value.append(value.rstrip() if isinstance(value, str) else value)
 
     def func(self, team: dict = {}, fld_param: dict = {}, row: int = 0, col: int = 0) -> str:
+        self._current_id = fld_param.get('value', '')
         self._current_value = list()
         if fld_param.get('is_offset'):
             value = fld_param.get('value_o', '')
@@ -1264,9 +1267,11 @@ class ExcelBaseImporter:
         self._current_value_team = team
         self._current_value_row = row
         self._current_value_col = col
+        self._current_value_param = fld_param
         self._current_value_func = {}
         part = '00000000'
-        m = self.__get_func_list(part, fld_param.get('func', ''))
+        m = fld_param.get('func', '')
+        m = self.__get_func_list(part, m)
         self._current_value_func[part]['expression'] = m
         self._current_value.append(value)
         self.__recalc_expression(part)
@@ -1310,16 +1315,16 @@ class ExcelBaseImporter:
 
     def func_hash(self):
         return _hashit(str(self._current_value[-1]).encode('utf-8')) if self.is_hash else self._current_value[-1]
-        # return _hashit(str(self._current_value[-1]).strip().encode('utf-8')) if self.is_hash else self._current_value[-1]
 
     def func_uuid(self):
         return str(uuid.uuid5(uuid.NAMESPACE_X500, self._current_value[-1]))
 
     def func_id(self):
         d = self._parameters['period']['value'][0]
-        return f'{str(self._current_value[-1] if self._current_value else "").strip()}_{d[3:5]}{d[6:]}'  # _mmyyyy
+        return f'{str(self._current_id).strip()}_{d[3:5]}{d[6:]}'  # _mmyyyy
 
     def func_column_name(self):
+
         if self._current_value_col != -1:
             return self.get_columns_heading(self._current_value_, 'alias')
         return ''
