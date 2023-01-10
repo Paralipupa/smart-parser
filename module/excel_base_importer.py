@@ -42,6 +42,7 @@ class ExcelBaseImporter:
         self._parameters['config'] = {'fixed': True, 'value': [config_file]}
         self._collections = dict()  # коллекция выходных таблиц
         self._config = GisConfig(config_file)
+        self.__set_functions()
 
     def check(self, is_warning: bool = False) -> bool:
         if not self.is_verify(self._parameters['filename']['value'][0]):
@@ -1146,9 +1147,8 @@ class ExcelBaseImporter:
 ################################################################################################################################################
 # ----------------------------------------------------- Функции --------------------------------------------------------------------------------
 ################################################################################################################################################
-
-    def func(self, team: dict = {}, fld_param: dict = {}, row: int = 0, col: int = 0) -> str:
-        dic_f = {
+    def __set_functions(self) -> NoReturn:
+        self.funcs = {
             'inn': self.func_inn,
             'period_first': self.func_period_first,
             'period_last': self.func_period_last,
@@ -1170,6 +1170,10 @@ class ExcelBaseImporter:
             'to_date': self.func_to_date,
             'id': self.func_id,
         }
+        self._current_value = list()
+
+
+    def func(self, team: dict = {}, fld_param: dict = {}, row: int = 0, col: int = 0) -> str:
         self._current_value = fld_param.get('value', '')
         pattern = fld_param['func_pattern'][0] if fld_param.get(
             'func_pattern') else ''
@@ -1181,9 +1185,9 @@ class ExcelBaseImporter:
                     'offset_type', 'str') == 'float' else ''
                 for index, name_func in enumerate(re.split(r"[+-]", name_func_add)):
                     name_func, data_calc, is_check = self.__get_func_name(
-                        name_func=name_func, data=data, dic_f=dic_f)
+                        name_func=name_func, data=data)
                     try:
-                        f = dic_f[name_func.strip()]
+                        f = self.funcs[name_func.strip()]
                     except Exception as ex:
                         if self._parameters.get(name_func, []):
                             value = value.strip() + \
@@ -1217,7 +1221,7 @@ class ExcelBaseImporter:
         except Exception as ex:
             return f'error {name_func}: {str(ex)}'
 
-    def __get_func_name(self, name_func: str, data: str, dic_f: dict):
+    def __get_func_name(self, name_func: str, data: str):
         is_check = False
         if name_func.find('(') != -1 and name_func.find(' (') == -1:
             # если функция с параметром, то заменяем входные данные (data) на этот параметр
@@ -1226,7 +1230,7 @@ class ExcelBaseImporter:
             if result and result.find('error') == -1:
                 data = result
             try:
-                f = dic_f[name_func[:name_func.find('(')]]
+                f = self.funcs[name_func[:name_func.find('(')]]
                 name_func = name_func[:name_func.find('(')]
             except:
                 # name_func = name_func.replace('(', '- ').replace(')', '')
