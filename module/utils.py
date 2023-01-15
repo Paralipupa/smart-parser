@@ -153,16 +153,14 @@ def get_extract_files(archive_file: str, extract_dir: str = PATH_TMP, ext: str =
     with zipfile.ZipFile(archive_file['file'], 'r') as zip_file:
         names = [text_file.filename for text_file in zip_file.infolist()]
         for z in names:
-            if not os.path.exists(os.path.join(extract_dir, z)):
-                zip_file.extract(z, extract_dir)
+            zip_file.extract(z, extract_dir)
     i = 0
     for name in names:
         try:
             old_name = pathlib.Path(extract_dir, name)
             new_name = get_name_decoder(str(old_name))
             s = get_path_decoder(old_name)
-            if not os.path.exists(new_name):
-                os.rename(s, new_name)
+            os.rename(s, new_name)
         except Exception as ex:
             pass
         if re.search(ext, new_name):
