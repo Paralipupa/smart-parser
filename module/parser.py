@@ -10,7 +10,7 @@ from .utils import get_files, write_list, getArgs
 from .excel_base_importer import ExcelBaseImporter
 from .gisconfig import regular_calc, PATH_OUTPUT, PATH_LOG
 from .union import UnionData
-from .exceptions import InnMismatchException, FatalException
+from .exceptions import InnMismatchException, FatalException, ConfigNotFoundException
 from .settings import *
 
 
@@ -59,6 +59,7 @@ class Parser:
             else:
                 list_files = get_files(self.name, self.inn, self.config)
                 i = 0
+                isParser = False
                 if list_files:
                     for file_name in list_files:
                         i += 1
@@ -71,6 +72,7 @@ class Parser:
                                 rep.is_hash = self.is_hash
                                 rep._dictionary = self._dictionary.copy()
                                 if rep.read():
+                                    isParser = True
                                     self._dictionary = rep._dictionary.copy()
                                     rep.write_collections(num=i, path_output=os.path.join(
                                         PATH_OUTPUT, self.output_path))
@@ -79,6 +81,8 @@ class Parser:
                                 file_name['warning'] += rep._config._warning
                     write_list(path_output=os.path.join(
                         PATH_LOG, self.output_path), files=list_files)
+                    if not isParser:
+                        raise ConfigNotFoundException
                     if self.union:
                         u = UnionData()
                         return u.start(path_input=os.path.join(PATH_OUTPUT, self.output_path),

@@ -9,6 +9,7 @@ import shutil
 from typing import NoReturn
 from collections import Counter
 from .gisconfig import fatal_error, warning_error, print_message, PATH_LOG
+from .exceptions import ConfigNotFoundException
 from .settings import *
 
 # Объединение однотипных файлом
@@ -55,7 +56,8 @@ class UnionData:
             self.__make_archive(path_output, file_output, save_directories)
             if os.path.isdir(path_input):
                 shutil.rmtree(path_input)
-        return os.path.join(path_output, file_output) 
+            return os.path.join(path_output, file_output) 
+        raise ConfigNotFoundException
 
     def __check_unique(self, file_name: str, arr: list) -> NoReturn:
         setarr = set(arr)

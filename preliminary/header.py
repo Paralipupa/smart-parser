@@ -14,7 +14,7 @@ def header(lines: list, path: str) -> str:
         file.write(
             '; Поиск ключевого значения по строке(ам) для определения совместимости\n')
         file.write('; входных данных и конфигурации\n')
-        file.write('row=0<15\n')
+        file.write('row=0<150\n')
         if lines["param"].get("pattern_check"):
             for i, p in enumerate(lines["param"]["pattern_check"]) :
                 file.write(f'pattern{"_" if i>0 else ""}{i-1 if i>0 else ""}={p}\n')
@@ -26,7 +26,7 @@ def header(lines: list, path: str) -> str:
         file.write('page_name=\n')
         file.write('page_index=0\n')
         file.write('max_columns=150\n')
-        file.write('max_rows_heading=20\n')
+        file.write('max_rows_heading=150\n')
         if lines['param'].get('border_column_left'):
             file.write(f'border_column_left={lines["param"]["border_column_left"][0]}\n')
         if lines['param'].get('border_column_right'):
