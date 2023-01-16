@@ -14,23 +14,23 @@ def header(lines: list, path: str) -> str:
         file.write(
             '; Поиск ключевого значения по строке(ам) для определения совместимости\n')
         file.write('; входных данных и конфигурации\n')
-        file.write('row=0<150\n')
-        if lines["param"].get("pattern_check"):
-            for i, p in enumerate(lines["param"]["pattern_check"]) :
+        file.write(f"row={lines['param'].get('check_row',['0<15'])[0]}\n")
+        if lines["param"].get("check_pattern"):
+            for i, p in enumerate(lines["param"]["check_pattern"]) :
                 file.write(f'pattern{"_" if i>0 else ""}{i-1 if i>0 else ""}={p}\n')
         file.write('\n')
 
         file.write('[main]\n')
-        file.write('path_output=output\n')
-        file.write('row_start=0\n')
-        file.write('page_name=\n')
-        file.write('page_index=0\n')
-        file.write('max_columns=150\n')
-        file.write('max_rows_heading=150\n')
-        if lines['param'].get('border_column_left'):
-            file.write(f'border_column_left={lines["param"]["border_column_left"][0]}\n')
-        if lines['param'].get('border_column_right'):
-            file.write(f'border_column_right={lines["param"]["border_column_right"][0]}\n')
+        file.write(f"path_output={lines['param'].get('main_path_output',['output'])[0]}\n")
+        file.write(f"row_start={lines['param'].get('main_row_start',['0'])[0]}\n")
+        file.write(f"page_name={lines['param'].get('main_page_name',[''])[0]}\n")
+        file.write(f"page_index={lines['param'].get('main_page_index',['0'])[0]}\n")
+        file.write(f"max_columns={lines['param'].get('main_max_columns',[150])[0]}\n")
+        file.write(f"max_rows_heading={lines['param'].get('main_max_rows_heading',[15])[0]}\n")
+        if lines['param'].get('main_border_column_left'):
+            file.write(f'border_column_left={lines["param"]["main_border_column_left"][0]}\n')
+        if lines['param'].get('main_border_column_right'):
+            file.write(f'border_column_right={lines["param"]["main_border_column_right"][0]}\n')
         file.write('\n')
 
         file.write(';---- шаблоны регулярных выражений ------------\n\n')

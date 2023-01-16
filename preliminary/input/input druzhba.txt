@@ -2,9 +2,7 @@
 ;accounts: @address	@room_number	@living_person_number	@total_square	@account_identifier	@account_number
 ;pp: @credit	@saldo	@payment_value	@payment_date	@bill_value
 name:ТСЖ Дружба
-border_column_left:8
-;border_column_right:2
-pattern_check:Дружба
+check_pattern:Дружба
 pattern_inn:@7802348243
 pattern_account_number:@40703810055130108611
 pattern_bik:@044030653
@@ -20,7 +18,7 @@ pattern_ЛС:^(?![0-9])[А-Яа-яЁё"«»-]+\s["«»А-Яа-яЁё-]+
 0:№ пом.;№ кв.;Ф.И.О.
 0:Сальдо Вх.	Начисление;Дебет	Оплачено;Кредит	Сальдо исх.
 0:Пени	Квартира;№ пом.;№ кв.@room_number	Проживает@living_person_number
-0:Площадь;Площадь, м2@total_square	Дата оп.@payment_date	Прописано	Начислено
+0:>Площадь;Площадь, м2@total_square	Дата оп.@payment_date	Прописано	Начислено
 0:Лицевой счет;№ кв.;№ пом.@account_number@account_identifier::[0-9]+-?[A-Za-zА-Яа-я]?
 1:АППЗ	АУР, АХР	Взнос на кап.ремонт	Лифт	ПЗУ	Сан. содерж. террит.	Содерж. общ. имущ. дома	Текущ. ремонт	
 1:Уборка лестниц	Эксплуат. приб. учета	Водоотвед. ГВС	Водоотвед. ХВС	Горячая вода	Обращение с ТКО	Отопление	

@@ -46,7 +46,7 @@
                 // "-c=config/gisconfig_002_00gefest.ini",
                 // "-c=config/gisconfig_002_00akademia.ini",
                 // "-c=config/gisconfig_000_00gefest.ini",
-                "-x=no",
+                // "-x=no",
                 "-u=output",
                 // "-i=7801636143",
                 // "-i=7801636143",

@@ -20,12 +20,12 @@ def set_columns(lines: list, path: str) -> str:
             if offset:
                 line['name'] = line['name'].replace(offset[0],'')
                 offset = offset[0].replace('{','').replace('}','').split(';')
-            if line['name'].find(">") != -1:
-                lines["param"]["border_column_left"] = [i]
-                line['name'] = line['name'].replace('>','')
-            if line['name'].find("<") != -1:
-                lines["param"]["border_column_right"] = [i]
-                line['name'] = line['name'].replace('<','')
+            if line['name'][0] == '>':
+                lines["param"]["main_border_column_left"] = [i]
+                line['name'] = line['name'][1:]
+            if line['name'][0] == '<':
+                lines["param"]["main_border_column_right"] = [i]
+                line['name'] = line['name'][1:]
             index = line['name'].find("::")
             patt: str = line['name'][index+2:] if index != -1 else ''
             ls = line['name'].split('@')
@@ -84,12 +84,12 @@ def set_columns(lines: list, path: str) -> str:
                 else:
                     is_duplicate = True
             if len(lines['1a']) == 0 and len(lines['2a']) == 0:
-                if lines["param"].get("border_column_left"):
+                if lines["param"].get("main_border_column_left"):
                     file.write(
-                        f'border_column_left={lines["param"].get("border_column_left", ["2"])[0]}\n')
-                if lines["param"].get("border_column_right"):
+                        f'border_column_left={lines["param"].get("main_border_column_left", ["2"])[0]}\n')
+                if lines["param"].get("main_border_column_right"):
                     file.write(
-                        f'border_column_right={lines["param"].get("border_column_right", ["4"])[0]}\n')
+                        f'border_column_right={lines["param"].get("main_border_column_right", ["4"])[0]}\n')
             file.write('is_optional=true\n')
             if is_duplicate:
                 file.write(f'is_duplicate=true\n')

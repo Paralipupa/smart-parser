@@ -2,8 +2,7 @@
 ;accounts: @address	@room_number	@living_person_number	@total_square	@account_identifier	@account_number
 ;pp: @credit	@saldo	@payment_value	@payment_date	@bill_value
 name:ТСЖ Молодежное
-
-pattern_check:Молодежное
+check_pattern:Молодежное
 pattern_inn:@4727000113
 pattern_account_number:@40703810655310000010
 pattern_bik:@044030653

@@ -755,75 +755,6 @@ class ExcelBaseImporter:
         if len(self._teams) != 0:
             self.process_record(self._teams[-1])
 
-    def _set_parameters(self) -> NoReturn:
-        for value in self._parameters.values():
-            if not value['fixed']:
-                value['value'] = list()
-        for key in self.get_config_parameters().keys():
-            self._set_parameter(key)
-        self._parameters.setdefault(
-            'period', {'fixed': False, 'value': list()})
-
-        if not self._parameters['period']['value']:
-            self._parameters['period']['value'].append(
-                datetime.date.today().strftime('%d.%m.%Y'))
-        self.check_period_value()
-
-        self._parameters.setdefault('path', {'fixed': False, 'value': list()})
-        if not self._parameters['path']['value']:
-            self._parameters['path']['value'].append(PATH_OUTPUT)
-        self._parameters.setdefault(
-            'address', {'fixed': False, 'value': list()})
-        if not self._parameters['address']['value']:
-            self._parameters['address']['value'].append('')
-        self.colontitul['is_parameters'] = True
-        if self._parameters['inn']['value'][0] != '0000000000' and self._config._parameters.get('inn'):
-            l = [x for x in self._config._parameters['inn'] if x['pattern'][0].find(self._parameters['inn']['value'][0]) !=-1 ]
-            if not l:
-                raise InnMismatchException
-
-    def _set_parameter(self, name: str):
-        for param in self.get_config_parameters(name):
-            rows = param['row']
-            cols = param['col']
-            patterns = param['pattern']
-            is_head = param['ishead']
-            func = param.get('func')
-            self._parameters.setdefault(
-                name, {'fixed': False, 'value': list()})
-            if func:
-                value = self.func(fld_param={'func': func})
-                if value:
-                    self._parameters[name]['value'].append(value)
-            else:
-                for pattern in patterns:
-                    if pattern:
-                        if pattern[0] == '@':
-                            self._parameters[name]['value'].append(pattern[1:])
-                        else:
-                            for row, col in product(rows, cols):
-                                result = self._get_value_after_validation(
-                                    pattern, 'head' if is_head else 'foot', row[0], col[0])
-                                if result:
-                                    if param['offset_pattern']: 
-                                        if not param['offset_row']:
-                                            param['offset_row'].append(
-                                                (0, False))
-                                        if not param['offset_col']:
-                                            param['offset_col'].append(
-                                                (0, False))
-                                        result = self._get_value_after_validation(param['offset_pattern'],
-                                                                                  'head' if is_head else 'foot',
-                                                                                  param['offset_row'][0][POS_NUMERIC_VALUE] +
-                                                                                  row[0] if not param['offset_row'][0][POS_NUMERIC_IS_ABSOLUTE] else param[
-                                            'offset_row'][0][POS_NUMERIC_VALUE],
-                                            param['offset_col'][0][POS_NUMERIC_VALUE] + col[0] if not param['offset_col'][0][POS_NUMERIC_IS_ABSOLUTE] else param['offset_col'][0][POS_NUMERIC_VALUE])
-                                    if result:
-                                        self._parameters[name]['value'].append(
-                                            param['value'] if param.get('value') else result)
-                                        break
-
-        return self._parameters[name]
 
     def change_pp(self):
         if len(self._columns) == 0:
@@ -1068,6 +999,76 @@ class ExcelBaseImporter:
 ################################################################################################################################################
 # ---------------------------------------------- Параметры конфигурации ------------------------------------------------------------------------
 ################################################################################################################################################
+    def _set_parameters(self) -> NoReturn:
+        for value in self._parameters.values():
+            if not value['fixed']:
+                value['value'] = list()
+        for key in self.get_config_parameters().keys():
+            self._set_parameter(key)
+        self._parameters.setdefault(
+            'period', {'fixed': False, 'value': list()})
+
+        if not self._parameters['period']['value']:
+            self._parameters['period']['value'].append(
+                datetime.date.today().strftime('%d.%m.%Y'))
+        self.check_period_value()
+
+        self._parameters.setdefault('path', {'fixed': False, 'value': list()})
+        if not self._parameters['path']['value']:
+            self._parameters['path']['value'].append(PATH_OUTPUT)
+        self._parameters.setdefault(
+            'address', {'fixed': False, 'value': list()})
+        if not self._parameters['address']['value']:
+            self._parameters['address']['value'].append('')
+        self.colontitul['is_parameters'] = True
+        if self._parameters['inn']['value'][0] != '0000000000' and self._config._parameters.get('inn'):
+            l = [x for x in self._config._parameters['inn'] if x['pattern'][0].find(self._parameters['inn']['value'][0]) !=-1 ]
+            if not l:
+                raise InnMismatchException
+
+    def _set_parameter(self, name: str):
+        for param in self.get_config_parameters(name):
+            rows = param['row']
+            cols = param['col']
+            patterns = param['pattern']
+            is_head = param['ishead']
+            func = param.get('func')
+            self._parameters.setdefault(
+                name, {'fixed': False, 'value': list()})
+            if func:
+                value = self.func(fld_param={'func': func})
+                if value:
+                    self._parameters[name]['value'].append(value)
+            else:
+                for pattern in patterns:
+                    if pattern:
+                        if pattern[0] == '@':
+                            self._parameters[name]['value'].append(pattern[1:])
+                        else:
+                            for row, col in product(rows, cols):
+                                result = self._get_value_after_validation(
+                                    pattern, 'head' if is_head else 'foot', row[0], col[0])
+                                if result:
+                                    if param['offset_pattern']: 
+                                        if not param['offset_row']:
+                                            param['offset_row'].append(
+                                                (0, False))
+                                        if not param['offset_col']:
+                                            param['offset_col'].append(
+                                                (0, False))
+                                        result = self._get_value_after_validation(param['offset_pattern'],
+                                                                                  'head' if is_head else 'foot',
+                                                                                  param['offset_row'][0][POS_NUMERIC_VALUE] +
+                                                                                  row[0] if not param['offset_row'][0][POS_NUMERIC_IS_ABSOLUTE] else param[
+                                            'offset_row'][0][POS_NUMERIC_VALUE],
+                                            param['offset_col'][0][POS_NUMERIC_VALUE] + col[0] if not param['offset_col'][0][POS_NUMERIC_IS_ABSOLUTE] else param['offset_col'][0][POS_NUMERIC_VALUE])
+                                    if result:
+                                        self._parameters[name]['value'].append(
+                                            param['value'] if param.get('value') else result)
+                                        break
+
+        return self._parameters[name]
+
 
     def is_init(self) -> bool:
         return self._config._is_init
