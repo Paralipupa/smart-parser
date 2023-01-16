@@ -201,6 +201,7 @@ def write_list(path_output: str, files: list):
 
     os.makedirs(path_output, exist_ok=True)
 
+    mess = ''
     file_output = pathlib.Path(
         path_output, f'session{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log')
     with open(file_output, 'w', encoding=ENCONING) as file:
@@ -212,8 +213,10 @@ def write_list(path_output: str, files: list):
         for item in files:
             if item['warning']:
                 s = ' '.join([f'{x}\n' for x in item['warning']]).strip()
-                file.write(f"{item['inn']} \t {item['name']}: \n {s}")
-                file.write('\n')
+                mess += f"{item['inn']} \t {item['name']}: \n{s}" +'\n'
+        file.write(mess)
+        file.write('\n')
+    return mess
 
 
 def get_hash_file(file_name: str):

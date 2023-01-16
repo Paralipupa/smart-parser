@@ -79,10 +79,10 @@ class Parser:
                                     rep.write_logs(num=i, path_output=os.path.join(
                                         PATH_LOG, self.output_path))
                                 file_name['warning'] += rep._config._warning
-                    write_list(path_output=os.path.join(
+                    mess = write_list(path_output=os.path.join(
                         PATH_LOG, self.output_path), files=list_files)
                     if not isParser:
-                        raise ConfigNotFoundException
+                        raise ConfigNotFoundException(mess)
                     if self.union:
                         u = UnionData()
                         return u.start(path_input=os.path.join(PATH_OUTPUT, self.output_path),
@@ -93,6 +93,8 @@ class Parser:
         except InnMismatchException as ex:
             return f"{ex}"
         except FatalException as ex:
+            return f"{ex._message}"
+        except ConfigNotFoundException as ex:
             return f"{ex._message}"
         except Exception as ex:
             return f"{ex}"

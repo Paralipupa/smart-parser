@@ -9,7 +9,7 @@ class FatalException(Exception):
         super(FatalException, self).__init__(self._message)
 
 class ConfigNotFoundException(Exception):
-    def __init__(self):
-        self._message = "Не найдены параметры конфигурации"
-        super(InnMismatchException, self).__init__(self._message)
+    def __init__(self, msg: str=''):
+        self._message = "Не найдены параметры конфигурации. \n{}".format(msg)
+        super(ConfigNotFoundException, self).__init__(self._message)
 

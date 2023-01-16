@@ -47,6 +47,9 @@ class ExcelBaseImporter:
     def check(self, is_warning: bool = False) -> bool:
         if not self.is_verify(self._parameters['filename']['value'][0]):
             return False
+        if self._parameters['inn']['value'][-1] != '0000000000' and  self._config._parameters.get('inn') and \
+            not re.search(self._parameters['inn']['value'][-1], self._config._parameters.get('inn')[0]['pattern'][0]):
+            return False
         self._headers = self._get_headers()
         if not self._headers:
             return False
@@ -70,9 +73,19 @@ class ExcelBaseImporter:
                     self.is_check = False
                     return self._check_function()
         self.is_check = False
-        if is_warning:
-            self._config._warning.append('файл "{0}" не сооответствует шаблону "{1}". skip'.format(
-                self._parameters['filename']['value'][0], self._parameters['config']['value'][0]))
+        if self._parameters['inn']['value'][-1] != '0000000000':
+            mess = ''
+            x = [x['pattern'] for x in self._config._check['pattern'] if x['is_find'] == False]
+            if x:
+                mess += 'Перед таблицей не нейден текст:\n\t"{0}"\n'.format('" или "'.join(x).replace('|','" или "'))
+            x = [x['pattern'] for x in self.get_columns_heading() if not x['optional'] and not x['active']]                
+            if x:
+                s = ''
+                for patterns in x:
+                    for name in patterns:
+                        s += '\t'+ name+';\n'
+                mess += 'Не найдены обязательные колонки по шаблонам:\n{0}'.format(s)
+            self._config._warning.append(mess)
         return False
 
     @fatal_error
