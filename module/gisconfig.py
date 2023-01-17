@@ -61,7 +61,7 @@ class GisConfig:
         self._is_unique = False
         self._warning = list()
         if not os.path.exists(filename):
-            self._warning.append('file not found {}. skip'.format(filename))
+            self._warning.append('Не найден файл {}.'.format(filename))
             return
         self._config = configparser.ConfigParser()
         self._config.read(filename, encoding="utf-8")

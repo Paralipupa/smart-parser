@@ -79,12 +79,10 @@ class Parser:
                                     rep.write_logs(num=i, path_output=os.path.join(
                                         PATH_LOG, self.output_path))
                                 file_name['warning'] += rep._config._warning
-                    mess = write_list(path_output=os.path.join(
+                    file_log = write_list(path_output=os.path.join(
                         PATH_LOG, self.output_path), files=list_files)
-                    if not isParser:
-                        raise ConfigNotFoundException(mess)
                     if self.union:
-                        u = UnionData()
+                        u = UnionData(isParser, file_log)
                         return u.start(path_input=os.path.join(PATH_OUTPUT, self.output_path),
                                     path_output=self.download_path,
                                     path_logs=os.path.join(

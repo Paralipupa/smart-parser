@@ -17,8 +17,10 @@ from .settings import *
 
 class UnionData:
 
-    def __init__(self) -> None:
+    def __init__(self, isParser:bool, file_log: str) -> None:
         self.logs = list()
+        self.isParser = isParser
+        self.file_log = file_log
 
     def start(self, path_input: str, path_output: str, path_logs: str, file_output: str) -> list:
         save_directories = dict()
@@ -53,10 +55,10 @@ class UnionData:
                         path_input, inn, id_period, file_data)
                     save_directories[key_record] = path_input
             self.__write_logs(path_output=path_logs)
-            self.__make_archive(path_output, file_output, save_directories)
-            if os.path.isdir(path_input):
-                shutil.rmtree(path_input)
-            return os.path.join(path_output, file_output) 
+        self.__make_archive(path_output, file_output, save_directories)
+        if os.path.isdir(path_input):
+            shutil.rmtree(path_input)
+        return os.path.join(path_output, file_output) 
         raise ConfigNotFoundException
 
     def __check_unique(self, file_name: str, arr: list) -> NoReturn:
@@ -128,16 +130,20 @@ class UnionData:
         os.makedirs(path_output, exist_ok=True)
         arch_zip = zipfile.ZipFile(
             pathlib.Path(path_output, filename_arch), 'w')
+        if not dirs:
+            arch_zip.write(self.file_log, os.path.basename(self.file_log), compress_type=zipfile.ZIP_DEFLATED)
         for key, val in dirs.items():
             path = pathlib.Path(val, key)
+            if self.file_log and os.path.exists(self.file_log):
+                file_log = os.path.join(path,os.path.basename(self.file_log))
+                shutil.copy(self.file_log, file_log)
             for folder, subfolders, files in os.walk(path):
                 for file in files:
                     name = re.findall(f'(?<=\{os.path.sep})[0-9a-z_]+$', folder)
                     if name:
-                        if file.endswith('.csv'):
+                        if file.endswith('.csv') or file.endswith('.log'):
                             arch_zip.write(os.path.join(
                                 folder, file), os.path.join(name[0], file), compress_type=zipfile.ZIP_DEFLATED)
-
         arch_zip.close()
         return filename_arch
 

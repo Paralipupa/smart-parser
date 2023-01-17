@@ -198,25 +198,25 @@ def get_inn(filename: str) -> str:
 
 
 def write_list(path_output: str, files: list):
-
     os.makedirs(path_output, exist_ok=True)
-
+    is_warning = False
     mess = ''
     file_output = pathlib.Path(
         path_output, f'session{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log')
     with open(file_output, 'w', encoding=ENCONING) as file:
         for item in files:
-            if item['config']:
-                file.write(
-                    f"{item['inn']} \t {item['name']} \t {item['config']}\n")
-        file.write('\n\n')
-        for item in files:
             if item['warning']:
-                s = ' '.join([f'{x}\n' for x in item['warning']]).strip()
-                mess += f"{item['inn']} \t {item['name']}: \n{s}" +'\n'
+                s = ' '.join([f'{x}' for x in item['warning']]).strip()
+                mess += "{0}{1}\t{2}: \n{3}".format(
+                    '\n\n' if mess != '' else '', item['inn'], os.path.basename(item['name']), s)
+                is_warning = True
+        if mess == '':
+            for item in files:
+                if item['config']:
+                    file.write(
+                        f"{item['inn']} \t {os.path.basename(item['name'])} \t {item['config']}\n")
         file.write(mess)
-        file.write('\n')
-    return mess
+    return file_output if is_warning else ''
 
 
 def get_hash_file(file_name: str):

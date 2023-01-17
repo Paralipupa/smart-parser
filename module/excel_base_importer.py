@@ -73,18 +73,18 @@ class ExcelBaseImporter:
                     self.is_check = False
                     return self._check_function()
         self.is_check = False
-        if self._parameters['inn']['value'][-1] != '0000000000':
+        if self._parameters['inn']['value'][-1] != '0000000000' and not re.search('000_00',self._config._config_name):
             mess = ''
             x = [x['pattern'] for x in self._config._check['pattern'] if x['is_find'] == False]
             if x:
-                mess += 'Перед таблицей не нейден текст:\n\t"{0}"\n'.format('" или "'.join(x).replace('|','" или "'))
+                mess += 'Не найден ни один из вариантов текста перед табличными данными:\n\t"{0}"\n'.format('"\n\t"'.join(x).replace('|','"\n\t"'))
             x = [x['pattern'] for x in self.get_columns_heading() if not x['optional'] and not x['active']]                
             if x:
                 s = ''
                 for patterns in x:
                     for name in patterns:
                         s += '\t'+ name+';\n'
-                mess += 'Не найдены обязательные колонки по шаблонам:\n{0}'.format(s)
+                mess += 'Не найдены обязательные колонки согласно шаблонов:\n{0}'.format(s)
             self._config._warning.append(mess)
         return False
 
@@ -497,9 +497,9 @@ class ExcelBaseImporter:
                 col = self._names[name_field]['indexes'][0][POS_INDEX_VALUE]
             else:
                 col = col + 1 if name == 'left' else col - 1
-                if not self.is_check:
-                    self._config._warning.append(
-                        f'"{item["name"]}" - не найдена граница border_column_{name}={item[name][0][POS_NUMERIC_VALUE]}')
+                # if not self.is_check:
+                #     self._config._warning.append(
+                #         f'"{item["name"]}" - не найдена граница border_column_{name}={item[name][0][POS_NUMERIC_VALUE]}')
         return col
 
     def _get_rows_header(self) -> set:
