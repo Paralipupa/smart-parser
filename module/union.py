@@ -130,7 +130,7 @@ class UnionData:
         os.makedirs(path_output, exist_ok=True)
         arch_zip = zipfile.ZipFile(
             pathlib.Path(path_output, filename_arch), 'w')
-        if not dirs:
+        if len(dirs) == 0 and self.file_log:
             arch_zip.write(self.file_log, os.path.basename(self.file_log), compress_type=zipfile.ZIP_DEFLATED)
         for key, val in dirs.items():
             path = pathlib.Path(val, key)
