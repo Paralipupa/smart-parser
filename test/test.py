@@ -1,6 +1,8 @@
 import unittest
-import os
+import os,sys
 from shutil import rmtree
+path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(path) 
 from module.utils import get_extract_files, get_hash_file
 from module.parser import Parser
 from module.settings import BASE_DIR

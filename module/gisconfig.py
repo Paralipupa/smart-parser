@@ -443,6 +443,8 @@ class GisConfig:
             fld['func_pattern'] = [x]
         else:
             fld.setdefault('func_pattern', [x])
+        # признак возврата значения функции 
+        fld['func_is_no_return'] = True if self.read_config(f'{name}', 'func_is_no_return').lower() in ('-1', '1', 'true') else False
         return fld
 
     @warning_error

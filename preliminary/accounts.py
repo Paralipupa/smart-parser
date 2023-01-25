@@ -44,11 +44,12 @@ def accounts(lines: list, path: str) -> str:
         file.write('[accounts_3]\n')
         file.write('; Идентификатор дома GUID\n')
         file.write('name=fias\n')
-        if lines["param"].get("pattern_fias") or lines["param"].get("header_fias"):
-            file.write('pattern=@0\n')
-            file.write('col_config=0\n')
-            file.write('row_data=0\n')
-            file.write('func=fias\n')
+        # if lines["param"].get("pattern_fias") or lines["param"].get("header_fias"):
+        file.write('pattern=@0\n')
+        file.write('col_config=0\n')
+        file.write('row_data=0\n')
+        file.write('func=fias\n')
+        file.write('func_is_no_return=true\n')
         file.write('\n')
 
         file.write('[accounts_4]\n')
@@ -62,7 +63,8 @@ def accounts(lines: list, path: str) -> str:
             if lines["dic"].get("room_number"):
                 file.write(
                     f'func=_+кв.+column_value({lines["dic"].get("room_number", {"col":7})["col"]})\n')
-        elif lines["param"].get("pattern_address"):
+        # elif lines["param"].get("pattern_address"):
+        else:
             file.write(f'col_config=0\n')
             file.write('row_data=0\n')
             file.write('pattern=@0\n')
@@ -71,6 +73,7 @@ def accounts(lines: list, path: str) -> str:
                     f'func=address+кв.+column_value({lines["dic"].get("room_number", {"col":7})["col"]})\n')
             else:
                 file.write(f'func=address\n')
+            file.write('func_is_no_return=true\n')
         file.write('\n')
 
         file.write('[accounts_5]\n')
@@ -166,6 +169,7 @@ def accounts(lines: list, path: str) -> str:
         file.write('col_config=0\n')
         file.write('row_data=0\n')
         file.write('func=timezone\n\n')
+        file.write('func_is_no_return=true\n')
 
         file.write('[accounts_17]\n')
         file.write(

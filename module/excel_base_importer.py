@@ -48,6 +48,7 @@ class ExcelBaseImporter:
         if not self.is_verify(self._parameters['filename']['value'][0]):
             return False
         if self._parameters['inn']['value'][-1] != '0000000000' and  self._config._parameters.get('inn') and \
+            self._config._parameters.get('inn')[0]['pattern'][0] != '@inn' and \
             not re.search(self._parameters['inn']['value'][-1], self._config._parameters.get('inn')[0]['pattern'][0]):
             return False
         self._headers = self._get_headers()
@@ -75,9 +76,6 @@ class ExcelBaseImporter:
         self.is_check = False
         if self._parameters['inn']['value'][-1] != '0000000000' and not re.search('000_00',self._config._config_name):
             mess = ''
-            x = [x['pattern'] for x in self._config._check['pattern'] if x['is_find'] == False]
-            if x:
-                mess += 'Не найден ни один из вариантов текста перед табличными данными:\n\t"{0}"\n'.format('"\n\t"'.join(x).replace('|','"\n\t"'))
             x = [x['pattern'] for x in self.get_columns_heading() if not x['optional'] and not x['active']]                
             if x:
                 s = ''
@@ -85,7 +83,12 @@ class ExcelBaseImporter:
                     for name in patterns:
                         s += '\t'+ name+';\n'
                 mess += 'Не найдены обязательные колонки согласно шаблонов:\n{0}'.format(s)
-            self._config._warning.append(mess)
+            else:
+                x = [x['pattern'] for x in self._config._check['pattern'] if x['is_find'] == False]
+                if x:
+                    mess += 'Не найден текст перед табличными данными:\n\t"{0}"\n'.format('"\n\t"'.join(x).replace('|','"\n\t"'))
+                if mess:
+                    self._config._warning.append(mess)
         return False
 
     @fatal_error
@@ -829,8 +832,17 @@ class ExcelBaseImporter:
         self._collections[name].setdefault(key, list())
         self._collections[name][key].append(doc)
         if self.get_doc_type(name) == 'dictionary' and doc.get('key') and doc.get('value'):
-            param = {'value': doc['key'], 'func': 'hash'}
-            self._dictionary[self.func(fld_param=param)] = doc['value']
+            param = {}
+            for key, value in doc.items():
+                if key == 'key':
+                    param = {'value': doc['key'], 'func': 'hash'}
+                    param['key'] = self.func(fld_param=param)
+                elif key == 'value':
+                    param['data'] = doc['value']
+                else:
+                    self._dictionary.setdefault(key, value)
+                if param.get('key') and param.get('data'):
+                    self._dictionary.setdefault(param.get('key'),param.get('data')) 
 
 # Формирование документа из полученной порции (отдельной области или иерархии)
     def set_document(self, team: dict, doc_param):
@@ -1251,16 +1263,20 @@ class ExcelBaseImporter:
                     else:
                         value += x + ' '
                 else:
-                    if self._parameters.get(name):
+                    if self._parameters.get(name) and self._parameters[name]['value'][-1]:
                         value = value.strip() + \
                             (self._parameters[name]['value'][-1]
                                 if len(self._parameters[name]['value']) > 0 else '')
+                    elif self._dictionary.get(name):
+                        value = value.strip() + self._dictionary[name]
                     elif name == '_':
                         value = value.strip() + (' ' if value else '') + \
                             self._current_value[-1]
                     else:
                         if isinstance(value, str):
                             value = value.strip() + (' ' if value else '') + name
+                        else:
+                            pass
                 if self._current_value_func[part].get(self._current_value_func[part][hash]['name']):
                     self._current_value.pop()
             self._current_value.pop()
@@ -1282,6 +1298,7 @@ class ExcelBaseImporter:
         self._current_value_row = row
         self._current_value_col = col
         self._current_value_param = fld_param
+        self._current_value_func_is_no_return = fld_param.get('func_is_no_return', False)
         self._current_value_func = {}
         part = '00000000'
         m = fld_param.get('func', '')
@@ -1290,6 +1307,11 @@ class ExcelBaseImporter:
         self._current_value.append(value)
         self.__recalc_expression(part)
         value = self._current_value.pop()
+        if self._current_value_func_is_no_return and str(value).strip():
+            for x in [x for x in re.split(r"[+-,]", fld_param.get('func',''))  if re.search('^[a-z_0-9]+$', x)]:
+                if str(value).find(x) != -1:
+                    value = ''
+                    break
         return str(value).strip()
 
 
@@ -1345,7 +1367,7 @@ class ExcelBaseImporter:
 
     def func_column_value(self):
         value = next((x[self._current_value_row]['value']
-                     for x in self._current_value_team.values() if x[self._current_value_row]['col'] == int(self._current_value[-1])), '')
+                    for x in self._current_value_team.values() if x[self._current_value_row]['col'] == int(self._current_value[-1])), '')
         return value
 
     def func_param(self):
