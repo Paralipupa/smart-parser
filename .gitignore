@@ -1,7 +1,6 @@
 *.pyc
 .venv/*
 **/output/
-**/input/
 **/download/
 test/download/*
 test/log/*
