@@ -330,6 +330,8 @@ class GisConfig:
                 f'doc_{k}', 'rows_exclude', isNumeric=True)
             doc['required_fields'] = self.read_config(
                 f'doc_{k}', 'required_fields')
+            doc['func_after'] = self.read_config(
+                f'doc_{k}', 'func_after')
             doc['fields'] = list()
             self.set_document_fields(doc)
             doc_type = self.read_config(f'doc_{k}', 'type')

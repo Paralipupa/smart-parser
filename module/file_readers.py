@@ -103,7 +103,7 @@ class XlsxFile(DataFile):
 
     @staticmethod
     def get_cell_text(cell):
-        return str(cell.value) if cell.value else ""
+        return str(cell.value) if cell.value != None else ""
 
     def get_row(self, row):
         i=0

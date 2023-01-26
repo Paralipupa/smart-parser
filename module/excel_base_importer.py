@@ -151,6 +151,7 @@ class ExcelBaseImporter:
                             self.func_inn(), row), end='', flush=True)
                 self.done()
                 self._page_index += 1
+        self.process_finish()
         return True
 
     def map_record(self, record):
@@ -160,10 +161,11 @@ class ExcelBaseImporter:
             result_record.setdefault(key, [])
             size = len(result_record[key])
             for index in value['indexes']:
-                v = record[index[POS_INDEX_VALUE]]
-                is_empty = is_empty and (v == '' or v is None)
-                result_record[key].append(
-                    {'row': size, 'col': value['col'], 'index': index[POS_INDEX_VALUE], 'value': v, 'negative': index[POS_INDEX_IS_NEGATIVE]})
+                if index[POS_INDEX_VALUE] in range(len(record)):
+                    v = record[index[POS_INDEX_VALUE]]
+                    is_empty = is_empty and (v == '' or v is None)
+                    result_record[key].append(
+                        {'row': size, 'col': value['col'], 'index': index[POS_INDEX_VALUE], 'value': v, 'negative': index[POS_INDEX_IS_NEGATIVE]})
         return result_record if not is_empty else None
 
     def append_team(self, mapped_record: list) -> bool:
@@ -823,6 +825,12 @@ class ExcelBaseImporter:
             self.document_split_one_line(doc, doc_param)
         self._teams.remove(team)
 
+    def process_finish(self) -> NoReturn:
+        for doc_param in self.get_config_documents():
+            if doc_param.get('func_after'):
+                param = {'value': '', 'func': doc_param['func_after']}
+                self.func(fld_param=param, team=self._collections.get(doc_param['name']))
+
 ################################################################################################################################################
 # --------------------------------------------------- Документы --------------------------------------------------------------------------------
 ################################################################################################################################################
@@ -1197,6 +1205,7 @@ class ExcelBaseImporter:
             'dictionary': self.func_dictionary,
             'to_date': self.func_to_date,
             'id': self.func_id,
+            'check_bank_accounts': self.func_bank_accounts,
         }
         self._current_value = list()
         self._current_id = ''
@@ -1263,12 +1272,12 @@ class ExcelBaseImporter:
                     else:
                         value += x + ' '
                 else:
-                    if self._parameters.get(name) and self._parameters[name]['value'][-1]:
+                    if self._dictionary.get(name):
+                        value = value.strip() + self._dictionary[name]
+                    elif self._parameters.get(name):
                         value = value.strip() + \
                             (self._parameters[name]['value'][-1]
                                 if len(self._parameters[name]['value']) > 0 else '')
-                    elif self._dictionary.get(name):
-                        value = value.strip() + self._dictionary[name]
                     elif name == '_':
                         value = value.strip() + (' ' if value else '') + \
                             self._current_value[-1]
@@ -1397,3 +1406,18 @@ class ExcelBaseImporter:
     def func_dictionary(self):
         return self._dictionary.get(self._current_value[-1], '')
         # return self._current_value[-1]+'('+self._dictionary.get(self._current_value[-1],'')+')'
+
+    def func_bank_accounts(self):
+        if not self._current_value_team:
+            return ''
+        d = {}
+        u = {}
+        for item in self._current_value_team['noname']:
+            d.setdefault(item.get('internal_id'), item)
+        for item in d.values():
+            u.setdefault(item['account_number'], 0)
+            u[item['account_number']] += 1
+        if [x for x in u.values() if x>1]:
+            mess = 'Конфликт в расчетном счете по капитальному ремонту'
+            self._config._warning.append(mess)
+        return ''
