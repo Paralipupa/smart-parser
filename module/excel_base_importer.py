@@ -29,8 +29,6 @@ class ExcelBaseImporter:
         self._teams = list()  # список областей с данными
         self._dictionary = dict()
         self._columns = dict()
-        self._page_index = 0
-        self._page_name = ''
         self._headers = data
         self.colontitul = {'status': 0, 'is_parameters': False, 'head': list(
         ), 'foot': list()}  # список  записей до и после табличных данных
@@ -42,14 +40,16 @@ class ExcelBaseImporter:
         self._parameters['config'] = {'fixed': True, 'value': [config_file]}
         self._collections = dict()  # коллекция выходных таблиц
         self._config = GisConfig(config_file)
+        self._page_index = self._config._page_index[0][POS_NUMERIC_VALUE]
+        self._page_name = self._config._page_name
         self.__set_functions()
 
     def check(self, is_warning: bool = False) -> bool:
         if not self.is_verify(self._parameters['filename']['value'][0]):
             return False
-        if self._parameters['inn']['value'][-1] != '0000000000' and  self._config._parameters.get('inn') and \
-            self._config._parameters.get('inn')[0]['pattern'][0] != '@inn' and \
-            not re.search(self._parameters['inn']['value'][-1], self._config._parameters.get('inn')[0]['pattern'][0]):
+        if self._parameters['inn']['value'][-1] != '0000000000' and self._config._parameters.get('inn') and \
+                self._config._parameters.get('inn')[0]['pattern'][0] != '@inn' and \
+                not re.search(self._parameters['inn']['value'][-1], self._config._parameters.get('inn')[0]['pattern'][0]):
             return False
         self._headers = self._get_headers()
         if not self._headers:
@@ -74,19 +74,23 @@ class ExcelBaseImporter:
                     self.is_check = False
                     return self._check_function()
         self.is_check = False
-        if self._parameters['inn']['value'][-1] != '0000000000' and not re.search('000_00',self._config._config_name):
+        if self._parameters['inn']['value'][-1] != '0000000000' and not re.search('000_00', self._config._config_name):
             mess = ''
-            x = [x['pattern'] for x in self.get_columns_heading() if not x['optional'] and not x['active']]                
+            x = [x['pattern'] for x in self.get_columns_heading(
+            ) if not x['optional'] and not x['active']]
             if x:
                 s = ''
                 for patterns in x:
                     for name in patterns:
-                        s += '\t'+ name+';\n'
-                mess += 'Не найдены обязательные колонки согласно шаблонов:\n{0}'.format(s)
+                        s += '\t' + name+';\n'
+                mess += 'Не найдены обязательные колонки согласно шаблонов:\n{0}'.format(
+                    s)
             else:
-                x = [x['pattern'] for x in self._config._check['pattern'] if x['is_find'] == False]
+                x = [x['pattern'] for x in self._config._check['pattern']
+                     if x['is_find'] == False]
                 if x:
-                    mess += 'Не найден текст перед табличными данными:\n\t"{0}"\n'.format('"\n\t"'.join(x).replace('|','"\n\t"'))
+                    mess += 'Не найден текст перед табличными данными:\n\t"{0}"\n'.format(
+                        '"\n\t"'.join(x).replace('|', '"\n\t"'))
                 if mess:
                     self._config._warning.append(mess)
         return False
@@ -113,14 +117,13 @@ class ExcelBaseImporter:
             self._col_start = col_start[0]
             pages = list()
             page_indexes = self.get_page_index()
-            page_names = self.get_page_name().split(',')
-            if page_names:
-                pages = [(x, False) for x in page_names]
+            if self.get_page_name():
+                pages = [(x, False) for x in self.get_page_name().split(',')]
             else:
-                pages += page_indexes
+                pages.append(page_indexes)
             for page in pages:
-                self._page_name = page[POS_PAGE_VALUE] if not page[POS_PAGE_IS_FIX] else ''
-                self._page_index = page[POS_PAGE_VALUE] if page[POS_PAGE_IS_FIX] else 0
+                self._page_name = page[POS_PAGE_VALUE] if isinstance(page[POS_PAGE_VALUE], str) else ''
+                self._page_index = page[POS_PAGE_VALUE] if isinstance(page[POS_PAGE_VALUE], int) else 0
                 names = None
                 row = 0
                 if not self.get_header('pattern'):
@@ -752,7 +755,7 @@ class ExcelBaseImporter:
                                 for x in d['fields'] if x['name'] == name_field), '')
                 for item in doc[name_field]:
                     val = self._get_value(str(item['value']), '.+', fld_type)
-                    if ((fld_type=='' or fld_type=='str') and val.strip() != '') or ((fld_type=='float' or fld_type=='int') and val != 0):
+                    if ((fld_type == '' or fld_type == 'str') and val.strip() != '') or ((fld_type == 'float' or fld_type == 'int') and val != 0):
                         s.add(item['row'])
         return s
 
@@ -772,7 +775,6 @@ class ExcelBaseImporter:
     def done(self):
         if len(self._teams) != 0:
             self.process_record(self._teams[-1])
-
 
     def change_pp(self):
         if len(self._columns) == 0:
@@ -829,7 +831,8 @@ class ExcelBaseImporter:
         for doc_param in self.get_config_documents():
             if doc_param.get('func_after'):
                 param = {'value': '', 'func': doc_param['func_after']}
-                self.func(fld_param=param, team=self._collections.get(doc_param['name']))
+                self.func(fld_param=param,
+                          team=self._collections.get(doc_param['name']))
 
 ################################################################################################################################################
 # --------------------------------------------------- Документы --------------------------------------------------------------------------------
@@ -850,7 +853,8 @@ class ExcelBaseImporter:
                 else:
                     self._dictionary.setdefault(key, value)
                 if param.get('key') and param.get('data'):
-                    self._dictionary.setdefault(param.get('key'),param.get('data')) 
+                    self._dictionary.setdefault(
+                        param.get('key'), param.get('data'))
 
 # Формирование документа из полученной порции (отдельной области или иерархии)
     def set_document(self, team: dict, doc_param):
@@ -1055,7 +1059,8 @@ class ExcelBaseImporter:
             self._parameters['address']['value'].append('')
         self.colontitul['is_parameters'] = True
         if self._parameters['inn']['value'][0] != '0000000000' and self._config._parameters.get('inn'):
-            l = [x for x in self._config._parameters['inn'] if x['pattern'][0].find(self._parameters['inn']['value'][0]) !=-1 ]
+            l = [x for x in self._config._parameters['inn'] if x['pattern']
+                 [0].find(self._parameters['inn']['value'][0]) != -1]
             if not l:
                 raise InnMismatchException
 
@@ -1082,7 +1087,7 @@ class ExcelBaseImporter:
                                 result = self._get_value_after_validation(
                                     pattern, 'head' if is_head else 'foot', row[0], col[0])
                                 if result:
-                                    if param['offset_pattern']: 
+                                    if param['offset_pattern']:
                                         if not param['offset_row']:
                                             param['offset_row'].append(
                                                 (0, False))
@@ -1101,7 +1106,6 @@ class ExcelBaseImporter:
                                         break
 
         return self._parameters[name]
-
 
     def is_init(self) -> bool:
         return self._config._is_init
@@ -1289,7 +1293,8 @@ class ExcelBaseImporter:
                 if self._current_value_func[part].get(self._current_value_func[part][hash]['name']):
                     self._current_value.pop()
             self._current_value.pop()
-            self._current_value.append(value.rstrip() if isinstance(value, str) else value)
+            self._current_value.append(
+                value.rstrip() if isinstance(value, str) else value)
 
     def func(self, team: dict = {}, fld_param: dict = {}, row: int = 0, col: int = 0) -> str:
         self._current_id = fld_param.get('value', '')
@@ -1307,7 +1312,8 @@ class ExcelBaseImporter:
         self._current_value_row = row
         self._current_value_col = col
         self._current_value_param = fld_param
-        self._current_value_func_is_no_return = fld_param.get('func_is_no_return', False)
+        self._current_value_func_is_no_return = fld_param.get(
+            'func_is_no_return', False)
         self._current_value_func = {}
         part = '00000000'
         m = fld_param.get('func', '')
@@ -1317,12 +1323,11 @@ class ExcelBaseImporter:
         self.__recalc_expression(part)
         value = self._current_value.pop()
         if self._current_value_func_is_no_return and str(value).strip():
-            for x in [x for x in re.split(r"[+-,]", fld_param.get('func',''))  if re.search('^[a-z_0-9]+$', x)]:
+            for x in [x for x in re.split(r"[+-,]", fld_param.get('func', '')) if re.search('^[a-z_0-9]+$', x)]:
                 if str(value).find(x) != -1:
                     value = ''
                     break
         return str(value).strip()
-
 
     def func_inn(self):
         if self._parameters['inn']['value'][0] != '0000000000':
@@ -1376,7 +1381,7 @@ class ExcelBaseImporter:
 
     def func_column_value(self):
         value = next((x[self._current_value_row]['value']
-                    for x in self._current_value_team.values() if x[self._current_value_row]['col'] == int(self._current_value[-1])), '')
+                      for x in self._current_value_team.values() if x[self._current_value_row]['col'] == int(self._current_value[-1])), '')
         return value
 
     def func_param(self):
@@ -1417,7 +1422,7 @@ class ExcelBaseImporter:
         for item in d.values():
             u.setdefault(item['account_number'], 0)
             u[item['account_number']] += 1
-        if [x for x in u.values() if x>1]:
+        if [x for x in u.values() if x > 1]:
             mess = 'Конфликт в расчетном счете по капитальному ремонту'
             self._config._warning.append(mess)
         return ''

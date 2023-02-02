@@ -84,7 +84,7 @@ class XlsFile(DataFile):
         pass
 
 class XlsxFile(DataFile):
-    def __init__(self, fname, sheet_name, first_line, columns, page_index=0):
+    def __init__(self, fname, sheet_name, first_line, columns, page_index=-1):
         super(XlsxFile, self).__init__(fname, sheet_name, first_line, columns)
         try:
             self._wb = load_workbook(filename=fname)
@@ -93,8 +93,14 @@ class XlsxFile(DataFile):
 
         if self._sheet_name:
             self._ws = self._wb.get_sheet_by_name(self._sheet_name)
-        else:
+        elif page_index != -1:
             self._ws = self._wb.worksheets[page_index]
+        else:
+            rows = -1
+            for sh in self._wb.worksheets:
+                if sh.max_row > rows:
+                    self._ws = sh
+                    rows = sh.max_row
         self._cursor = self._ws.iter_rows()
         row_num = 0
         while row_num < self._first_line:

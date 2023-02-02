@@ -3,9 +3,8 @@
 ;pp: @credit		@bill_value	@payment_value	@payment_date	@saldo
 name:ЖСК "414"
 check_pattern:Отчёт "Ведомость начислений по жителям"|ОСВ
-;pattern_inn:@7806036598
-;pattern_account_number:@40703810555130109990
-;pattern_bik:@044030653
+main_page_index:-1
+main_max_rows_heading:450
 
 pattern_period:(?<=по )[0-9]{2}[.][0-9]{2}[.][0-9]{2,4}
 pattern_period:(?<=за )[А-Яа-яЁё]+\s[0-9]{4}
@@ -15,7 +14,7 @@ pattern_address:(?<=ОСВ )(?:.)+(?= c )
 pattern_ЛС:^[0-9]{13}$
 pattern_ЛС:^(?![0-9])[А-Яа-яЁё"«»-]+\s["«»А-Яа-яЁё-]+
 
-0:Лицевой счет
+0:Лицевой счет;лицевой счёт
 0:Сальдо Вх.@credit	Начисление;Дебет@bill_value	Оплачено;Кредит@payment_value	Сальдо исх.@saldo
 0:Дата оп.@payment_date
 0:Пени	Начислено	Квартира;№ пом.;№ кв.@room_number	Проживает@living_person_number

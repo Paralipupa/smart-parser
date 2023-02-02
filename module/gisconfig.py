@@ -88,8 +88,7 @@ class GisConfig:
         self.set_parameters()
         self.set_table_columns()
         self.set_documents()
-        self._is_unique = len(self._page_name) != 0 or len(
-            self._page_index) != 1 or self._page_index[0][0] != 0
+        self._is_unique = len(self._page_name) != 0
         self._is_init = True
 
     def set_main(self):
