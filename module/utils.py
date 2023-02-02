@@ -214,7 +214,12 @@ def write_list(path_output: str, files: list):
             for item in files:
                 if item['config']:
                     file.write(
-                        f"{item['inn']} \t {os.path.basename(item['name'])} \t {item['config']}\n")
+                        f"{item['inn']} \t {os.path.basename(item['name'])} \t {os.path.basename(item['config'])}\n")
+                else:
+                    file.write(
+                        f"{item['inn']} \t {os.path.basename(item['name'])} \t не распознан\n")
+                    is_warning = True
+
         file.write(mess)
     return file_output if is_warning else ''
 

@@ -129,7 +129,7 @@ class TestGisConfig(unittest.TestCase):
         hash_origin, hash_download = self.__check()
         self.assertEqual(hash_origin, hash_download)
 
-    def test_414(self):
+    def test_t414(self):
         self.parser.name = os.path.join(BASE_DIR, 'test', 'input', '414.zip')
         self.parser.download_file = '414.zip'
         self.__remove_download()
