@@ -775,7 +775,8 @@ class ExcelBaseImporter:
     def done(self):
         if len(self._teams) != 0:
             self.process_record(self._teams[-1])
-
+    
+    # Добавляем услуги, отсутствующие в конфигурации, но имеющиеся в заголовках таблицы
     def change_pp(self):
         if len(self._columns) == 0:
             return
@@ -789,7 +790,7 @@ class ExcelBaseImporter:
                     ls = []
                     for key, name in self._columns.items():
                         ls.append(fld['sub'][-1].copy())
-                        ls[-1]['func'] = ls[-1]['func'].replace('Прочие', name)
+                        ls[-1]['func'] = ls[-1]['func'].replace('Прочие', name.replace(',',' '))
                         if len(fld['sub'][-1]['offset_column']) > 0:
                             l = [
                                 x for x in self._config._columns_heading if x['name'] == get_ident(name)]
@@ -799,6 +800,7 @@ class ExcelBaseImporter:
                     fld['sub'][-1]['offset_column'] = [(-1, True, False)]
                     fld['sub'].extend(ls)
 
+    # Добавляем колонки, отсутствующие в конфигурации, но имеющиеся в заголовках таблицы
     def change_heading(self):
         for key, name in self._columns.items():
             l = self._config._columns_heading[-1].copy()

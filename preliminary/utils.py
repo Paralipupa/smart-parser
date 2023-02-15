@@ -21,7 +21,7 @@ def get_reg(name: str) -> str:
     name = name.replace('[', '\[').replace(']', '\]')
     name = name.replace('(', '\(').replace(')', '\)')
     name = name.replace('.', '[.]').replace('_', '')
-    return f'^{name.rstrip().replace(";","$;^")}$'
+    return f'^{name.rstrip().replace(";","$;^")}$' if name.find('^')==-1 and name.find('$')==-1 else name.rstrip()
 
 
 def get_name(name: str, names: list) -> str:
