@@ -31,19 +31,20 @@ class UnionData:
             period : list = [datetime.now().strftime('%m%Y')]
             for file in files:
                 for fn in DOCUMENTS.split():
-                    inn: list = re.findall(
-                        '^[0-9]{8,10}(?=_)', file, re.IGNORECASE)
                     name: list = re.findall(
                         '(?<=[0-9]{1}_)'+fn+'(?=\.json)', file, re.IGNORECASE)
-                    if not re.search('bank',file):
-                        period = re.findall(
-                            '(?<=[0-9]{1}_)[0-9]{2}[0-9]{4}(?=_)', file, re.IGNORECASE)
-                    if inn and name and period:
-                        del_files.append(file)
-                        data.setdefault(inn[0], dict())
-                        data[inn[0]].setdefault(f'{name[0]}@{period[0]}', [])
-                        data[inn[0]][f'{name[0]}@{period[0]}'].append(
-                            self.__get_data(path_input, file))
+                    if name:
+                        inn: list = re.findall(
+                            '^[0-9]{8,10}(?=_)', file, re.IGNORECASE)
+                        if not re.search('bank',fn) and not re.search('tarif',fn):
+                            period = re.findall(
+                                '(?<=[0-9]{1}_)[0-9]{2}[0-9]{4}(?=_)', file, re.IGNORECASE)
+                        if inn and name and period:
+                            del_files.append(file)
+                            data.setdefault(inn[0], dict())
+                            data[inn[0]].setdefault(f'{name[0]}@{period[0]}', [])
+                            data[inn[0]][f'{name[0]}@{period[0]}'].append(
+                                self.__get_data(path_input, file))
             for inn, item in data.items():
                 for id_period, files in item.items():
                     file_data = {}

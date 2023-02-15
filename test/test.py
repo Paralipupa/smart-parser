@@ -49,7 +49,7 @@ class TestGisConfig(unittest.TestCase):
         for item in miss_lines:
             if item['value']:
                 files_new.append(item['name'])
-                with open(os.path.join(path_log, f"{item['name']}"), 'a', encoding=ENCONING) as f:
+                with open(os.path.join(path_log, f"{os.path.basename(path_old).split('_')[0]}_{item['name']}"), 'a', encoding=ENCONING) as f:
                     f.writelines(
                         map(lambda x: x + '\n', item['value']))
         return files_new
@@ -132,6 +132,7 @@ class TestGisConfig(unittest.TestCase):
     def test_t414(self):
         self.parser.name = os.path.join(BASE_DIR, 'test', 'input', '414.zip')
         self.parser.download_file = '414.zip'
+        self.parser.inn = '7825455026'
         self.__remove_download()
         self.parser.start()
         hash_origin, hash_download = self.__check()
