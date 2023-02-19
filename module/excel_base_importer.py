@@ -857,13 +857,13 @@ class ExcelBaseImporter:
                 elif re.search('^value', key):
                     param['data'] = value
                 else:
-                    self._dictionary.setdefault(key, [])
-                    if not value in self._dictionary[key]:
-                        self._dictionary[key].append(value)
+                    self._dictionary.setdefault(key.lower(), [])
+                    if not value in self._dictionary[key.lower()]:
+                        self._dictionary[key.lower()].append(value)
                 if param.get('key') and param.get('data'):
-                    self._dictionary.setdefault(param['key'], [])
-                    if not param['data'] in self._dictionary[param['key']]:
-                        self._dictionary[param['key']].append(param['data'])
+                    self._dictionary.setdefault(param['key'].lower(), [])
+                    if not param['data'] in self._dictionary[param['key'].lower()]:
+                        self._dictionary[param['key'].lower()].append(param['data'])
 
 # Формирование документа из полученной порции (отдельной области или иерархии)
     def set_document(self, team: dict, doc_param):
@@ -1294,8 +1294,8 @@ class ExcelBaseImporter:
                     else:
                         value += x + ' '
                 else:
-                    if self._dictionary.get(name):
-                        value = value.strip() + self._dictionary[name][0]
+                    if self._dictionary.get(name.lower()):
+                        value = value.strip() + self._dictionary[name.lower()][0]
                     elif self._parameters.get(name):
                         value = value.strip() + \
                             (self._parameters[name]['value'][-1]
@@ -1383,7 +1383,7 @@ class ExcelBaseImporter:
         return ''
 
     def func_hash(self):
-        return _hashit(str(self._current_value[-1]).encode('utf-8')) if self.is_hash else self._current_value[-1]
+        return _hashit(str(self._current_value[-1]).lower().encode('utf-8')) if self.is_hash else self._current_value[-1]
 
     def func_uuid(self):
         return str(uuid.uuid5(uuid.NAMESPACE_X500, self._current_value[-1]))
@@ -1460,10 +1460,10 @@ class ExcelBaseImporter:
             return ''
 
     def func_dictionary(self):
-        return self._dictionary.get(self._current_value[-1], [])[self._current_index] \
-            if len(self._dictionary.get(self._current_value[-1], [])) > self._current_index else \
-            self._dictionary.get(self._current_value[-1], [])[-1] \
-            if len(self._dictionary.get(self._current_value[-1], [])) > 0 else ''
+        return self._dictionary.get(self._current_value[-1].lower(), [])[self._current_index] \
+            if len(self._dictionary.get(self._current_value[-1].lower(), [])) > self._current_index else \
+            self._dictionary.get(self._current_value[-1].lower(), [])[-1] \
+            if len(self._dictionary.get(self._current_value[-1].lower(), [])) > 0 else ''
 
     def func_bank_accounts(self):
         if not self._current_value_team:
