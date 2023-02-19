@@ -67,6 +67,10 @@ def set_columns(lines: list, path: str) -> str:
             file.write('\n')
 
         for i, line in enumerate(lines["1"]):
+            offset = re.findall('{{.+}}', line['name'])
+            if offset:
+                line['name'] = line['name'].replace(offset[0],'')
+                offset = offset[0].replace('{','').replace('}','').split(';')
             index = line['name'].find("@")
             if index != -1:
                 lines['dic'][line['name']
@@ -90,6 +94,10 @@ def set_columns(lines: list, path: str) -> str:
                 if lines["param"].get("main_border_column_right"):
                     file.write(
                         f'border_column_right={lines["param"].get("main_border_column_right", ["4"])[0]}\n')
+            if offset:
+                file.write(f'offset_row={offset[0] if len(offset)>0 else ""}\n')
+                file.write(f'offset_col={offset[1] if len(offset)>1 else ""}\n')
+                file.write(f'offset_pattern={offset[2] if len(offset)>2 else ""}\n')
             file.write('is_optional=true\n')
             if is_duplicate:
                 file.write(f'is_duplicate=true\n')

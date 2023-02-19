@@ -44,6 +44,7 @@ class ExcelBaseImporter:
         self._page_name = self._config._page_name
         self.__set_functions()
 
+    # Проверка совместимости файла конфигурации
     def check(self, is_warning: bool = False) -> bool:
         if not self.is_verify(self._parameters['filename']['value'][0]):
             return False
@@ -1419,11 +1420,17 @@ class ExcelBaseImporter:
             return ''
         d = {}
         u = {}
+        exist_overhaul = False
         for item in self._current_value_team['noname']:
             d.setdefault(item.get('internal_id'), item)
         for item in d.values():
+            if item.get('is_overhaul'):
+                exist_overhaul = True
             u.setdefault(item['account_number'], 0)
             u[item['account_number']] += 1
+        if exist_overhaul == False:
+            mess = 'В тарифах отсутствует колонка "Кап.ремонт"'
+            self._config._warning.append(mess)
         if [x for x in u.values() if x > 1]:
             mess = 'Конфликт в расчетном счете по капитальному ремонту'
             self._config._warning.append(mess)

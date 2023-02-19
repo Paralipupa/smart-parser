@@ -1,25 +1,23 @@
 ;Лицевой счет;Сальдо начальное;Начисление;Оплата;Сальдо конечное;Пени;Адрес;Квартира;Проживает;Площадь
 ;accounts: @address	@room_number	@living_person_number	@total_square	@account_identifier	@account_number
 ;pp: @credit		@bill_value	@payment_value	@payment_date	@saldo
-name:ТСЖ "Чудновского 8/4"
-check_pattern:Чудновского
-pattern_inn:@7811153924
-pattern_account_number:@40703810455130000034
-pattern_bik:@044030653
+name:ЖСК "414"
+check_pattern:Отчёт "Ведомость начислений по жителям"|ОСВ
+main_page_index:-1
+main_max_rows_heading:450
 
 pattern_period:(?<=по )[0-9]{2}[.][0-9]{2}[.][0-9]{2,4}
 pattern_period:(?<=за )[А-Яа-яЁё]+\s[0-9]{4}
-;pattern_address:@г Санкт-Петербург, ул Чудновского, д. 8 корп. 4
 pattern_address:(?<=Адрес: )(?:.)+(?=Отчёт)
 pattern_address:(?<=ОСВ )(?:.)+(?= c )
-pattern_fias:@2b2b0369-b132-425b-a42f-909cfde51e99
+;pattern_fias:@a67d1dfe-67a2-48ae-955b-1c64d8c35da9
 pattern_ЛС:^[0-9]{13}$
 pattern_ЛС:^(?![0-9])[А-Яа-яЁё"«»-]+\s["«»А-Яа-яЁё-]+
 
-0:Лицевой счет
+0:Лицевой счет;лицевой счёт
 0:Сальдо Вх.@credit	Начисление;Дебет@bill_value	Оплачено;Кредит@payment_value	Сальдо исх.@saldo
 0:Дата оп.@payment_date
-0:Пени	Начислено	Квартира;№ пом.;№ кв.@room_number	Проживает@living_person_number
+0:Начислено	Квартира;№ пом.;№ кв.@room_number	Проживает@living_person_number
 0:>Площадь;Площадь, м2@total_square	Прописано
 0:Лицевой счет@account_number@account_identifier::[0-9]+-?[A-Za-zА-Яа-я]?
-1:Услуги
+1:ПениКапремонт;Пени{{+0;-1;кап}}
