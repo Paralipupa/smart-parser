@@ -123,8 +123,10 @@ class ExcelBaseImporter:
             else:
                 pages.append(page_indexes)
             for page in pages:
-                self._page_name = page[POS_PAGE_VALUE] if isinstance(page[POS_PAGE_VALUE], str) else ''
-                self._page_index = page[POS_PAGE_VALUE] if isinstance(page[POS_PAGE_VALUE], int) else 0
+                self._page_name = page[POS_PAGE_VALUE] if isinstance(
+                    page[POS_PAGE_VALUE], str) else ''
+                self._page_index = page[POS_PAGE_VALUE] if isinstance(
+                    page[POS_PAGE_VALUE], int) else 0
                 names = None
                 row = 0
                 if not self.get_header('pattern'):
@@ -776,7 +778,7 @@ class ExcelBaseImporter:
     def done(self):
         if len(self._teams) != 0:
             self.process_record(self._teams[-1])
-    
+
     # Добавляем услуги, отсутствующие в конфигурации, но имеющиеся в заголовках таблицы
     def change_pp(self):
         if len(self._columns) == 0:
@@ -785,13 +787,14 @@ class ExcelBaseImporter:
                 in ('pp_charges', 'pp_service')]
         for doc in docs:
             flds = [x for x in doc['fields'] if x['name'] in (
-                'internal_id', 'calc_value', 'tariff', 'service_internal_id', 'recalculation', 'accounting_period_total', 'name', 'kind')]
+                'internal_id', 'pp_internal_id', 'calc_value', 'tariff', 'service_internal_id', 'recalculation', 'accounting_period_total', 'name', 'kind')]
             for fld in flds:
                 if fld['sub']:
                     ls = []
                     for key, name in self._columns.items():
                         ls.append(fld['sub'][-1].copy())
-                        ls[-1]['func'] = ls[-1]['func'].replace('Прочие', name.replace(',',' '))
+                        ls[-1]['func'] = ls[-1]['func'].replace(
+                            'Прочие', name.replace(',', ' '))
                         if len(fld['sub'][-1]['offset_column']) > 0:
                             l = [
                                 x for x in self._config._columns_heading if x['name'] == get_ident(name)]
@@ -851,13 +854,16 @@ class ExcelBaseImporter:
                 if key == 'key':
                     param = {'value': doc['key'], 'func': 'hash'}
                     param['key'] = self.func(fld_param=param)
-                elif key == 'value':
-                    param['data'] = doc['value']
+                elif re.search('^value', key):
+                    param['data'] = value
                 else:
-                    self._dictionary.setdefault(key, value)
+                    self._dictionary.setdefault(key, [])
+                    if not value in self._dictionary[key]:
+                        self._dictionary[key].append(value)
                 if param.get('key') and param.get('data'):
-                    self._dictionary.setdefault(
-                        param.get('key'), param.get('data'))
+                    self._dictionary.setdefault(param['key'], [])
+                    if not param['data'] in self._dictionary[param['key']]:
+                        self._dictionary[param['key']].append(param['data'])
 
 # Формирование документа из полученной порции (отдельной области или иерархии)
     def set_document(self, team: dict, doc_param):
@@ -1198,6 +1204,8 @@ class ExcelBaseImporter:
             'period_month': self.func_period_month,
             'period_year': self.func_period_year,
             'column_name': self.func_column_name,
+            'account_number': self.func_account_number,
+            'bik': self.func_bik,
             'column_value': self.func_column_value,
             'hash': self.func_hash,
             'guid': self.func_uuid,
@@ -1263,10 +1271,17 @@ class ExcelBaseImporter:
         for item in self._current_value_func[part]['expression'].split(','):
             value = self._current_value_empty
             for index, hash in enumerate(re.split(r"[+-]", item)):
+                self._current_index = 0
                 name = self._current_value_func[part][hash]['name']
+                if re.search(r'(?<=\[)\d(?=\])', name):
+                    self._current_index = int(
+                        re.findall(r'(?<=\[)\d(?=\])', name)[0])
+                    name = re.findall('.+(?=\[)', name)[0]
                 if self._current_value_func[part].get(name):
                     self._current_value.append(value)
+                    ind = self._current_index
                     self.__recalc_expression(name)
+                    self._current_index = ind
                     name = self._current_value_func[part][name]['name']
                 if self.funcs.get(name.strip()):
                     f = self.funcs.get(name.strip())
@@ -1280,7 +1295,7 @@ class ExcelBaseImporter:
                         value += x + ' '
                 else:
                     if self._dictionary.get(name):
-                        value = value.strip() + self._dictionary[name]
+                        value = value.strip() + self._dictionary[name][0]
                     elif self._parameters.get(name):
                         value = value.strip() + \
                             (self._parameters[name]['value'][-1]
@@ -1301,6 +1316,7 @@ class ExcelBaseImporter:
 
     def func(self, team: dict = {}, fld_param: dict = {}, row: int = 0, col: int = 0) -> str:
         self._current_id = fld_param.get('value', '')
+        self._current_index = 0
         self._current_value = list()
         if fld_param.get('is_offset'):
             value = fld_param.get('value_o', '')
@@ -1411,9 +1427,43 @@ class ExcelBaseImporter:
     def func_opposite(self):
         return str(-self._current_value) if isinstance(self._current_value, float) else self._current_value
 
+    def func_account_number(self):
+        if self._dictionary.get('account_number'):
+            if re.search('кр\s|кап',self._parameters['filename']['value'][0].lower()):
+                return self._dictionary.get('account_number',[])[-1] if len(self._dictionary.get('account_number',[])) != 0 else ''
+            else:
+                return self._dictionary.get('account_number',[])[0] if len(self._dictionary.get('account_number',[])) != 0 else ''
+        elif self._parameters.get('account_number'):
+            if re.search('кр\s|кап',self._parameters['filename']['value'][0].lower()):
+                return self._parameters.get('account_number',{'value':['']})['value'][-1] \
+                    if len(self._parameters.get('account_number',{'value':['']})['value']) != 0 else ''
+            else:
+                return self._parameters.get('account_number',{'value':['']})['value'][0] \
+                    if len(self._parameters.get('account_number',{'value':['']})['value']) != 0 else ''
+        else:
+            return ''
+
+    def func_bik(self):
+        if self._dictionary.get('bik'):
+            if re.search('кр\s|кап',self._parameters['filename']['value'][0].lower()):
+                return self._dictionary.get('bik',[])[-1] if len(self._dictionary.get('bik',[])) != 0 else ''
+            else:
+                return self._dictionary.get('bik',[])[0] if len(self._dictionary.get('bik',[])) != 0 else ''
+        elif self._parameters.get('bik'):
+            if re.search('кр\s|кап',self._parameters['filename']['value'][0].lower()):
+                return self._parameters.get('bik',{'value':['']})['value'][-1] \
+                    if len(self._parameters.get('bik',{'value':['']})['value']) != 0 else ''
+            else:
+                return self._parameters.get('bik',{'value':['']})['value'][0] \
+                    if len(self._parameters.get('bik',{'value':['']})['value']) != 0 else ''
+        else:
+            return ''
+
     def func_dictionary(self):
-        return self._dictionary.get(self._current_value[-1], '')
-        # return self._current_value[-1]+'('+self._dictionary.get(self._current_value[-1],'')+')'
+        return self._dictionary.get(self._current_value[-1], [])[self._current_index] \
+            if len(self._dictionary.get(self._current_value[-1], [])) > self._current_index else \
+            self._dictionary.get(self._current_value[-1], [])[-1] \
+            if len(self._dictionary.get(self._current_value[-1], [])) > 0 else ''
 
     def func_bank_accounts(self):
         if not self._current_value_team:

@@ -23,7 +23,7 @@ def pp(lines:list, path: str):
         file.write('pattern=@0\n')
         file.write('col_config=0\n')
         file.write('row_data=0\n')
-        file.write('func=id+ПД,spacerepl,hash\n\n')
+        file.write('func=id+account_number,spacerepl,hash\n\n')
 
         file.write('[pp_2]\n')
         file.write('; Внутренний идентификатор ЛС\n')
