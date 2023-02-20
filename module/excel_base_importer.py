@@ -857,13 +857,13 @@ class ExcelBaseImporter:
                 elif re.search('^value', key):
                     param['data'] = value
                 else:
-                    self._dictionary.setdefault(key.lower(), [])
-                    if not value in self._dictionary[key.lower()]:
-                        self._dictionary[key.lower()].append(value)
+                    self._dictionary.setdefault(self.__get_index_key(key), [])
+                    if not value in self._dictionary[self.__get_index_key(key)]:
+                        self._dictionary[self.__get_index_key(key)].append(value)
                 if param.get('key') and param.get('data'):
-                    self._dictionary.setdefault(param['key'].lower(), [])
-                    if not param['data'] in self._dictionary[param['key'].lower()]:
-                        self._dictionary[param['key'].lower()].append(param['data'])
+                    self._dictionary.setdefault(self.__get_index_key(param['key']), [])
+                    if not param['data'] in self._dictionary[self.__get_index_key(param['key'])]:
+                        self._dictionary[self.__get_index_key(param['key'])].append(param['data'])
 
 # Формирование документа из полученной порции (отдельной области или иерархии)
     def set_document(self, team: dict, doc_param):
@@ -1233,6 +1233,9 @@ class ExcelBaseImporter:
                 a.append(index)
         return min(a) if a else -1
 
+    def __get_index_key(self, line: str) -> str:
+        return re.sub('[-.,() ]', '', line).lower()
+
     def __get_func_list(self, part: str, names: str):
         self._current_value_func.setdefault(part, {})
         list_sub = re.findall('[a-z_0-9]+\(.+\)', names)
@@ -1294,8 +1297,8 @@ class ExcelBaseImporter:
                     else:
                         value += x + ' '
                 else:
-                    if self._dictionary.get(name.lower()):
-                        value = value.strip() + self._dictionary[name.lower()][0]
+                    if self._dictionary.get(self.__get_index_key(name)):
+                        value = value.strip() + self._dictionary[self.__get_index_key(name)][0]
                     elif self._parameters.get(name):
                         value = value.strip() + \
                             (self._parameters[name]['value'][-1]
@@ -1383,7 +1386,7 @@ class ExcelBaseImporter:
         return ''
 
     def func_hash(self):
-        return _hashit(str(self._current_value[-1]).lower().encode('utf-8')) if self.is_hash else self._current_value[-1]
+        return _hashit(str(self.__get_index_key(self._current_value[-1])).encode('utf-8')) if self.is_hash else self._current_value[-1]
 
     def func_uuid(self):
         return str(uuid.uuid5(uuid.NAMESPACE_X500, self._current_value[-1]))
@@ -1428,13 +1431,14 @@ class ExcelBaseImporter:
         return str(-self._current_value) if isinstance(self._current_value, float) else self._current_value
 
     def func_account_number(self):
+        pattern = re.compile(REG_KP_XLS)
         if self._dictionary.get('account_number'):
-            if re.search('кр\s|кап',self._parameters['filename']['value'][0].lower()):
+            if pattern.search(self._parameters['filename']['value'][0].lower()):
                 return self._dictionary.get('account_number',[])[-1] if len(self._dictionary.get('account_number',[])) != 0 else ''
             else:
                 return self._dictionary.get('account_number',[])[0] if len(self._dictionary.get('account_number',[])) != 0 else ''
         elif self._parameters.get('account_number'):
-            if re.search('кр\s|кап',self._parameters['filename']['value'][0].lower()):
+            if pattern.search(self._parameters['filename']['value'][0].lower()):
                 return self._parameters.get('account_number',{'value':['']})['value'][-1] \
                     if len(self._parameters.get('account_number',{'value':['']})['value']) != 0 else ''
             else:
@@ -1444,13 +1448,14 @@ class ExcelBaseImporter:
             return ''
 
     def func_bik(self):
+        pattern = re.compile(REG_KP_XLS)
         if self._dictionary.get('bik'):
-            if re.search('кр\s|кап',self._parameters['filename']['value'][0].lower()):
+            if pattern.search(self._parameters['filename']['value'][0].lower()):
                 return self._dictionary.get('bik',[])[-1] if len(self._dictionary.get('bik',[])) != 0 else ''
             else:
                 return self._dictionary.get('bik',[])[0] if len(self._dictionary.get('bik',[])) != 0 else ''
         elif self._parameters.get('bik'):
-            if re.search('кр\s|кап',self._parameters['filename']['value'][0].lower()):
+            if pattern.search(self._parameters['filename']['value'][0].lower()):
                 return self._parameters.get('bik',{'value':['']})['value'][-1] \
                     if len(self._parameters.get('bik',{'value':['']})['value']) != 0 else ''
             else:
@@ -1460,10 +1465,10 @@ class ExcelBaseImporter:
             return ''
 
     def func_dictionary(self):
-        return self._dictionary.get(self._current_value[-1].lower(), [])[self._current_index] \
-            if len(self._dictionary.get(self._current_value[-1].lower(), [])) > self._current_index else \
-            self._dictionary.get(self._current_value[-1].lower(), [])[-1] \
-            if len(self._dictionary.get(self._current_value[-1].lower(), [])) > 0 else ''
+        return self._dictionary.get(self.__get_index_key(self._current_value[-1]), [])[self._current_index] \
+            if len(self._dictionary.get(self.__get_index_key(self._current_value[-1]), [])) > self._current_index else \
+            self._dictionary.get(self.__get_index_key(self._current_value[-1]), [])[-1] \
+            if len(self._dictionary.get(self.__get_index_key(self._current_value[-1]), [])) > 0 else ''
 
     def func_bank_accounts(self):
         if not self._current_value_team:

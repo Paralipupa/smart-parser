@@ -27,6 +27,8 @@ POS_PAGE_IS_FIX = 1
 IS_MESSAGE_PRINT = True
 IS_DELETE_TMP=False
 
+REG_KP_XLS = '\sкр\s|\sкап' #регулярное выражение для определения файлов по капитальному ремонту
+
 db_logger = logging.getLogger('parser')
 
 if os.path.exists(os.path.join(os.path.dirname(__file__),'settings_local.py')):
