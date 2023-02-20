@@ -1,0 +1,11 @@
+*.pyc
+.venv/*
+**/output/
+**/download/
+test/download/*
+test/log/*
+tmp/*
+logs/*
+documents/*
+output.zip
+settings_local.py
