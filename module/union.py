@@ -24,7 +24,9 @@ class UnionData:
 
     def start(self, path_input: str, path_output: str, path_logs: str, file_output: str) -> list:
         save_directories = dict()
-        files: list[str] = self.__get_files(path_input)
+        files_o: list[str] = self.__get_files(path_input)
+        files = [x for x in files_o if not re.search('bank',x) and not re.search('tarif',x) ]
+        files.extend([x for x in files_o if re.search('bank',x) or re.search('tarif',x) ])
         if files:
             data = dict()
             del_files = list()

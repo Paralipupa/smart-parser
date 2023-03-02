@@ -594,12 +594,12 @@ class ExcelBaseImporter:
         elif self.colontitul['status'] == 0 and len(self._names) > 0:
             self.colontitul['foot'].append(record)
         for cell in record:
-            if cell:
-                nm = dict()
-                nm['name'] = str(cell).strip()
-                nm['col'] = index
-                nm['active'] = False
-                names.append(nm)
+            # if cell:
+            nm = dict()
+            nm['name'] = str(cell).strip()
+            nm['col'] = index
+            nm['active'] = False
+            names.append(nm)
             index += 1
         return names
 

@@ -210,15 +210,14 @@ def write_list(path_output: str, files: list):
                 mess += "{0}{1}\t{2}: \n{3}".format(
                     '\n\n' if mess != '' else '', item['inn'], os.path.basename(item['name']), s)
                 is_warning = True
-        if mess == '':
-            for item in files:
-                if item['config']:
-                    file.write(
-                        f"{item['inn']} \t {os.path.basename(item['name'])} \t {os.path.basename(item['config'])}\n")
-                else:
-                    file.write(
-                        f"{item['inn']} \t {os.path.basename(item['name'])} \t не распознан\n")
-                    is_warning = True
+        for item in files:
+            if item['config']:
+                file.write(
+                    f"{item['inn']} \t {os.path.basename(item['name'])} \t {os.path.basename(item['config'])}\n")
+            else:
+                file.write(
+                    f"{item['inn']} \t {os.path.basename(item['name'])} \t не распознан\n")
+                is_warning = True
 
         file.write(mess)
     return file_output if is_warning else ''
