@@ -67,18 +67,19 @@ class Parser:
                             if file_name['config'] != '000':
                                 t = regular_calc(
                                     '[0-9]{3}(?=_)', str(file_name['config']))
-                                rep: ExcelBaseImporter = self.report[t](file_name=file_name['name'],
-                                                                        inn=file_name['inn'], config_file=str(file_name['config']))
-                                rep.is_hash = self.is_hash
-                                rep._dictionary = self._dictionary.copy()
-                                if rep.read():
-                                    isParser = True
-                                    self._dictionary = rep._dictionary.copy()
-                                    rep.write_collections(num=i, path_output=os.path.join(
-                                        PATH_OUTPUT, self.output_path))
-                                    rep.write_logs(num=i, path_output=os.path.join(
-                                        PATH_LOG, self.output_path))
-                                file_name['warning'] += rep._config._warning
+                                if t != None:
+                                    rep: ExcelBaseImporter = self.report[t](file_name=file_name['name'],
+                                                                            inn=file_name['inn'], config_file=str(file_name['config']))
+                                    rep.is_hash = self.is_hash
+                                    rep._dictionary = self._dictionary.copy()
+                                    if rep.read():
+                                        isParser = True
+                                        self._dictionary = rep._dictionary.copy()
+                                        rep.write_collections(num=i, path_output=os.path.join(
+                                            PATH_OUTPUT, self.output_path))
+                                        rep.write_logs(num=i, path_output=os.path.join(
+                                            PATH_LOG, self.output_path))
+                                    file_name['warning'] += rep._config._warning
                     file_log = write_list(path_output=os.path.join(
                         PATH_LOG, self.output_path), files=list_files)
                     if self.union:

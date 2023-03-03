@@ -201,6 +201,7 @@ def write_list(path_output: str, files: list):
     os.makedirs(path_output, exist_ok=True)
     is_warning = False
     mess = ''
+    mess_conf = ''
     file_output = pathlib.Path(
         path_output, f'session{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log')
     with open(file_output, 'w', encoding=ENCONING) as file:
@@ -212,14 +213,16 @@ def write_list(path_output: str, files: list):
                 is_warning = True
         for item in files:
             if item['config']:
-                file.write(
-                    f"{item['inn']} \t {os.path.basename(item['name'])} \t {os.path.basename(item['config'])}\n")
+                mess_conf += f"{item['inn']} \t {os.path.basename(item['name'])} \t ({os.path.basename(item['config'])})\n"
             else:
                 file.write(
-                    f"{item['inn']} \t {os.path.basename(item['name'])} \t не распознан\n")
+                    f"{item['inn']} \t {os.path.basename(item['name'])} \t - файл не распознан\n")
                 is_warning = True
-
-        file.write(mess)
+        if is_warning:
+            file.write('\n')
+            file.write(mess)
+        else:
+            file.write(mess_conf)
     return file_output if is_warning else ''
 
 

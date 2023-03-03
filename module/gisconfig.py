@@ -40,8 +40,8 @@ def regular_calc(pattern, value):
     try:
         result = re.search(pattern, value.replace(
             '\n', '').strip(), re.IGNORECASE)
-        if not result:
-            return ''
+        if result is None or result.group(0).find('error') != -1:
+            return None
         else:
             return result.group(0).strip()
     except Exception as ex:

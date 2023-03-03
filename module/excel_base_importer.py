@@ -338,57 +338,53 @@ class ExcelBaseImporter:
         for p in item['pattern']:
             patt = patt + ('|' if patt else '') + p
         search_names = self._get_search_names(
-            names, patt, cols_exclude if not item['duplicate'] else [], item)  # колонки в таблице Excel
+            names, patt, item, cols_exclude if not item['duplicate'] else [])  # колонки в таблице Excel
         if search_names:
             for search_name in search_names:
-                b = True
-                # if item['offset']['pattern'][0]:
-                #     b = self.check_column_offset(item, search_name['col'])
-                if b:
-                    col_left = self._get_border(
-                        item, 'left', search_name['col'])
-                    col_right = self._get_border(
-                        item, 'right', search_name['col'])
-                    if col_left <= search_name['col'] <= col_right:
-                        key = item['name']
-                        self._names.setdefault(key, {'row': row,
-                                                     'col': item['col'],
-                                                     'active': True,
-                                                     'indexes': []})
-                        self._names[key]['active'] = True
-                        item['active'] = True if not item['after_stable'] else False
-                        if item['col_data']:
-                            for val in item['col_data']:
-                                index = val[POS_NUMERIC_VALUE] + \
-                                    search_name['col'] if not val[POS_NUMERIC_IS_ABSOLUTE] else 0
-                                # добавляем номер колонки в таблице с данными для суммирования значений
-                                if not ((index, val[POS_NUMERIC_IS_NEGATIVE]) in self._names[key]['indexes']):
-                                    item['indexes'].append(
-                                        (index, val[POS_NUMERIC_IS_NEGATIVE]))
-                                    self._names[key]['indexes'].append(
-                                        (index, val[POS_NUMERIC_IS_NEGATIVE]))
-                        else:
-                            if not ((search_name['col'], False) in self._names[key]['indexes']):
+                col_left = self._get_border(
+                    item, 'left', search_name['col'])
+                col_right = self._get_border(
+                    item, 'right', search_name['col'])
+                if col_left <= search_name['col'] <= col_right:
+                    key = item['name']
+                    self._names.setdefault(key, {'row': row,
+                                                    'col': item['col'],
+                                                    'active': True,
+                                                    'indexes': []})
+                    self._names[key]['active'] = True
+                    item['active'] = True if not item['after_stable'] else False
+                    if item['col_data']:
+                        for val in item['col_data']:
+                            index = val[POS_NUMERIC_VALUE] + \
+                                search_name['col'] if not val[POS_NUMERIC_IS_ABSOLUTE] else 0
+                            # добавляем номер колонки в таблице с данными для суммирования значений
+                            if not ((index, val[POS_NUMERIC_IS_NEGATIVE]) in self._names[key]['indexes']):
                                 item['indexes'].append(
-                                    (search_name['col'], False))
+                                    (index, val[POS_NUMERIC_IS_NEGATIVE]))
                                 self._names[key]['indexes'].append(
-                                    (search_name['col'], False))
-                                if is_last:
-                                    self._columns[search_name['col']
-                                                  ] = search_name['name']
-                        item['row'] = row
-                        is_find = True
-                        if not is_last:
-                            cols_exclude.append(search_name['col'])
-                        else:
-                            for x in cols_exclude:
-                                while self._names[key]['indexes'].count((x, False)) > 0:
-                                    self._names[key]['indexes'].remove(
-                                        (x, False))
-                                    item['indexes'].remove((x, False))
-                                    self._columns.pop(x)
-                        if item['unique']:
-                            break
+                                    (index, val[POS_NUMERIC_IS_NEGATIVE]))
+                    else:
+                        if not ((search_name['col'], False) in self._names[key]['indexes']):
+                            item['indexes'].append(
+                                (search_name['col'], False))
+                            self._names[key]['indexes'].append(
+                                (search_name['col'], False))
+                            if is_last:
+                                self._columns[search_name['col']
+                                                ] = search_name['name']
+                    item['row'] = row
+                    is_find = True
+                    if not is_last:
+                        cols_exclude.append(search_name['col'])
+                    else:
+                        for x in cols_exclude:
+                            while self._names[key]['indexes'].count((x, False)) > 0:
+                                self._names[key]['indexes'].remove(
+                                    (x, False))
+                                item['indexes'].remove((x, False))
+                                self._columns.pop(x)
+                    if item['unique']:
+                        break
         return is_find
 
     # Проверка на наличие всех обязательных колонок
@@ -419,7 +415,7 @@ class ExcelBaseImporter:
                             and 0 <= c < len(self.colontitul['head'][r]):
                         result = regular_calc(
                             offset['pattern'][0], self.colontitul['head'][r][c])
-                        if result and result.find('error') == -1:
+                        if result != None:
                             return True
             return False
         return True
@@ -429,7 +425,7 @@ class ExcelBaseImporter:
             return False
         result = regular_calc(self.get_condition_end_table(
         ), mapped_record[self.get_condition_end_table_column()][0]['value'])
-        if result and result.find('error') == -1:
+        if result != None:
             return True
         return False
 
@@ -451,7 +447,7 @@ class ExcelBaseImporter:
             ls.append(d.date().strftime('%d.%m.%Y'))
         else:
             result = regular_calc('19[89][0-9]|20[0-3][0-9]', item)
-            if result and result.find('error') == -1:
+            if result != None:
                 year = result
                 month = next((val for key, val in self._get_months().items() if re.search(
                     key+'[а-я]{0,5}\s', item, re.IGNORECASE)), None)
@@ -485,9 +481,11 @@ class ExcelBaseImporter:
             if val['row'] == 0:
                 patt = pattern.split('|')[0] if result == '' else pattern
                 value = regular_calc(patt, val['value'])
-                if (value == '' and result == '' and pattern.find(r'^\s*$') != -1) or result.find('error') != -1:
-                    return ''
-                result += value
+                if value == None:
+                    if result == '':
+                        return ''
+                else:
+                    result += value
         return result
 
     def _get_data_xls(self):
@@ -577,7 +575,7 @@ class ExcelBaseImporter:
             if row < len(self.colontitul[name]) and col < len(self.colontitul[name][row]) \
                     and self.colontitul[name][row][col]:
                 result = regular_calc(pattern, self.colontitul[name][row][col])
-                if result:
+                if result != None:
                     return result
                 else:
                     return ''
@@ -603,14 +601,14 @@ class ExcelBaseImporter:
             index += 1
         return names
 
-    def _get_search_names(self, names: list, pattern: str, cols_exclude: list = [], item : list = []) -> list:
+    def _get_search_names(self, names: list, pattern: str, item: list = [], cols_exclude: list = []) -> list:
         results = []
         for name in names:
             if not (name['col'] in cols_exclude):
                 result = regular_calc(f'{pattern}', name['name'])
-                if result and result.find('error') == -1:
+                if result != None:
                     b = True
-                    if item and item['offset']['pattern'][0]:
+                    if item and item.get('offset') and item['offset']['pattern'][0]:
                         b = self.check_column_offset(item, name['col'])
                     if b:
                         results.append(name)
@@ -631,16 +629,24 @@ class ExcelBaseImporter:
                 value = str(self._get_float(value))
         except:
             pass
-        result: str = regular_calc(pattern, value)
-        try:
+        result = regular_calc(pattern, value)
+        if result != None:
+            try:
+                if type_value == 'int':
+                    result = self._get_int(value)
+                elif type_value == 'double' or type_value == 'float':
+                    result = self._get_float(result)
+                else:
+                    result = result.rstrip() + ' '
+            except:
+                result = 0
+        else:
             if type_value == 'int':
-                result = self._get_int(value)
+                result = 0
             elif type_value == 'double' or type_value == 'float':
-                result = self._get_float(result)
+                result = 0
             else:
-                result = result.rstrip() + ' '
-        except:
-            result = 0
+                result = ''
         return result
 
     def _get_value_str(self, value: str, pattern: str) -> str:
@@ -724,8 +730,11 @@ class ExcelBaseImporter:
                 value -= self._get_value(
                     val[POS_VALUE], pattern, type_fld)
             else:
-                value += self._get_value(
-                    val[POS_VALUE], pattern, type_fld)
+                try:
+                    value += self._get_value(
+                        val[POS_VALUE], pattern, type_fld)
+                except Exception as ex:
+                    pass
         if not (type_fld == 'float' or type_fld == 'double' or type_fld == 'int'):
             value = value.lstrip()
         return value
