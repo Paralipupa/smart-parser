@@ -338,12 +338,12 @@ class ExcelBaseImporter:
         for p in item['pattern']:
             patt = patt + ('|' if patt else '') + p
         search_names = self._get_search_names(
-            names, patt, cols_exclude if not item['duplicate'] else [])  # колонки в таблице Excel
+            names, patt, cols_exclude if not item['duplicate'] else [], item)  # колонки в таблице Excel
         if search_names:
             for search_name in search_names:
                 b = True
-                if item['offset']['pattern'][0]:
-                    b = self.check_column_offset(item, search_name['col'])
+                # if item['offset']['pattern'][0]:
+                #     b = self.check_column_offset(item, search_name['col'])
                 if b:
                     col_left = self._get_border(
                         item, 'left', search_name['col'])
@@ -603,13 +603,17 @@ class ExcelBaseImporter:
             index += 1
         return names
 
-    def _get_search_names(self, names: list, pattern: str, cols_exclude: list = []) -> list:
+    def _get_search_names(self, names: list, pattern: str, cols_exclude: list = [], item : list = []) -> list:
         results = []
         for name in names:
             if not (name['col'] in cols_exclude):
                 result = regular_calc(f'{pattern}', name['name'])
                 if result and result.find('error') == -1:
-                    results.append(name)
+                    b = True
+                    if item and item['offset']['pattern'][0]:
+                        b = self.check_column_offset(item, name['col'])
+                    if b:
+                        results.append(name)
         return results
 
     def _get_key(self, col: int) -> str:
