@@ -1,18 +1,17 @@
 import os, re
-import uuid
 import logging
-import datetime
 from report.report_000_00 import Report_000_00
 from report.report_001_00 import Report_001_00
 from report.report_002_00 import Report_002_00
 from report.report_003_00 import Report_003_00
 from .utils import get_files, write_list, getArgs
 from .excel_base_importer import ExcelBaseImporter
-from .gisconfig import regular_calc, PATH_OUTPUT, PATH_LOG
+from .gisconfig import regular_calc
 from .union import UnionData
 from .exceptions import InnMismatchException, FatalException, ConfigNotFoundException
 from .settings import *
 
+logger = logging.getLogger(__name__)
 
 class Parser:
 
@@ -46,7 +45,7 @@ class Parser:
         try:
             if not self.name:
                 if not self.union:
-                    logging.warning(
+                    logger.warning(
                         'run with parameters:  [--name|-n]=<file.lst>|<file.xsl>|<file.zip> [[--inn|-i]=<inn>] [[--config|-c]=<config.ini>] [[--union|-u]=<path>')
                 else:
                     u = UnionData()
@@ -61,6 +60,7 @@ class Parser:
                 i = 0
                 isParser = False
                 if list_files:
+                    logger.info(f"Архив: '{os.path.basename(self.name) }'")
                     for file_name in list_files:
                         i += 1
                         if file_name['config']:
@@ -72,13 +72,17 @@ class Parser:
                                                                             inn=file_name['inn'], config_file=str(file_name['config']))
                                     rep.is_hash = self.is_hash
                                     rep._dictionary = self._dictionary.copy()
+                                    logger.info(f"Начало обработки файла '{os.path.basename(file_name['name'])}'")
                                     if rep.read():
+                                        logger.info(f"Обработка завершена")
                                         isParser = True
                                         self._dictionary = rep._dictionary.copy()
                                         rep.write_collections(num=i, path_output=os.path.join(
                                             PATH_OUTPUT, self.output_path))
                                         rep.write_logs(num=i, path_output=os.path.join(
                                             PATH_LOG, self.output_path))
+                                    else:
+                                        logger.info(f"Неудачное завершение обработки")
                                     file_name['warning'] += rep._config._warning
                     file_log = write_list(path_output=os.path.join(
                         PATH_LOG, self.output_path), files=list_files)
@@ -96,6 +100,7 @@ class Parser:
         except ConfigNotFoundException as ex:
             return f"{ex._message}"
         except Exception as ex:
+            logger.exception('Error start')
             return f"{ex}"
         return self.download_path
 

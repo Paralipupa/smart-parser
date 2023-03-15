@@ -8,7 +8,7 @@ import zipfile
 import shutil
 from typing import NoReturn
 from collections import Counter
-from .gisconfig import fatal_error, warning_error, print_message, PATH_LOG
+from .helpers import warning_error, fatal_error, print_message
 from .exceptions import ConfigNotFoundException
 from .settings import *
 

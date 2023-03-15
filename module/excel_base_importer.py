@@ -6,15 +6,17 @@ import pathlib
 import uuid
 import csv
 import json
-from ast import Return
+import logging
 from typing import NoReturn, Union
 from itertools import product
-from .gisconfig import GisConfig, fatal_error, warning_error, regular_calc, print_message, PATH_LOG
+from .gisconfig import GisConfig, regular_calc
+from .helpers import warning_error, fatal_error, print_message
 from module.exceptions import InnMismatchException
 from .file_readers import get_file_reader
 from preliminary.utils import get_ident, get_reg
 from .settings import *
 
+logger = logging.getLogger(__name__)
 
 def _hashit(s): return hashlib.sha1(s).hexdigest()
 
@@ -582,6 +584,7 @@ class ExcelBaseImporter:
             else:
                 return ''
         except Exception as ex:
+            logger.exception('Ошибка получения данных')
             return f'error: {ex}'
 
     def _get_names(self, record: list) -> dict:
@@ -986,7 +989,7 @@ class ExcelBaseImporter:
 ################################################################################################################################################
     def write_collections(self, num: int = 0, path_output: str = 'output', output_format: str = '') -> NoReturn:
         if not self.is_init() or len(self._collections) == 0:
-            logging.warning('Не удалось прочитать данные из файла "{0} - {1}"\n'
+            logger.warning('Не удалось прочитать данные из файла "{0} - {1}"\n'
                             .format(self.func_inn(),
                                     self._parameters['filename']['value'][0]))
             return
