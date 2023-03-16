@@ -1,4 +1,5 @@
-import os, re
+import os
+import re
 import logging
 from report.report_000_00 import Report_000_00
 from report.report_001_00 import Report_001_00
@@ -12,6 +13,7 @@ from .exceptions import InnMismatchException, FatalException, ConfigNotFoundExce
 from .settings import *
 
 logger = logging.getLogger(__name__)
+
 
 class Parser:
 
@@ -31,7 +33,7 @@ class Parser:
         self.config = file_config
         self.union = union
         self.download_path = path_down
-        self.output_path = re.findall('.+(?=[.])',file_down)[0]
+        self.output_path = re.findall('.+(?=[.])', file_down)[0]
         self.download_file = file_down
         self.is_hash = False if hash == 'no' else True
         self.report = {
@@ -50,10 +52,10 @@ class Parser:
                 else:
                     u = UnionData()
                     return u.start(path_input=os.path.join(PATH_OUTPUT, self.output_path),
-                                    path_output=self.download_path,
-                                    path_logs=os.path.join(
-                                        PATH_LOG, self.output_path),
-                                    file_output=self.download_file)
+                                   path_output=self.download_path,
+                                   path_logs=os.path.join(
+                        PATH_LOG, self.output_path),
+                        file_output=self.download_file)
 
             else:
                 logger.info(f"Архив: '{os.path.basename(self.name) }'")
@@ -72,7 +74,8 @@ class Parser:
                                                                             inn=file_name['inn'], config_file=str(file_name['config']))
                                     rep.is_hash = self.is_hash
                                     rep._dictionary = self._dictionary.copy()
-                                    logger.info(f"Начало обработки файла '{os.path.basename(file_name['name'])}'")
+                                    logger.info(
+                                        f"Начало обработки файла '{os.path.basename(file_name['name'])}'")
                                     if rep.read():
                                         logger.info(f"Обработка завершена")
                                         isParser = True
@@ -82,17 +85,18 @@ class Parser:
                                         rep.write_logs(num=i, path_output=os.path.join(
                                             PATH_LOG, self.output_path))
                                     else:
-                                        logger.info(f"Неудачное завершение обработки")
+                                        logger.info(
+                                            f"Неудачное завершение обработки")
                                     file_name['warning'] += rep._config._warning
                     file_log = write_list(path_output=os.path.join(
                         PATH_LOG, self.output_path), files=list_files)
                     if self.union:
                         u = UnionData(isParser, file_log)
                         return u.start(path_input=os.path.join(PATH_OUTPUT, self.output_path),
-                                    path_output=self.download_path,
-                                    path_logs=os.path.join(
-                                        PATH_LOG, self.output_path),
-                                    file_output=self.download_file)
+                                       path_output=self.download_path,
+                                       path_logs=os.path.join(
+                            PATH_LOG, self.output_path),
+                            file_output=self.download_file)
                 else:
                     logger.info(f"Данные в архиве не распознаны")
         except InnMismatchException as ex:
@@ -108,10 +112,13 @@ class Parser:
 
     @staticmethod
     def get_path(pathname: str) -> str:
-        if pathname == 'log':
+        if pathname == 'logs':
             return PATH_LOG
         elif pathname == 'output':
             return PATH_OUTPUT
         elif pathname == 'tmp':
             return PATH_TMP
+        else:
+            if pathname.find('log') != -1 and os.path.exists(os.path.join(BASE_DIR, pathname)):
+                return os.path.join(BASE_DIR, pathname)
         return ''

@@ -45,6 +45,9 @@ LOGGING = {
         'InfoFilter': {
             '()': 'module.logger.InfoFilter',
         },
+        'HTTPFilter': {
+            '()': 'module.logger.HTTPFilter',
+        },
         'DebugFilter': {
             '()': 'module.logger.DebugFilter',
         },
@@ -158,6 +161,16 @@ LOGGING = {
             "backupCount": 2,
             "delay": True
         },
+        "http_handler": {
+            "filters": ["HTTPFilter"],
+            "formatter": "verbose",
+            "class": "module.logger.CustomHTTPHandler",
+            "host": "localhost:5000",
+            "url": "http://localhost:5000/list/logs/info.log",
+            "credentials": (os.environ.get('USERNAME'), os.environ.get('PASSWORD')),
+            "method": "GET",
+            "secure": True,
+        },
     },
     "loggers": {
         "debug": {
@@ -176,6 +189,7 @@ LOGGING = {
             "warning",
             "error",
             "json",
+            # "http_handler"
         ]
     }}
 
