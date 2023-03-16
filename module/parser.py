@@ -56,11 +56,11 @@ class Parser:
                                     file_output=self.download_file)
 
             else:
+                logger.info(f"Архив: '{os.path.basename(self.name) }'")
                 list_files = get_files(self.name, self.inn, self.config)
                 i = 0
                 isParser = False
                 if list_files:
-                    logger.info(f"Архив: '{os.path.basename(self.name) }'")
                     for file_name in list_files:
                         i += 1
                         if file_name['config']:
@@ -93,6 +93,8 @@ class Parser:
                                     path_logs=os.path.join(
                                         PATH_LOG, self.output_path),
                                     file_output=self.download_file)
+                else:
+                    logger.info(f"Данные в архиве не распознаны")
         except InnMismatchException as ex:
             return f"{ex}"
         except FatalException as ex:
