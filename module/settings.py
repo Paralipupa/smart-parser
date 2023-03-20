@@ -179,6 +179,7 @@ LOGGING = {
                 "console",
                 "debug"
             ],
+            "propagate": False
         },
     },
     "root": {
