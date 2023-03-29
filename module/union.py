@@ -21,6 +21,7 @@ class UnionData:
         self.logs = list()
         self.isParser = isParser
         self.file_log = file_log
+        self.exclude = {'bill_value','payment_value','credit','saldo',}
 
     def start(self, path_input: str, path_output: str, path_logs: str, file_output: str) -> list:
         save_directories = dict()

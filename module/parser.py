@@ -7,7 +7,7 @@ from report.report_002_00 import Report_002_00
 from report.report_003_00 import Report_003_00
 from .utils import get_files, write_list, getArgs
 from .excel_base_importer import ExcelBaseImporter
-from .gisconfig import regular_calc
+from .helpers import regular_calc
 from .union import UnionData
 from .exceptions import InnMismatchException, FatalException, ConfigNotFoundException
 from .settings import *
@@ -58,7 +58,7 @@ class Parser:
                         file_output=self.download_file)
 
             else:
-                logger.info(f"Архив: '{os.path.basename(self.name) }'")
+                logger.info(f"\nАрхив: {COLOR_CONSOLE['red']}'{os.path.basename(self.name) }'{COLOR_CONSOLE['end']}")
                 list_files = get_files(self.name, self.inn, self.config)
                 i = 0
                 isParser = False

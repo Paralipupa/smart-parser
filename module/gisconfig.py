@@ -8,19 +8,6 @@ from .settings import *
 
 logger = logging.getLogger(__name__)
 
-def regular_calc(pattern, value):
-    try:
-        result = re.search(pattern, value.replace(
-            '\n', '').strip(), re.IGNORECASE)
-        if result is None or result.group(0).find('error') != -1:
-            return None
-        else:
-            return result.group(0).strip()
-    except Exception as ex:
-        logger.exception('Regular error')
-        return f"error in regular: '{pattern}' ({str(ex)})"
-
-
 class GisConfig:
 
     @fatal_error
