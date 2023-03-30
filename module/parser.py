@@ -1,10 +1,6 @@
 import os
 import re
 import logging
-from report.report_000_00 import Report_000_00
-from report.report_001_00 import Report_001_00
-from report.report_002_00 import Report_002_00
-from report.report_003_00 import Report_003_00
 from .excel_base_importer import ExcelBaseImporter
 from .helpers import regular_calc, get_config_files, write_list
 from .union import UnionData
@@ -38,12 +34,6 @@ class Parser:
         self.is_hash = False if hash == 'no' else True
         self.config_files = get_config_files()
 
-        self.report = {
-            '000': Report_000_00,
-            '001': Report_001_00,
-            '002': Report_002_00,
-            '003': Report_003_00
-        }
 
     def start(self) -> list:
         try:
@@ -60,7 +50,7 @@ class Parser:
                         file_output=self.download_file)
 
             else:
-                logger.info(f"\nАрхив: {COLOR_CONSOLE['red']}'{os.path.basename(self.name) }'{COLOR_CONSOLE['end']}")
+                logger.info(f"Архив: {COLOR_CONSOLE['red']}'{os.path.basename(self.name) }'{COLOR_CONSOLE['end']}")
                 search_conf = SearchConfig(self.name, self.config_files, self.inn, self.config)
                 list_files = search_conf.get_list_files()
                 i = 0
@@ -73,13 +63,13 @@ class Parser:
                                 t = regular_calc(
                                     '[0-9]{3}(?=_)', str(file_name['config']))
                                 if t != None:
-                                    rep: ExcelBaseImporter = self.report[t](file_name=file_name['name'],
+                                    rep: ExcelBaseImporter = ExcelBaseImporter(file_name=file_name['name'],
                                                                             inn=file_name['inn'], config_file=str(file_name['config']))
                                     rep.is_hash = self.is_hash
                                     rep._dictionary = self._dictionary.copy()
                                     logger.info(
                                         f"Начало обработки файла '{os.path.basename(file_name['name'])}'")
-                                    if rep.read():
+                                    if rep.extract():
                                         logger.info(f"Обработка завершена")
                                         isParser = True
                                         self._dictionary = rep._dictionary.copy()

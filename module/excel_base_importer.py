@@ -7,7 +7,7 @@ import uuid
 import csv
 import json
 import logging
-from typing import NoReturn, Union
+from typing import Union
 from itertools import product
 from .gisconfig import GisConfig
 from module.exceptions import InnMismatchException
@@ -30,25 +30,26 @@ from .settings import *
 logger = logging.getLogger(__name__)
 
 
-
 class ExcelBaseImporter:
     @fatal_error
-    def __init__(self, file_name: str, config_file: str, inn: str, data: list = None):
+    def __init__(self, file_name: str, config_file: str, inn: str):
         self.is_file_exists = True
         self.is_hash = True
         self.is_check = False
-        self._teams = list()  # список областей с данными
+        self._teams = (
+            list()
+        )  # список данных сгруппированных по идентификатору - internal_id
         self._dictionary = dict()
         self._columns = dict()
-        self._headers = data
+        self._headers = list()
         self.colontitul = {
             "status": 0,
             "is_parameters": False,
-            "head": list(),
-            "foot": list(),
-        }  # список  записей до и после табличных данных
+            "head": list(),  # до таблицы
+            "foot": list(),  # после таблицы
+        }  # список  записей вне таблицы
         self._names = dict()  # колонки таблицы
-        self._parameters = dict()  # параметры отчета (период, и др.)
+        self._parameters = dict()  # параметры отчета (период, имя_файла, инн и др.)
         self._parameters["inn"] = {
             "fixed": True,
             "value": [inn if inn else "0000000000"],
@@ -62,7 +63,7 @@ class ExcelBaseImporter:
         self.__set_functions()
 
     # %% Проверка совместимости файла конфигурации
-    def check(self, headers:list, is_warning: bool = False) -> bool:
+    def check(self, headers: list, is_warning: bool = False) -> bool:
         if not self.is_verify(self._parameters["filename"]["value"][0]):
             return False
         if (
@@ -75,10 +76,14 @@ class ExcelBaseImporter:
             )
         ):
             return False
-        self._headers = self._get_headers() if len(headers) < self._config._max_rows_heading[0][0] else headers
+        self._headers = (
+            self.__get_headers()
+            if len(headers) < self._config._max_rows_heading[0][0]
+            else headers
+        )
         if len(headers) < len(self._headers):
             headers.clear()
-            headers.extend(self._headers) 
+            headers.extend(self._headers)
         if not self._headers:
             return False
         return self._check_controll(self._headers, is_warning)
@@ -97,15 +102,15 @@ class ExcelBaseImporter:
                     is_check = all(
                         [x["is_find"] for x in self._config._check["pattern"]]
                     )
-                names = self._get_names(headers[row])
-                self.check_columns(names, row)
+                names = self.__get_names(headers[row])
+                self.__check_columns(names, row)
                 if (
                     is_check
-                    and self.check_stable_columns()
-                    and self.check_condition_team(self.map_record(headers[row]))
+                    and self.__check_stable_columns()
+                    and self.__check_condition_team(self.__map_record(headers[row]))
                 ):
                     self.is_check = False
-                    return self._check_function()
+                    return self.__check_function()
         self.is_check = False
         if self._parameters["inn"]["value"][-1] != "0000000000" and not re.search(
             "000_00", self._config._config_name
@@ -113,7 +118,7 @@ class ExcelBaseImporter:
             mess = ""
             x = [
                 x["pattern"]
-                for x in self.get_columns_heading()
+                for x in self.__get_columns_heading()
                 if not x["optional"] and not x["active"]
             ]
             if x:
@@ -142,7 +147,7 @@ class ExcelBaseImporter:
 
     @fatal_error
     def is_verify(self, file_name: str) -> bool:
-        if not self.is_init():
+        if not self.__is_init():
             return False
         if not os.path.exists(self._parameters["filename"]["value"][0]):
             self._config._warning.append(f"ОШИБКА чтения файла {file_name}")
@@ -152,18 +157,18 @@ class ExcelBaseImporter:
 
     # %% Точка входа, чтение и обработка файла
     @fatal_error
-    def read(self) -> bool:
+    def extract(self) -> bool:
         if not self.is_verify(self._parameters["filename"]["value"][0]):
             return False
-        if not self.get_col_start():
-            self.set_col_start(0)
-        for col_start in self.get_col_start():
-            self.init_data()
+        if not self.__get_col_start():
+            self.__set_col_start(0)
+        for col_start in self.__get_col_start():
+            self.__init_data()
             self._col_start = col_start[0]
             pages = list()
-            page_indexes = self.get_page_index()
-            if self.get_page_name():
-                pages = [(x, False) for x in self.get_page_name().split(",")]
+            page_indexes = self.__get_page_index()
+            if self.__get_page_name():
+                pages = [(x, False) for x in self.__get_page_name().split(",")]
             else:
                 pages.append(page_indexes)
             for page in pages:
@@ -177,9 +182,9 @@ class ExcelBaseImporter:
                 )
                 names = None
                 row = 0
-                if not self.get_header("pattern"):
+                if not self.__get_header("pattern"):
                     self.colontitul["status"] = 1
-                data_reader = self._get_data_xls()
+                data_reader = self.__get_data_xls()
                 if not data_reader:
                     self._config._warning.append(
                         f"\nОШИБКА чтения файла {self._parameters['filename']['value'][0]}"
@@ -198,13 +203,13 @@ class ExcelBaseImporter:
                     record = record[self._col_start :]
                     if self.colontitul["status"] != 2:
                         # Область до или после таблицы
-                        if not self.check_bound_row(row):
+                        if not self.__check_bound_row(row):
                             break
-                        names = self._get_names(record)
-                        self.check_colontitul(names, row, record)
+                        names = self.__get_names(record)
+                        self.__check_colontitul(names, row, record)
                     if self.colontitul["status"] == 2:
                         # Табличная область данных
-                        self.check_body(record, row)
+                        self.__check_body(record, row)
                     row += 1
                     if row % 100 == 0:
                         print_message(
@@ -214,13 +219,13 @@ class ExcelBaseImporter:
                             end="",
                             flush=True,
                         )
-                self.done()
+                self.__done()
                 self._page_index += 1
-        self.process_finish()
+        self.__process_finish()
         return True
 
     # Формируем схему записи по строке из текущей таблицы
-    def map_record(self, record):
+    def __map_record(self, record):
         result_record = {}
         is_empty = True
         for key, value in self._names.items():
@@ -242,8 +247,8 @@ class ExcelBaseImporter:
         return result_record if not is_empty else None
 
     # группируем записи по идентификаторы
-    def append_to_team(self, mapped_record: list) -> bool:
-        if self.check_condition_team(mapped_record):
+    def __append_to_team(self, mapped_record: list) -> bool:
+        if self.__check_condition_team(mapped_record):
             self._teams.append(mapped_record)
             return True
         elif len(self._teams) != 0:
@@ -262,22 +267,22 @@ class ExcelBaseImporter:
         return False
 
     # Проверяем условие завершения группировки записей по текущему идентификатору
-    def check_condition_team(self, mapped_record: list) -> bool:
-        if not self.get_condition_team():
+    def __check_condition_team(self, mapped_record: list) -> bool:
+        if not self.__get_condition_team():
             return True
         if not mapped_record:
             return False
         b = False
-        for p in self.get_condition_team():
+        for p in self.__get_condition_team():
             if mapped_record.get(p["col"]):
                 for patt in p["pattern"]:
-                    result = self._get_condition_data(mapped_record[p["col"]], patt)
+                    result = self.__get_condition_data(mapped_record[p["col"]], patt)
                     b = False if not result or result.find("error") != -1 else True
                     if b:
                         if len(self._teams) != 0:
                             # Проверяем значение со значением из предыдущей области (иерархии)
                             # если не совпадает, то фиксируем начало новой области (иерархии)
-                            pred = self._get_condition_data(
+                            pred = self.__get_condition_data(
                                 self._teams[-1][p["col"]], patt
                             )
                             b = result != pred
@@ -285,12 +290,12 @@ class ExcelBaseImporter:
                             return b
         return b
 
-    def check_bound_row(self, row: int) -> bool:
-        if self.get_row_start() + self.get_max_rows_heading() < row:
+    def __check_bound_row(self, row: int) -> bool:
+        if self.__get_row_start() + self.__get_max_rows_heading() < row:
             if len(self._teams) != 0:
                 return False
             s1, s2, is_active_find = "", "", False
-            for item in self.get_columns_heading():
+            for item in self.__get_columns_heading():
                 if not item["active"]:
                     if not item["optional"]:
                         s1 += f"{item['name']} {'не обязат.' if item['optional'] else ''},\n"
@@ -325,11 +330,11 @@ class ExcelBaseImporter:
                 \nне верен шаблон нахождения начала области данных(({3})condition_begin_team(\n{2}\n))\n{4}\n'.format(
                         self._config._config_name,
                         self._parameters["filename"]["value"][0],
-                        self.get_condition_team()[0]["pattern"]
-                        if self.get_condition_team()
+                        self.__get_condition_team()[0]["pattern"]
+                        if self.__get_condition_team()
                         else "",
-                        self.get_condition_team()[0]["col"]
-                        if self.get_condition_team()
+                        self.__get_condition_team()[0]["col"]
+                        if self.__get_condition_team()
                         else "",
                         s,
                     )
@@ -338,23 +343,23 @@ class ExcelBaseImporter:
             return False
         return True
 
-    def check_colontitul(self, names: list, row: int, record: list):
+    def __check_colontitul(self, names: list, row: int, record: list):
         if self.colontitul["status"] == 0:
-            if self.check_headers_status(names):
+            if self.__check_headers_status(names):
                 if len(self._teams) != 0:
-                    self.process_record(self._teams[-1])
-                    self.init_data()
-                    self.set_row_start(row)
-        if self.check_columns(names, row):
+                    self.__process_record(self._teams[-1])
+                    self.__init_data()
+                    self.__set_row_start(row)
+        if self.__check_columns(names, row):
             self._row_start = row
         if self.colontitul["status"] == 1:
-            if self.check_stable_columns():
+            if self.__check_stable_columns():
                 if (
-                    len(self.get_columns_heading()) <= len(self._names)
-                ) or self.check_condition_team(self.map_record(record)):
+                    len(self.__get_columns_heading()) <= len(self._names)
+                ) or self.__check_condition_team(self.__map_record(record)):
                     # переход в табличную область данных
                     self.colontitul["status"] = 2
-                    self.dynamic_change_config()
+                    self.__dynamic_change_config()
                     self._config._parameters.setdefault(
                         "table_start",
                         [
@@ -367,7 +372,7 @@ class ExcelBaseImporter:
                         ],
                     )
 
-    def check_body(self, record: list, row: int):
+    def __check_body(self, record: list, row: int):
 
         if self._config._rows_exclude:
             if row in [
@@ -377,24 +382,24 @@ class ExcelBaseImporter:
                 if self.colontitul["head"] and self.colontitul["head"][-1] != record:
                     self.colontitul["head"].append(record)
                 return
-        mapped_record = self.map_record(record)
+        mapped_record = self.__map_record(record)
         if mapped_record:  # строка не пустая
             # проверяем условие конца таблицы
-            if self.check_end_table(mapped_record):
+            if self.__check_end_table(mapped_record):
                 self.colontitul["status"] = 0
                 self.colontitul["is_parameters"] = False
-                self.set_row_start(row)
-                for item in self.get_columns_heading():
+                self.__set_row_start(row)
+                for item in self.__get_columns_heading():
                     item["active"] = False
                 self.colontitul["foot"].append(record)
-            elif self.append_to_team(mapped_record):  # добавляем новую область
+            elif self.__append_to_team(mapped_record):  # добавляем новую область
                 # если уже нашли более одной области, то добавляем предпоследнюю в документ
                 if len(self._teams) > 1:
-                    self.process_record(self._teams[-2])
+                    self.__process_record(self._teams[-2])
         if len(self._teams) < 2:
             self.colontitul["head"].append(record)
 
-    def check_columns(self, names: list, row: int) -> bool:
+    def __check_columns(self, names: list, row: int) -> bool:
         is_find = False
         if names:
             last_cols = []
@@ -403,16 +408,16 @@ class ExcelBaseImporter:
             for x in [x["indexes"] for x in self._names.values()]:
                 cols_exclude.extend([y[POS_INDEX_VALUE] for y in x])
             # сначала проверяем обязательные и приоритетные колонки
-            for item in self.get_columns_heading():
+            for item in self.__get_columns_heading():
                 if (
                     (not item["active"] or item["duplicate"])
                     and item["pattern"][0]
                     and (not item["optional"] or item["priority"])
                 ):
-                    if self.check_column(item, names, row, cols_exclude):
+                    if self.__check_column(item, names, row, cols_exclude):
                         is_find = True
             # потом проверяем остальные колонки
-            for item in self.get_columns_heading():
+            for item in self.__get_columns_heading():
                 if (
                     (not item["active"] or item["duplicate"])
                     and item["pattern"][0]
@@ -421,18 +426,18 @@ class ExcelBaseImporter:
                 ):
                     if item["after_stable"]:
                         last_cols.append(item)
-                    elif self.check_column(item, names, row, cols_exclude):
+                    elif self.__check_column(item, names, row, cols_exclude):
                         is_find = True
             # последние колонки (after_stable = True)
             for item in last_cols:
-                if self.check_stable_columns() and (
-                    row in self._get_rows_header() or item["duplicate"]
+                if self.__check_stable_columns() and (
+                    row in self.__get_rows_header() or item["duplicate"]
                 ):
-                    if self.check_column(item, names, row, cols_exclude, True):
+                    if self.__check_column(item, names, row, cols_exclude, True):
                         is_find = True
         return is_find
 
-    def check_column(
+    def __check_column(
         self,
         item: dict,
         names: list,
@@ -444,13 +449,13 @@ class ExcelBaseImporter:
         patt = ""
         for p in item["pattern"]:
             patt = patt + ("|" if patt else "") + p
-        search_names = self._get_search_names(
+        search_names = self.__get_search_names(
             names, patt, item, cols_exclude if not item["duplicate"] else []
         )  # колонки в таблице Excel
         if search_names:
             for search_name in search_names:
-                col_left = self._get_border(item, "left", search_name["col"])
-                col_right = self._get_border(item, "right", search_name["col"])
+                col_left = self.__get_border(item, "left", search_name["col"])
+                col_right = self.__get_border(item, "right", search_name["col"])
                 if col_left <= search_name["col"] <= col_right:
                     key = item["name"]
                     self._names.setdefault(
@@ -499,13 +504,13 @@ class ExcelBaseImporter:
         return is_find
 
     # Проверка на наличие всех обязательных колонок
-    def check_stable_columns(self) -> bool:
+    def __check_stable_columns(self) -> bool:
         return all(
-            [x["active"] for x in self.get_columns_heading() if not x["optional"]]
+            [x["active"] for x in self.__get_columns_heading() if not x["optional"]]
         )
 
     # Проверка на наличие 'якоря' (текста, смещенного относительно позиции текущего заголовка)
-    def check_column_offset(self, item: dict, index: int) -> bool:
+    def __check_column_offset(self, item: dict, index: int) -> bool:
         offset = item["offset"]
         if offset and offset["pattern"][0]:
             rows = [i for i in offset["row"]]
@@ -515,8 +520,8 @@ class ExcelBaseImporter:
             if not cols:
                 cols = [(i, True) for i in range(len(self.colontitul["head"][-1]))]
             row_count = len(self.colontitul["head"])
-            col_left = self._get_border(item, "left", 0)
-            col_right = self._get_border(item, "right", index)
+            col_left = self.__get_border(item, "left", 0)
+            col_right = self.__get_border(item, "right", index)
             if col_left <= index <= col_right:
                 for row, col in product(rows, cols):
                     r = get_absolute_index(row, row_count - 1)
@@ -534,18 +539,18 @@ class ExcelBaseImporter:
             return False
         return True
 
-    def check_end_table(self, mapped_record) -> bool:
-        if not self.get_condition_end_table():
+    def __check_end_table(self, mapped_record) -> bool:
+        if not self.__get_condition_end_table():
             return False
         result = regular_calc(
-            self.get_condition_end_table(),
-            mapped_record[self.get_condition_end_table_column()][0]["value"],
+            self.__get_condition_end_table(),
+            mapped_record[self.__get_condition_end_table_column()][0]["value"],
         )
         if result != None:
             return True
         return False
 
-    def check_period_value(self):
+    def __check_period_value(self):
         patts = [
             "%d-%m-%Y",
             "%d.%m.%Y",
@@ -594,19 +599,19 @@ class ExcelBaseImporter:
                 datetime.date.today().replace(day=1).strftime("%d.%m.%Y")
             )
 
-    def check_headers_status(self, names):
+    def __check_headers_status(self, names):
         if self.colontitul["status"] == 1:
             return False
-        m = self.get_header("pattern")
+        m = self.__get_header("pattern")
         if not m:
             self.colontitul["status"] = 1
         else:
-            if self._get_search_names(names, m):
+            if self.__get_search_names(names, m):
                 self.colontitul["status"] = 1
         return self.colontitul["status"] == 1
 
     @warning_error
-    def _get_condition_data(self, values: list, pattern: str) -> str:
+    def __get_condition_data(self, values: list, pattern: str) -> str:
         result = ""
         for val in values:
             if val["row"] == 0:
@@ -619,13 +624,13 @@ class ExcelBaseImporter:
                     result += value
         return result
 
-    def _get_data_xls(self):
+    def __get_data_xls(self):
         ReaderClass = get_file_reader(self._parameters["filename"]["value"][0])
         data_reader = ReaderClass(
             self._parameters["filename"]["value"][0],
             self._page_name,
             0,
-            range(self._col_start + self.get_max_cols()),
+            range(self._col_start + self.__get_max_cols()),
             self._page_index,
         )
         if not data_reader:
@@ -636,9 +641,9 @@ class ExcelBaseImporter:
             return None
         return data_reader
 
-    def _get_border(self, item: dict, name: str, col: int = 0) -> int:
+    def __get_border(self, item: dict, name: str, col: int = 0) -> int:
         if item[name]:
-            name_field = self._get_key_from_input_names(
+            name_field = self.__get_key_from_input_names(
                 item[name][0][POS_NUMERIC_VALUE]
             )
             if name_field:
@@ -647,27 +652,27 @@ class ExcelBaseImporter:
                 col = col + 1 if name == "left" else col - 1
         return col
 
-    def _get_rows_header(self) -> set:
+    def __get_rows_header(self) -> set:
         return {x["row"] for x in self._names.values()}
 
     def _get_check_pattern(self) -> list:
-        rows: list[int] = self.get_check("row")  # раздел [check]
+        rows: list[int] = self.__get_check("row")  # раздел [check]
         if not rows:
             rows.append((0, False))
         patts = list()
-        p = self.get_check("pattern")  # раздел [check]
+        p = self.__get_check("pattern")  # раздел [check]
         patts.append(
             {"pattern": p, "full": True, "find": p == "", "maxrow": rows[-1][0]}
         )
         i = 0
-        p = self.get_check(f"pattern_{i}")  # раздел [check]
+        p = self.__get_check(f"pattern_{i}")  # раздел [check]
         while p:
-            p = self.get_check(f"pattern_{i}")
+            p = self.__get_check(f"pattern_{i}")
             patts.append(
                 {"pattern": p, "full": True, "find": False, "maxrow": rows[-1][0]}
             )
             i += 1
-            p = self.get_check(f"pattern_{i}")
+            p = self.__get_check(f"pattern_{i}")
 
         # разделы [col_]
         for item in self._config._columns_heading:
@@ -685,9 +690,9 @@ class ExcelBaseImporter:
             )
         return patts
 
-    def _get_headers(self) -> list:
+    def __get_headers(self) -> list:
         self._col_start = 0
-        data_reader = self._get_data_xls()
+        data_reader = self.__get_data_xls()
         if not data_reader:
             return None
         headers = list()
@@ -699,7 +704,7 @@ class ExcelBaseImporter:
                 break
         return headers
 
-    def _check_function(self) -> bool:
+    def __check_function(self) -> bool:
         f = self._config._check["func"]
         if not f:
             return True
@@ -716,7 +721,7 @@ class ExcelBaseImporter:
         value = self.func(team=dict(), fld_param=item_fld, row=0, col=0)
         return True if value else False
 
-    def _get_value_after_validation(
+    def __get_value_after_validation(
         self, pattern: str, name: str, row: int, col: int
     ) -> str:
         try:
@@ -736,7 +741,7 @@ class ExcelBaseImporter:
             logger.exception("Ошибка получения данных")
             return f"error: {ex}"
 
-    def _get_names(self, record: list) -> dict:
+    def __get_names(self, record: list) -> dict:
         names = []
         index = 0
         if (self.colontitul["status"] == 1) or (
@@ -755,7 +760,7 @@ class ExcelBaseImporter:
             index += 1
         return names
 
-    def _get_search_names(
+    def __get_search_names(
         self, names: list, pattern: str, item: list = [], cols_exclude: list = []
     ) -> list:
         results = []
@@ -765,24 +770,18 @@ class ExcelBaseImporter:
                 if result != None:
                     b = True
                     if item and item.get("offset") and item["offset"]["pattern"][0]:
-                        b = self.check_column_offset(item, name["col"])
+                        b = self.__check_column_offset(item, name["col"])
                     if b:
                         results.append(name)
         return results
 
-    def _get_key_from_input_names(self, col: int) -> str:
+    def __get_key_from_input_names(self, col: int) -> str:
         for key, value in self._names.items():
             if value["col"] == col:
                 return key
         return ""
 
-    def _get_key_value_from_input_names(self, col: int) -> tuple:
-        for key, value in self._names.items():
-            if value["col"] == col:
-                return key, value
-        return None, None
-
-    def _get_value(
+    def __get_value(
         self, value: str = "", pattern: str = "", type_value: str = ""
     ) -> Union[str, int, float]:
         try:
@@ -813,14 +812,16 @@ class ExcelBaseImporter:
                 result = ""
         return result
 
-    def _get_doc_param_fld(self, name: str, fld_name: str):
-        doc = next((x for x in self.get_config_documents() if x["name"] == name), None)
+    def __get_doc_param_fld(self, name: str, fld_name: str):
+        doc = next(
+            (x for x in self.__get_config_documents() if x["name"] == name), None
+        )
         if doc:
             fld = next((x for x in doc["fields"] if x["name"] == fld_name), None)
             return fld
         return None
 
-    def _get_fld_records(self, item_fld: dict):
+    def __get_fld_records(self, item_fld: dict):
         records = list()
         records.append(item_fld.copy())
         records[-1]["value"] = (
@@ -851,16 +852,18 @@ class ExcelBaseImporter:
             )
         return records
 
-    def _get_total_from_values(self, values: list, type_fld: str, pattern: str) -> str:
-        value = self._get_value(type_value=type_fld)
+    def __get_total_value_from_values(
+        self, values: list, type_fld: str, pattern: str
+    ) -> str:
+        value = self.__get_value(type_value=type_fld)
         for val in values:
             if (type_fld == "int" or type_fld == "float") and val[
                 POS_NUMERIC_IS_NEGATIVE
             ]:
-                value -= self._get_value(val[POS_VALUE], pattern, type_fld)
+                value -= self.__get_value(val[POS_VALUE], pattern, type_fld)
             else:
                 try:
-                    value += self._get_value(val[POS_VALUE], pattern, type_fld)
+                    value += self.__get_value(val[POS_VALUE], pattern, type_fld)
                 except Exception as ex:
                     pass
         if not (type_fld == "float" or type_fld == "double" or type_fld == "int"):
@@ -868,7 +871,7 @@ class ExcelBaseImporter:
         return value
 
     # данные из колонки по смещению (offset_column_)
-    def _get_value_from_offset(
+    def __get_value_from_offset(
         self, team: dict, record: dict, row_curr: int, col_curr: int
     ) -> Union[str, int, float]:
         rows: list = record["offset_row"]
@@ -879,7 +882,7 @@ class ExcelBaseImporter:
         if not cols:
             cols = [(col_curr, True)]
         for c in cols:
-            fld_name = self._get_key_from_input_names(c[POS_NUMERIC_VALUE])
+            fld_name = self.__get_key_from_input_names(c[POS_NUMERIC_VALUE])
             if fld_name:
                 row = get_absolute_index(rows[0], row_curr)
                 values = [
@@ -887,7 +890,7 @@ class ExcelBaseImporter:
                     for x in team[fld_name]
                     if x["row"] == row
                 ]
-                x = self._get_total_from_values(
+                x = self.__get_total_value_from_values(
                     values=values,
                     type_fld=record["offset_type"],
                     pattern=record["offset_pattern"][0],
@@ -895,9 +898,9 @@ class ExcelBaseImporter:
                 value += x if not isinstance(x, str) or value.find(x) == -1 else ""
         return value
 
-    def _get_required_rows(self, name: str, doc: dict) -> set:
+    def __get_required_rows(self, name: str, doc: dict) -> set:
         s = set()
-        d = next((x for x in self.get_config_documents() if x["name"] == name), None)
+        d = next((x for x in self.__get_config_documents() if x["name"] == name), None)
         if d and d["required_fields"]:
             for name_field in d["required_fields"].split(","):
                 fld_type = next(
@@ -909,42 +912,42 @@ class ExcelBaseImporter:
                     "",
                 )
                 for item in doc[name_field]:
-                    val = self._get_value(str(item["value"]), ".+", fld_type)
+                    val = self.__get_value(str(item["value"]), ".+", fld_type)
                     if (
                         (fld_type == "" or fld_type == "str") and val.strip() != ""
                     ) or ((fld_type == "float" or fld_type == "int") and val != 0):
                         s.add(item["row"])
         return s
 
-    def _is_data_depends(
+    def __is_data_depends(
         self, record: dict, doc: dict, doc_param: dict
     ) -> Union[str, bool]:
         if not record["depends"]:
             return True
         fld = record["depends"]
         if doc[fld] and doc[fld][0]["value"]:
-            fld_param = self._get_doc_param_fld(doc_param["name"], fld)
-            x = self._get_value(
+            fld_param = self.__get_doc_param_fld(doc_param["name"], fld)
+            x = self.__get_value(
                 doc[fld][0]["value"], ".+", fld_param["type"] + fld_param["offset_type"]
             )
         else:
             x = ""
         return x
 
-    def done(self):
+    def __done(self):
         if len(self._teams) != 0:
-            self.process_record(self._teams[-1])
+            self.__process_record(self._teams[-1])
 
-    def process_record(self, team: dict) -> None:
+    def __process_record(self, team: dict) -> None:
         if not self.colontitul["is_parameters"]:
-            self._set_parameters()
-        for doc_param in self.get_config_documents():
-            doc = self.set_document(team, doc_param)
-            self.document_split_one_line(doc, doc_param)
+            self.__set_parameters()
+        for doc_param in self.__get_config_documents():
+            doc = self.__set_document(team, doc_param)
+            self.__document_split_one_line(doc, doc_param)
         self._teams.remove(team)
 
-    def process_finish(self) -> None:
-        for doc_param in self.get_config_documents():
+    def __process_finish(self) -> None:
+        for doc_param in self.__get_config_documents():
             if doc_param.get("func_after"):
                 param = {"value": "", "func": doc_param["func_after"]}
                 self.func(
@@ -952,12 +955,12 @@ class ExcelBaseImporter:
                 )
 
     # %%Изменение конфигурации "на ходу"
-    def dynamic_change_config(self):
-        self.change_heading()
-        self.change_pp()
+    def __dynamic_change_config(self):
+        self.__change_heading()
+        self.__change_pp()
 
     # Добавляем услуги, отсутствующие в конфигурации, но имеющиеся в заголовках таблицы
-    def change_pp(self):
+    def __change_pp(self):
         if len(self._columns) == 0:
             return
         docs = [
@@ -1002,7 +1005,7 @@ class ExcelBaseImporter:
                     fld["sub"].extend(ls)
 
     # Добавляем колонки, отсутствующие в конфигурации, но имеющиеся в заголовках таблицы
-    def change_heading(self):
+    def __change_heading(self):
         for key, name in self._columns.items():
             l = self._config._columns_heading[-1].copy()
             l["name"] = get_ident(name)
@@ -1023,13 +1026,13 @@ class ExcelBaseImporter:
     #%%##############################################################################################################################################
     # --------------------------------------------------- Документы --------------------------------------------------------------------------------
     ################################################################################################################################################
-    def append_to_collection(self, name: str, doc: dict) -> None:
+    def __append_to_collection(self, name: str, doc: dict) -> None:
         key = self._page_name if self._page_name else "noname"
         self._collections.setdefault(name, {key: list()})
         self._collections[name].setdefault(key, list())
         self._collections[name][key].append(doc)
         if (
-            self.get_doc_type(name) == "dictionary"
+            self.__get_doc_type(name) == "dictionary"
             and doc.get("key")
             and doc.get("value")
         ):
@@ -1057,7 +1060,7 @@ class ExcelBaseImporter:
 
     # Формирование документа из части исходной таблицы - team (отдельной области или иерархии)
     # выбранной по идентификатору internal_id
-    def set_document(self, team: dict, doc_param):
+    def __set_document(self, team: dict, doc_param):
         doc = dict()
         for fld_item in doc_param["fields"]:  # перебор полей выходной таблицы
             # Формируем данные для записи в выходном файле
@@ -1070,7 +1073,7 @@ class ExcelBaseImporter:
             for table_row in doc_param["rows_exclude"]:
                 main_rows_exclude.add((table_row[0], -1))
             # собираем все поля (sub): name_attr, name_attr_0, ... , name_attr_N
-            fld_records = self._get_fld_records(fld_item)
+            fld_records = self.__get_fld_records(fld_item)
             for fld_record in fld_records:
                 if (
                     not fld_record["column"]
@@ -1079,7 +1082,7 @@ class ExcelBaseImporter:
                 ):
                     continue
                 col = fld_record["column"][0]
-                name_field = self._get_key_from_input_names(col[POS_VALUE])
+                name_field = self.__get_key_from_input_names(col[POS_VALUE])
                 if not name_field:
                     continue
                 for table_row in fld_record["rows_exclude"]:
@@ -1104,7 +1107,7 @@ class ExcelBaseImporter:
                                 if x["row"] == table_row[POS_VALUE]
                             ]
                             # И получаем из них одно значение
-                            x = self._get_total_from_values(
+                            x = self.__get_total_value_from_values(
                                 values=values, type_fld=fld_record["type"], pattern=patt
                             )
                             if x:
@@ -1127,7 +1130,7 @@ class ExcelBaseImporter:
                                         # то берем данные от туда
                                         fld_record[
                                             "value_o"
-                                        ] = self._get_value_from_offset(
+                                        ] = self.__get_value_from_offset(
                                             team,
                                             fld_record,
                                             table_row[0],
@@ -1157,7 +1160,7 @@ class ExcelBaseImporter:
                 elif fld_record["is_offset"]:
                     fld_record["value"] = fld_record["value_o"]
                     fld_record["type"] = fld_record["offset_type"]
-                if fld_record["value"] and not self._is_data_depends(
+                if fld_record["value"] and not self.__is_data_depends(
                     fld_record, doc, doc_param
                 ):
                     # Если поле зависит от значения другого поля и это значение пусто,
@@ -1187,7 +1190,7 @@ class ExcelBaseImporter:
         return doc
 
     # Разбиваем данные документа по-строчно
-    def document_split_one_line(self, doc: dict, doc_param: dict) -> None:
+    def __document_split_one_line(self, doc: dict, doc_param: dict) -> None:
         name = doc_param["name"]
         # для каждого поля свой индекс прохода
         index = {x: 0 for x in doc.keys()}
@@ -1195,7 +1198,7 @@ class ExcelBaseImporter:
         counts = [len(x) for x in doc.values() if x]
         rows = rows + counts
         rows_count = max(rows) if rows else 0
-        rows_required = self._get_required_rows(name, doc)
+        rows_required = self.__get_required_rows(name, doc)
         rows_exclude = [
             x[0] if x[0] >= 0 else rows_count + 1 + x[0]
             for x in doc_param["rows_exclude"]
@@ -1226,7 +1229,7 @@ class ExcelBaseImporter:
                 and not (i in rows_exclude)
                 and (not doc_param["required_fields"] or i in rows_required)
             ):
-                self.append_to_collection(name, elem)
+                self.__append_to_collection(name, elem)
 
     ################################################################################################################################################
     # --------------------------------------------------- Запись в файл ----------------------------------------------------------------------------
@@ -1234,7 +1237,7 @@ class ExcelBaseImporter:
     def write_collections(
         self, num: int = 0, path_output: str = "output", output_format: str = ""
     ) -> None:
-        if not self.is_init() or len(self._collections) == 0:
+        if not self.__is_init() or len(self._collections) == 0:
             logger.warning(
                 'Не удалось прочитать данные из файла "{0} - {1}"\n'.format(
                     self.func_inn(), self._parameters["filename"]["value"][0]
@@ -1274,7 +1277,7 @@ class ExcelBaseImporter:
                             file_writer.writerow(rec)
 
     def write_logs(self, num: int = 0, path_output: str = "logs") -> None:
-        if not self.is_init() or len(self._collections) == 0:
+        if not self.__is_init() or len(self._collections) == 0:
             return
         os.makedirs(path_output, exist_ok=True)
         self._current_id = ""
@@ -1317,19 +1320,19 @@ class ExcelBaseImporter:
     ################################################################################################################################################
     # ---------------------------------------------- Параметры конфигурации ------------------------------------------------------------------------
     ################################################################################################################################################
-    def _set_parameters(self) -> None:
+    def __set_parameters(self) -> None:
         for value in self._parameters.values():
             if not value["fixed"]:
                 value["value"] = list()
-        for key in self.get_config_parameters().keys():
-            self._set_parameter(key)
+        for key in self.__get_config_parameters().keys():
+            self.__set_parameter(key)
         self._parameters.setdefault("period", {"fixed": False, "value": list()})
 
         if not self._parameters["period"]["value"]:
             self._parameters["period"]["value"].append(
                 datetime.date.today().strftime("%d.%m.%Y")
             )
-        self.check_period_value()
+        self.__check_period_value()
 
         self._parameters.setdefault("path", {"fixed": False, "value": list()})
         if not self._parameters["path"]["value"]:
@@ -1349,8 +1352,8 @@ class ExcelBaseImporter:
             if not l:
                 raise InnMismatchException
 
-    def _set_parameter(self, name: str):
-        for param in self.get_config_parameters(name):
+    def __set_parameter(self, name: str):
+        for param in self.__get_config_parameters(name):
             rows = param["row"]
             cols = param["col"]
             patterns = param["pattern"]
@@ -1368,7 +1371,7 @@ class ExcelBaseImporter:
                             self._parameters[name]["value"].append(pattern[1:])
                         else:
                             for row, col in product(rows, cols):
-                                result = self._get_value_after_validation(
+                                result = self.__get_value_after_validation(
                                     pattern,
                                     "head" if is_head else "foot",
                                     row[0],
@@ -1380,7 +1383,7 @@ class ExcelBaseImporter:
                                             param["offset_row"].append((0, False))
                                         if not param["offset_col"]:
                                             param["offset_col"].append((0, False))
-                                        result = self._get_value_after_validation(
+                                        result = self.__get_value_after_validation(
                                             param["offset_pattern"],
                                             "head" if is_head else "foot",
                                             get_absolute_index(
@@ -1400,10 +1403,10 @@ class ExcelBaseImporter:
 
         return self._parameters[name]
 
-    def is_init(self) -> bool:
+    def __is_init(self) -> bool:
         return self._config._is_init
 
-    def get_columns_heading(self, col: int = -1, name: str = "") -> list:
+    def __get_columns_heading(self, col: int = -1, name: str = "") -> list:
         if col != -1:
             if name:
                 return self._config._columns_heading[col][name]
@@ -1412,69 +1415,69 @@ class ExcelBaseImporter:
         else:
             return self._config._columns_heading
 
-    def get_condition_team(self) -> str:
+    def __get_condition_team(self) -> str:
         return self._config._condition_team
 
-    def get_condition_end_table(self) -> str:
+    def __get_condition_end_table(self) -> str:
         return self._config._condition_end_table
 
-    def get_doc_type(self, name: str) -> str:
+    def __get_doc_type(self, name: str) -> str:
         return "".join(
             [x["type"] for x in self._config._documents if x["name"] == name]
         )
 
-    def get_condition_end_table_column(self) -> str:
+    def __get_condition_end_table_column(self) -> str:
         return self._config._condition_end_table_column
 
-    def get_page_name(self) -> str:
+    def __get_page_name(self) -> str:
         return self._config._page_name
 
-    def get_page_index(self) -> int:
+    def __get_page_index(self) -> int:
         return get_value_int(self._config._page_index)
 
-    def get_max_cols(self) -> int:
+    def __get_max_cols(self) -> int:
         return get_value_int(self._config._max_cols)[0]
 
-    def get_row_start(self) -> int:
+    def __get_row_start(self) -> int:
         return get_value_int(self._config._row_start)[0]
 
-    def get_col_start(self) -> int:
+    def __get_col_start(self) -> int:
         return self._config._col_start
 
-    def set_col_start(self, col: int):
+    def __set_col_start(self, col: int):
         self._config._col_start.append((col, True))
 
-    def set_row_start(self, row: int):
+    def __set_row_start(self, row: int):
         self._config._row_start = [(row, True)]
 
-    def get_max_rows_heading(self) -> int:
+    def __get_max_rows_heading(self) -> int:
         return get_value_int(self._config._max_rows_heading)[0]
 
-    def get_header(self, name: str):
+    def __get_header(self, name: str):
         return self._config._header[name]
 
     @warning_error
-    def get_check(self, name: str):
+    def __get_check(self, name: str):
         return self._config._check[name]
 
-    def get_config_parameters(self, name: str = ""):
+    def __get_config_parameters(self, name: str = ""):
         if name:
             return self._config._parameters[name]
         else:
             return self._config._parameters
 
-    def get_config_documents(self, name: str = ""):
+    def __get_config_documents(self, name: str = ""):
         if name:
             return self._config._documents[name]
         else:
             return self._config._documents
 
-    def init_data(self):
+    def __init_data(self):
         self.colontitul["head"] = list()
         if self.colontitul["foot"]:
             self.colontitul["head"].append(self.colontitul["foot"][-1])
         self.colontitul["foot"] = list()
-        for col in self.get_columns_heading():
+        for col in self.__get_columns_heading():
             col["active"] = False
         self._names = dict()
         self._teams = list()
@@ -1584,9 +1587,9 @@ class ExcelBaseImporter:
                     x = f()
                     if isinstance(value, float) or isinstance(value, int):
                         if item.find(f"-{name}") != -1 and index != 0:
-                            value -= self._get_value(x, ".+", "float")
+                            value -= self.__get_value(x, ".+", "float")
                         else:
-                            value += self._get_value(x, ".+", "float")
+                            value += self.__get_value(x, ".+", "float")
                     else:
                         value += x + " "
                 else:
@@ -1726,7 +1729,7 @@ class ExcelBaseImporter:
     def func_column_name(self):
 
         if self._current_value_col != -1:
-            return self.get_columns_heading(self._current_value_, "alias")
+            return self.__get_columns_heading(self._current_value_, "alias")
         return ""
 
     def func_column_value(self):
