@@ -5,7 +5,7 @@ sys.path.append(path)
 from module.settings import ENCONING
 from module.settings import BASE_DIR
 from module.parser import Parser
-from module.utils import get_extract_files, get_hash_file
+from module.utils import get_extract_files
 import unittest
 from shutil import rmtree
 

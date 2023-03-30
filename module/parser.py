@@ -5,11 +5,11 @@ from report.report_000_00 import Report_000_00
 from report.report_001_00 import Report_001_00
 from report.report_002_00 import Report_002_00
 from report.report_003_00 import Report_003_00
-from .utils import get_files, write_list, getArgs
 from .excel_base_importer import ExcelBaseImporter
-from .helpers import regular_calc
+from .helpers import regular_calc, get_config_files, write_list
 from .union import UnionData
 from .exceptions import InnMismatchException, FatalException, ConfigNotFoundException
+from .search_config import SearchConfig
 from .settings import *
 
 logger = logging.getLogger(__name__)
@@ -36,6 +36,8 @@ class Parser:
         self.output_path = re.findall('.+(?=[.])', file_down)[0]
         self.download_file = file_down
         self.is_hash = False if hash == 'no' else True
+        self.config_files = get_config_files()
+
         self.report = {
             '000': Report_000_00,
             '001': Report_001_00,
@@ -59,7 +61,8 @@ class Parser:
 
             else:
                 logger.info(f"\nАрхив: {COLOR_CONSOLE['red']}'{os.path.basename(self.name) }'{COLOR_CONSOLE['end']}")
-                list_files = get_files(self.name, self.inn, self.config)
+                search_conf = SearchConfig(self.name, self.config_files, self.inn, self.config)
+                list_files = search_conf.get_list_files()
                 i = 0
                 isParser = False
                 if list_files:

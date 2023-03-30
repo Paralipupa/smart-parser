@@ -67,7 +67,7 @@ class UnionData:
         return os.path.join(path_output, file_output) 
         raise ConfigNotFoundException
 
-    def __check_unique(self, file_name: str, arr: list) -> NoReturn:
+    def __check_unique(self, file_name: str, arr: list) -> None:
         setarr = set(arr)
         if len(arr) != len(setarr):
             counter = Counter(arr)
@@ -111,7 +111,7 @@ class UnionData:
         return a
 
     @fatal_error
-    def __write(self, path_output: str, inn: str, file_with_period: str, data: dict) -> NoReturn:
+    def __write(self, path_output: str, inn: str, file_with_period: str, data: dict) -> None:
         data = [x for x in data.values()]
         file_name, period = file_with_period.split('@')
         key = f'{inn}_{period}'
@@ -154,7 +154,7 @@ class UnionData:
         return filename_arch
 
     @fatal_error
-    def __write_logs(self, num: int = 0, path_output: str = 'logs') -> NoReturn:
+    def __write_logs(self, num: int = 0, path_output: str = 'logs') -> None:
         if len(self.logs) == 0:
             return
         os.makedirs(path_output, exist_ok=True)

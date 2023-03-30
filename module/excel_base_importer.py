@@ -937,7 +937,7 @@ class ExcelBaseImporter:
         if len(self._teams) != 0:
             self.process_record(self._teams[-1])
 
-    def process_record(self, team: dict) -> NoReturn:
+    def process_record(self, team: dict) -> None:
         if not self.colontitul["is_parameters"]:
             self._set_parameters()
         for doc_param in self.get_config_documents():
@@ -945,7 +945,7 @@ class ExcelBaseImporter:
             self.document_split_one_line(doc, doc_param)
         self._teams.remove(team)
 
-    def process_finish(self) -> NoReturn:
+    def process_finish(self) -> None:
         for doc_param in self.get_config_documents():
             if doc_param.get("func_after"):
                 param = {"value": "", "func": doc_param["func_after"]}
@@ -1025,7 +1025,7 @@ class ExcelBaseImporter:
     #%%##############################################################################################################################################
     # --------------------------------------------------- Документы --------------------------------------------------------------------------------
     ################################################################################################################################################
-    def append_to_collection(self, name: str, doc: dict) -> NoReturn:
+    def append_to_collection(self, name: str, doc: dict) -> None:
         key = self._page_name if self._page_name else "noname"
         self._collections.setdefault(name, {key: list()})
         self._collections[name].setdefault(key, list())
@@ -1189,7 +1189,7 @@ class ExcelBaseImporter:
         return doc
 
     # Разбиваем данные документа по-строчно
-    def document_split_one_line(self, doc: dict, doc_param: dict) -> NoReturn:
+    def document_split_one_line(self, doc: dict, doc_param: dict) -> None:
         name = doc_param["name"]
         # для каждого поля свой индекс прохода
         index = {x: 0 for x in doc.keys()}
@@ -1235,7 +1235,7 @@ class ExcelBaseImporter:
     ################################################################################################################################################
     def write_collections(
         self, num: int = 0, path_output: str = "output", output_format: str = ""
-    ) -> NoReturn:
+    ) -> None:
         if not self.is_init() or len(self._collections) == 0:
             logger.warning(
                 'Не удалось прочитать данные из файла "{0} - {1}"\n'.format(
@@ -1275,7 +1275,7 @@ class ExcelBaseImporter:
                         for rec in records:
                             file_writer.writerow(rec)
 
-    def write_logs(self, num: int = 0, path_output: str = "logs") -> NoReturn:
+    def write_logs(self, num: int = 0, path_output: str = "logs") -> None:
         if not self.is_init() or len(self._collections) == 0:
             return
         os.makedirs(path_output, exist_ok=True)
@@ -1319,7 +1319,7 @@ class ExcelBaseImporter:
     ################################################################################################################################################
     # ---------------------------------------------- Параметры конфигурации ------------------------------------------------------------------------
     ################################################################################################################################################
-    def _set_parameters(self) -> NoReturn:
+    def _set_parameters(self) -> None:
         for value in self._parameters.values():
             if not value["fixed"]:
                 value["value"] = list()
@@ -1484,7 +1484,7 @@ class ExcelBaseImporter:
     ################################################################################################################################################
     # ----------------------------------------------------- Функции --------------------------------------------------------------------------------
     ################################################################################################################################################
-    def __set_functions(self) -> NoReturn:
+    def __set_functions(self) -> None:
         self.funcs = {
             "inn": self.func_inn,
             "period_first": self.func_period_first,
@@ -1566,7 +1566,7 @@ class ExcelBaseImporter:
                 break
         return names_new
 
-    def __recalc_expression(self, part: str) -> NoReturn:
+    def __recalc_expression(self, part: str) -> None:
         for item in self._current_value_func[part]["expression"].split(","):
             value = self._current_value_empty
             for index, hash in enumerate(re.split(r"[+-]", item)):

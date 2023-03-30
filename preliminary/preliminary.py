@@ -11,13 +11,7 @@ from header import header
 from pu import pu
 from puv import puv
 from utils import write_config, sorted_lines, set_lines, set_parameters, get_ident
-
-
-def getArgs() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-n', '--name', nargs='?')
-    return parser
-
+from module.helpers import getArgs
 
 def read_from_config(file_name: str) -> list:
     lines = set_lines()

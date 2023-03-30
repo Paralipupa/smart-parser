@@ -26,7 +26,7 @@ class GisConfig:
         self.configuration_initialize()
 
     @fatal_error
-    def configuration_initialize(self) -> NoReturn:
+    def configuration_initialize(self) -> None:
         # регул.выражение начала новой области (иерархии)
         self._condition_team = list()
         self._condition_end_table = ''  # регул.выражение окончания табличных данных
@@ -109,7 +109,7 @@ class GisConfig:
         self._parameters.setdefault(
             'path', [{'row': 0, 'col': 0, 'pattern': [f'@{PATH_OUTPUT}'], 'ishead': True}])
 
-    def set_param_colontitul(self, name_part: str, is_head: bool = True) -> NoReturn:
+    def set_param_colontitul(self, name_part: str, is_head: bool = True) -> None:
         i = 0
         name = 'default'
         while name:
@@ -142,7 +142,7 @@ class GisConfig:
                     j += 1
             i += 1
 
-    def set_table_columns(self) -> NoReturn:
+    def set_table_columns(self) -> None:
         i = 0
         while self.is_section_exist(f'col_{i}'):
             pattern = self.__get_pattern(
@@ -205,7 +205,7 @@ class GisConfig:
                 self.column_difference = (i, 20 - i)
                 i = 20
 
-    def set_column_conditions(self, i: int) -> NoReturn:
+    def set_column_conditions(self, i: int) -> None:
         ls = list()
         patt = self.__get_pattern(self.read_config(
             f'col_{i}', 'condition_begin_team'))
@@ -254,7 +254,7 @@ class GisConfig:
 # ========================= Шаблоны =======================================================
 
     @fatal_error
-    def set_patterns(self) -> NoReturn:
+    def set_patterns(self) -> None:
         self._patterns = dict()  # список шаблонов
         name = 'default'
         k = -1
@@ -274,7 +274,7 @@ class GisConfig:
 
 # ========================= Документы =======================================================
     @fatal_error
-    def set_documents(self) -> NoReturn:
+    def set_documents(self) -> None:
         self._documents = list()  # список документов
         k = 0
         while self.read_config(f'doc_{k}', 'name'):
@@ -404,11 +404,11 @@ class GisConfig:
         return fld
 
     @warning_error
-    def set_fld_pattern_ref(self, fld: dict, doc: dict) -> NoReturn:
+    def set_fld_pattern_ref(self, fld: dict, doc: dict) -> None:
         fld['pattern'][0], fld['column'] = self.__get_pattern(
             fld['pattern'][0], doc, fld['column'])
 
-    def set_document_fields(self, doc: dict) -> NoReturn:
+    def set_document_fields(self, doc: dict) -> None:
         i = 0
         while self.read_config(f'{doc["name"]}_{i}', 'name'):
             fld = self.set_doc_field(dict(), f'{doc["name"]}_{i}', doc)
