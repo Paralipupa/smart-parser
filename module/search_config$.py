@@ -1,4 +1,7 @@
+import asyncio
 import pathlib
+from multiprocessing import Pool
+from multiprocessing.pool import ThreadPool
 from report.report_001_00 import Report_001_00
 from .helpers import (
     print_message,
@@ -28,31 +31,58 @@ class SearchConfig:
     )
     def get_list_files(self) -> list:
         self.__extarct_zip_files()
-        self.__enumeration_config_files()
+        asyncio.run(self.__enumeration_config_files())
         return self.list_files
 
-    def __enumeration_config_files(self) -> None:
-        self.list_files = list(map(self.__put_data_file, self.list_files))
-        self.list_files = sorted(
-            self.list_files, key=lambda x: (str(x["config"]), str(x["name"]))
-        )
+    async def __enumeration_config_files(self) -> None:
+        q = asyncio.Queue()
+        put_files = [
+            asyncio.create_task(self.__put_data_file(item, q))
+            for item in self.list_files
+        ]
+        get_files = [asyncio.create_task(self.__get_data_file(q))]
 
-    def __put_data_file(self, item: dict) -> dict:
-        data_file = self.__get_data_file(item)
+        self.list_files = []
+        await asyncio.gather(*put_files)
+        await q.join()
+
+        for c in get_files:
+            c.cancel()
+
+    async def __get_data_file(self, q: asyncio.Queue) -> None:
+        while True:
+            data_file = await q.get()
+            self.list_files.append(data_file)
+            q.task_done()
+
+    async def __put_data_file(self, item: dict, q: asyncio.Queue) -> dict:
+        data_file = {
+            "name": item["name"],
+            "config": item["config"],
+            "inn": item["inn"],
+            "warning": list(),
+            "records": None,
+            "zip": item["zip"],
+        }
         if item["config"]:
-            self.__check_config(data_file, item["config"])
+            await self.__check_config(data_file, item["config"], q)
         else:
-            self.__config_find(data_file)
-        return data_file
+            await self.__config_find(data_file, q)
 
-    def __config_find(self, data_file: dict) -> dict:
+    # await q.put(data_file)
+
+    async def __config_find(self, data_file: dict, q: asyncio.Queue) -> dict:
         for conf_file in self.config_files:
-            if self.__check_config(
-                data_file, pathlib.Path(PATH_CONFIG, f"{conf_file}")
-            ):
-                break
+            b = await self.__check_config(
+                data_file, pathlib.Path(PATH_CONFIG, f"{conf_file}"), q
+            )
+            if b:
+                return
 
-    def __check_config(self, data_file: dict, file_config: str) -> bool:
+    async def __check_config(
+        self, data_file: dict, file_config: str, q: asyncio.Queue
+    ) -> bool:
+        await asyncio.sleep(0)
         rep = Report_001_00(
             file_name=data_file["name"],
             config_file=str(file_config),
@@ -62,7 +92,7 @@ class SearchConfig:
             if not rep._config._is_unique:
                 if rep.check():
                     data_file["config"] = file_config
-                    return True
+                    return data_file
                 elif rep._config._warning:
                     for w in rep._config._warning:
                         data_file["warning"].append(w)
@@ -71,6 +101,9 @@ class SearchConfig:
             data_file["warning"].append(
                 'ФАЙЛ НЕ НАЙДЕН или ПОВРЕЖДЕН "{}". skip'.format(data_file["name"])
             )
+        if data_file["config"]:
+            q.put(data_file)
+            return True
         return False
 
     def __extarct_zip_files(self) -> None:
@@ -96,13 +129,3 @@ class SearchConfig:
                     "zip": "",
                 }
             )
-
-    def __get_data_file(self, item: dict) -> dict:
-        return {
-            "name": item["name"],
-            "config": item["config"],
-            "inn": item["inn"],
-            "warning": list(),
-            "records": None,
-            "zip": item["zip"],
-        }
