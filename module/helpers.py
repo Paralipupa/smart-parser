@@ -14,7 +14,7 @@ from .settings import (
     POS_NUMERIC_IS_ABSOLUTE,
     PATH_CONFIG,
     PATH_TMP,
-    ENCONING
+    ENCONING,
 )
 
 logger = logging.getLogger(__name__)
@@ -254,6 +254,7 @@ def get_list_files(name: str) -> list:
                             )
     return l
 
+
 def write_list(path_output: str, files: list):
     os.makedirs(path_output, exist_ok=True)
     is_warning = False
@@ -287,6 +288,7 @@ def write_list(path_output: str, files: list):
         else:
             file.write(mess_conf)
     return file_output if is_warning else ""
+
 
 def get_extract_files(
     archive_file: str, extract_dir: str = PATH_TMP, ext: str = r".xls"
@@ -323,3 +325,6 @@ def get_extract_files(
                 i += 1
     return list_files
 
+
+def hashit(s):
+    return hashlib.sha1(s).hexdigest()

@@ -14,6 +14,7 @@ from module.exceptions import InnMismatchException
 from .file_readers import get_file_reader
 from preliminary.utils import get_ident, get_reg
 from .helpers import (
+    hashit,
     warning_error,
     fatal_error,
     print_message,
@@ -28,9 +29,6 @@ from .settings import *
 
 logger = logging.getLogger(__name__)
 
-
-def _hashit(s):
-    return hashlib.sha1(s).hexdigest()
 
 
 class ExcelBaseImporter:
@@ -64,7 +62,7 @@ class ExcelBaseImporter:
         self.__set_functions()
 
     # %% Проверка совместимости файла конфигурации
-    def check(self, is_warning: bool = False) -> bool:
+    def check(self, headers:list, is_warning: bool = False) -> bool:
         if not self.is_verify(self._parameters["filename"]["value"][0]):
             return False
         if (
@@ -77,7 +75,10 @@ class ExcelBaseImporter:
             )
         ):
             return False
-        self._headers = self._get_headers()
+        self._headers = self._get_headers() if len(headers) < self._config._max_rows_heading[0][0] else headers
+        if len(headers) < len(self._headers):
+            headers.clear()
+            headers.extend(self._headers) 
         if not self._headers:
             return False
         return self._check_controll(self._headers, is_warning)
@@ -235,7 +236,7 @@ class ExcelBaseImporter:
                             "col": value["col"],
                             "index": index[POS_INDEX_VALUE],
                             "value": v,
-                            "negative": index[POS_INDEX_IS_NEGATIVE]
+                            "negative": index[POS_INDEX_IS_NEGATIVE],
                         }
                     )
         return result_record if not is_empty else None
@@ -255,7 +256,7 @@ class ExcelBaseImporter:
                             "col": mr["col"],
                             "index": mr["index"],
                             "value": mr["value"],
-                            "negative": mr['negative']
+                            "negative": mr["negative"],
                         }
                     )
         return False
@@ -685,20 +686,17 @@ class ExcelBaseImporter:
         return patts
 
     def _get_headers(self) -> list:
-        if self._headers:
-            return self._headers
-        else:
-            self._col_start = 0
-            data_reader = self._get_data_xls()
-            if not data_reader:
-                return None
-            headers = list()
-            index = 0
-            for record in data_reader:
-                headers.append(record)
-                index += 1
-                if index > self._config._max_rows_heading[0][0]:
-                    break
+        self._col_start = 0
+        data_reader = self._get_data_xls()
+        if not data_reader:
+            return None
+        headers = list()
+        index = 0
+        for record in data_reader:
+            headers.append(record)
+            index += 1
+            if index > self._config._max_rows_heading[0][0]:
+                break
         return headers
 
     def _check_function(self) -> bool:
@@ -881,11 +879,11 @@ class ExcelBaseImporter:
         if not cols:
             cols = [(col_curr, True)]
         for c in cols:
-            fld_name =self._get_key_from_input_names(c[POS_NUMERIC_VALUE])
+            fld_name = self._get_key_from_input_names(c[POS_NUMERIC_VALUE])
             if fld_name:
                 row = get_absolute_index(rows[0], row_curr)
                 values = [
-                    (x["value"], None, x["negative"] | c[POS_NUMERIC_IS_NEGATIVE] )
+                    (x["value"], None, x["negative"] | c[POS_NUMERIC_IS_NEGATIVE])
                     for x in team[fld_name]
                     if x["row"] == row
                 ]
@@ -1532,7 +1530,7 @@ class ExcelBaseImporter:
             ind_e = item.find(")")
             func = item[:ind_s]
             arg = item[ind_s + 1 : ind_e]
-            hash = _hashit(func.encode("utf-8"))[:8]
+            hash = hashit(func.encode("utf-8"))[:8]
             if not self._current_value_func[part].get(hash):
                 self._current_value_func[part][hash] = {
                     "name": func,
@@ -1554,7 +1552,7 @@ class ExcelBaseImporter:
                 item = names[:index]
                 delim = names[index : index + 1]
                 names = names[index + 1 :]
-            hash = _hashit(item.encode("utf-8"))[:8]
+            hash = hashit(item.encode("utf-8"))[:8]
             self._current_value_func[part][hash] = {
                 "name": item,
                 "type": "",
@@ -1713,7 +1711,7 @@ class ExcelBaseImporter:
 
     def func_hash(self):
         return (
-            _hashit(str(self.__get_index_key(self._current_value[-1])).encode("utf-8"))
+            hashit(str(self.__get_index_key(self._current_value[-1])).encode("utf-8"))
             if self.is_hash
             else self._current_value[-1]
         )

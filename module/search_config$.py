@@ -23,6 +23,7 @@ class SearchConfig:
         self.config_files = config_files
         self.list_files = list()
         self.zip_files = list()
+        self.headers = dict()
         print_message("", flush=True)
 
     @timing(
@@ -90,7 +91,7 @@ class SearchConfig:
         )
         if rep.is_file_exists:
             if not rep._config._is_unique:
-                if rep.check():
+                if rep.check(headers=self.headers.get(os.path.basename(data_file["name"]),[])):
                     data_file["config"] = file_config
                     return data_file
                 elif rep._config._warning:

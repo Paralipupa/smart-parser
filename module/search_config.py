@@ -6,6 +6,7 @@ from .helpers import (
     get_list_files,
     get_extract_files,
     timing,
+    hashit,
 )
 from .settings import *
 
@@ -20,6 +21,7 @@ class SearchConfig:
         self.config_files = config_files
         self.list_files = list()
         self.zip_files = list()
+        self.headers: dict = dict()
         print_message("", flush=True)
 
     @timing(
@@ -60,7 +62,9 @@ class SearchConfig:
         )
         if rep.is_file_exists:
             if not rep._config._is_unique:
-                if rep.check():
+                key = hashit(data_file["name"].encode("utf-8"))
+                self.headers.setdefault(key, [])
+                if rep.check(self.headers[key]):
                     data_file["config"] = file_config
                     return True
                 elif rep._config._warning:
