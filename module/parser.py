@@ -5,7 +5,9 @@ from .excel_base_importer import ExcelBaseImporter
 from .helpers import regular_calc, get_config_files, write_list
 from .union import UnionData
 from .exceptions import InnMismatchException, FatalException, ConfigNotFoundException
-from .search_config import SearchConfig
+# from .search_config_sync import SearchConfig
+from .search_config_tasks import SearchConfig
+# from .search_config_sync import SearchConfig
 from .settings import *
 
 logger = logging.getLogger(__name__)

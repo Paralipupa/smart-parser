@@ -125,7 +125,7 @@ LOGGING = {
         },
         "debug": {
             "filters": ["DebugFilter"],
-            "formatter": "json",
+            "formatter": "default",
             "level": "DEBUG",
             "class": "logging.handlers.RotatingFileHandler",
             "encoding": ENCONING,
@@ -186,11 +186,12 @@ LOGGING = {
         },
     },
     "root": {
-        "level": "INFO",
+        "level": "DEBUG",
         "handlers": [
             "console",
             "logfile",
             "warning",
+            "debug",
             "error",
             "json",
             # "http_handler"

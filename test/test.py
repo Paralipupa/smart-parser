@@ -1,5 +1,6 @@
 import os
 import sys
+from module.helpers import timing
 
 path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(path)
@@ -126,6 +127,16 @@ class TestGisConfig(unittest.TestCase):
             path_down=os.path.join(BASE_DIR, "test", "download"),
         )
 
+    def test_shustoff(self):
+        self.parser.name = os.path.join(
+            BASE_DIR, 'test', 'input', 'shustoff.zip')
+        self.parser.download_file = 'shustoff.zip'
+        self.__remove_download()
+        self.parser.start()
+        hash_origin, hash_download = self.__check()
+        self.assertEqual(hash_origin, hash_download)
+
+
     def test_druzhba(self):
         self.parser.name = os.path.join(BASE_DIR, "test", "input", "druzhba.zip")
         self.parser.download_file = "druzhba.zip"
@@ -164,19 +175,16 @@ class TestGisConfig(unittest.TestCase):
         hash_origin, hash_download = self.__check()
         self.assertEqual(hash_origin, hash_download)
 
-    def test_shustoff(self):
-        self.parser.name = os.path.join(
-            BASE_DIR, 'test', 'input', 'shustoff.zip')
-        self.parser.download_file = 'shustoff.zip'
-        self.__remove_download()
-        self.parser.start()
-        hash_origin, hash_download = self.__check()
-        self.assertEqual(hash_origin, hash_download)
-
+@timing(
+    start_message="Начало теста",
+    end_message="окончание теста",
+)
+def main():
+    unittest.main()
 
 if __name__ == "__main__":
     path_log = os.path.join(os.path.join(os.path.dirname(__file__), "log"))
     os.makedirs(path_log, exist_ok=True)
     for f in os.listdir(path_log):
         os.remove(os.path.join(path_log, f))
-    unittest.main()
+    main()

@@ -32,7 +32,7 @@ def get_config_files():
             x
             for x in os.listdir(PATH_CONFIG)
             if re.search(
-                "gisconfig_[0-9]{3}_[0-9]{2}[0-9a-z_\-,()]*\.ini", x, re.IGNORECASE
+                r"gisconfig_[0-9]{3}_[0-9]{2}[0-9a-z_\-,()]*\.ini", x, re.IGNORECASE
             )
         ]
         # сортировка: 002_05a.ini раньше чем 002_05.ini

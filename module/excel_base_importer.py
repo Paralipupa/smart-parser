@@ -1,6 +1,5 @@
 import re
 import os
-import hashlib
 import datetime
 import pathlib
 import uuid
@@ -165,13 +164,7 @@ class ExcelBaseImporter:
         for col_start in self.__get_col_start():
             self.__init_data()
             self._col_start = col_start[0]
-            pages = list()
-            page_indexes = self.__get_page_index()
-            if self.__get_page_name():
-                pages = [(x, False) for x in self.__get_page_name().split(",")]
-            else:
-                pages.append(page_indexes)
-            for page in pages:
+            for page in self.__get_pages():
                 self._page_name = (
                     page[POS_PAGE_VALUE]
                     if isinstance(page[POS_PAGE_VALUE], str)
@@ -180,8 +173,6 @@ class ExcelBaseImporter:
                 self._page_index = (
                     page[POS_PAGE_VALUE] if isinstance(page[POS_PAGE_VALUE], int) else 0
                 )
-                names = None
-                row = 0
                 if not self.__get_header("pattern"):
                     self.colontitul["status"] = 1
                 data_reader = self.__get_data_xls()
@@ -190,6 +181,7 @@ class ExcelBaseImporter:
                         f"\nОШИБКА чтения файла {self._parameters['filename']['value'][0]}"
                     )
                     continue
+                row = 0
                 for record in data_reader:
                     if row < 100 and row % 10 == 0:
                         print_message(
@@ -199,14 +191,12 @@ class ExcelBaseImporter:
                             end="",
                             flush=True,
                         )
-
                     record = record[self._col_start :]
                     if self.colontitul["status"] != 2:
                         # Область до или после таблицы
                         if not self.__check_bound_row(row):
                             break
-                        names = self.__get_names(record)
-                        self.__check_colontitul(names, row, record)
+                        self.__check_colontitul(self.__get_names(record), row, record)
                     if self.colontitul["status"] == 2:
                         # Табличная область данных
                         self.__check_body(record, row)
@@ -224,9 +214,18 @@ class ExcelBaseImporter:
         self.__process_finish()
         return True
 
-    # Формируем схему записи по строке из текущей таблицы
+    def __get_pages(self):
+        pages = list()
+        page_indexes = self.__get_page_index()
+        if self.__get_page_name():
+            pages = [(x, False) for x in self.__get_page_name().split(",")]
+        else:
+            pages.append(page_indexes)
+        return pages
+
+    # Формируем словарь колонок из записи исходной таблицы
     def __map_record(self, record):
-        result_record = {}
+        result_record = dict()
         is_empty = True
         for key, value in self._names.items():
             result_record.setdefault(key, [])
@@ -246,7 +245,7 @@ class ExcelBaseImporter:
                     )
         return result_record if not is_empty else None
 
-    # группируем записи по идентификаторы
+    # группируем записи по идентификатору
     def __append_to_team(self, mapped_record: list) -> bool:
         if self.__check_condition_team(mapped_record):
             self._teams.append(mapped_record)
@@ -428,7 +427,7 @@ class ExcelBaseImporter:
                         last_cols.append(item)
                     elif self.__check_column(item, names, row, cols_exclude):
                         is_find = True
-            # последние колонки (after_stable = True)
+            # последние колонки (after_stable = True) Прочие услуги
             for item in last_cols:
                 if self.__check_stable_columns() and (
                     row in self.__get_rows_header() or item["duplicate"]
@@ -510,6 +509,7 @@ class ExcelBaseImporter:
         )
 
     # Проверка на наличие 'якоря' (текста, смещенного относительно позиции текущего заголовка)
+    # параметры offset_col, offset_row, offsert_pattern в разделах [col_X]
     def __check_column_offset(self, item: dict, index: int) -> bool:
         offset = item["offset"]
         if offset and offset["pattern"][0]:
@@ -582,7 +582,7 @@ class ExcelBaseImporter:
                     (
                         val
                         for key, val in get_months().items()
-                        if re.search(key + "[а-я]{0,5}\s", item, re.IGNORECASE)
+                        if re.search(key + r"[а-я]{0,5}\s", item, re.IGNORECASE)
                     ),
                     None,
                 )
@@ -1023,6 +1023,30 @@ class ExcelBaseImporter:
                 "indexes": l["indexes"],
             }
 
+    # если текущая таблица типа словарь, то формируем глобальный словарь значений
+    # для последующих таблиц
+    def __build_global_dictionary(self, doc: dict):
+        param = {}
+        for key, value in doc.items():
+            if key == "key":
+                param = {"value": doc["key"], "func": "hash"}
+                param["key"] = self.func(fld_param=param)
+            elif re.search("^value", key):
+                param["data"] = value
+            else:
+                self._dictionary.setdefault(self.__get_index_key(key), [])
+                if not value in self._dictionary[self.__get_index_key(key)]:
+                    self._dictionary[self.__get_index_key(key)].append(value)
+            if param.get("key") and param.get("data"):
+                self._dictionary.setdefault(self.__get_index_key(param["key"]), [])
+                if (
+                    not param["data"]
+                    in self._dictionary[self.__get_index_key(param["key"])]
+                ):
+                    self._dictionary[self.__get_index_key(param["key"])].append(
+                        param["data"]
+                    )
+
     #%%##############################################################################################################################################
     # --------------------------------------------------- Документы --------------------------------------------------------------------------------
     ################################################################################################################################################
@@ -1036,27 +1060,7 @@ class ExcelBaseImporter:
             and doc.get("key")
             and doc.get("value")
         ):
-            # если текущая таблица типа словарь, то формируем глобальный словарь значений
-            param = {}
-            for key, value in doc.items():
-                if key == "key":
-                    param = {"value": doc["key"], "func": "hash"}
-                    param["key"] = self.func(fld_param=param)
-                elif re.search("^value", key):
-                    param["data"] = value
-                else:
-                    self._dictionary.setdefault(self.__get_index_key(key), [])
-                    if not value in self._dictionary[self.__get_index_key(key)]:
-                        self._dictionary[self.__get_index_key(key)].append(value)
-                if param.get("key") and param.get("data"):
-                    self._dictionary.setdefault(self.__get_index_key(param["key"]), [])
-                    if (
-                        not param["data"]
-                        in self._dictionary[self.__get_index_key(param["key"])]
-                    ):
-                        self._dictionary[self.__get_index_key(param["key"])].append(
-                            param["data"]
-                        )
+            self.__build_global_dictionary(doc)
 
     # Формирование документа из части исходной таблицы - team (отдельной области или иерархии)
     # выбранной по идентификатору internal_id
@@ -1527,7 +1531,7 @@ class ExcelBaseImporter:
 
     def __get_func_list(self, part: str, names: str):
         self._current_value_func.setdefault(part, {})
-        list_sub = re.findall("[a-z_0-9]+\(.+\)", names)
+        list_sub = re.findall(r"[a-z_0-9]+\(.+\)", names)
         for item in list_sub:
             ind_s = item.find("(")
             ind_e = item.find(")")
@@ -1575,7 +1579,7 @@ class ExcelBaseImporter:
                 name = self._current_value_func[part][hash]["name"]
                 if re.search(r"(?<=\[)\d(?=\])", name):
                     self._current_index = int(re.findall(r"(?<=\[)\d(?=\])", name)[0])
-                    name = re.findall(".+(?=\[)", name)[0]
+                    name = re.findall(r".+(?=\[)", name)[0]
                 if self._current_value_func[part].get(name):
                     self._current_value.append(value)
                     ind = self._current_index
