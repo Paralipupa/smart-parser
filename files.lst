@@ -119,7 +119,7 @@
 ;test/input/gefest.zip
 ;test/input/molod.zip
 ;test/input/druzhba.zip
-parser/test/input/414.zip
+;parser/test/input/414.zip
 ;../input/Gefest/gefest.zip
 ;../input/Gefest/gefest11.zip
 ;../input/Gefest/gefest_test.zip
@@ -130,4 +130,4 @@ parser/test/input/414.zip
 ;../input/Chudnov/chudnov_new3.zip
 ;../input/common/common.zip
 ;../input/Akademia/5408182388 Академ-Уют.zip
-;../input/2722039995 ТСЖ Сибирская 32.zip
+../input/pd/ved.zip

@@ -299,7 +299,6 @@ class ExcelBaseImporter:
     # Область до или после таблицы
     def __check_bound_row(self, row: int) -> bool:
         if self.__get_row_start() + self.__get_max_rows_heading() < row:
-            # Вышли за границу области перед таблицей
             if len(self._teams) != 0:
                 return False
             s1, s2, is_active_find = "", "", False
@@ -966,7 +965,7 @@ class ExcelBaseImporter:
                     fld_param=param, team=self._collections.get(doc_param["name"])
                 )
 
-    # %% #######################   Изменение конфигурации "на ходу" #################################
+    # %%Изменение конфигурации "на ходу"
     def __dynamic_change_config(self):
         self.__change_heading()
         self.__change_pp()

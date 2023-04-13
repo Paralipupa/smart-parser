@@ -1,5 +1,9 @@
 import sys
 import os
+
+path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(path)
+
 import argparse
 import configparser
 from pp_service import pp_service

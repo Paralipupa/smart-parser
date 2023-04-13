@@ -1,6 +1,6 @@
-;Лицевой счет;Сальдо начальное;Начисление;Оплата;Сальдо конечное;
-;accounts: @address	@room_number	@living_person_number	@total_square	@account_identifier	@account_number
-;pp: @credit	@saldo	@payment_value	@payment_date	@bill_value
+;Лицевой счет;
+;accounts: Адрес@address	Квартира@room_number	Проживает@living_person_number	Площадь@total_square	@account_identifier	@account_number
+;pp: Сальдо начальное@credit		Начисление@bill_value	Оплата@payment_value	@payment_date	Сальдо конечное@saldo
 name:ТСЖ Молодежное
 check_pattern:Молодежное
 check_row:0<25
@@ -15,9 +15,9 @@ pattern_fias:@dead8544-dfc8-4146-a0ef-b3f43ed2861e
 
 0:Лицевой счет
 0:Итого Задолженность на начало@credit{{-2;2;Не равно "Капитальный ремонт"}}	
-0:Итого Начислено{{-2;2;Не равно "Капитальный ремонт"}}	
+0:Итого Начислено@bill_value{{-2;2;Не равно "Капитальный ремонт"}}	
 0:Итого Оплачено@payment_value{{-2;2;Не равно "Капитальный ремонт"}}	
-0:Итого Задолженность на конец{{-2;2;Не равно "Капитальный ремонт"}}
+0:Итого Задолженность на конец@saldo{{-2;2;Не равно "Капитальный ремонт"}}
 0:Лицевой счет@account_identifier@account_number::^[0-9]{1,6}\s?-?(?:[0-9]+)?(?:[А-Яа-я]+)?(?=,)
 0:>Итого Начислено
 0:<Итого Задолженность на конец

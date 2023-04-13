@@ -15,12 +15,12 @@ class GisConfig:
         self._is_init = False
         self._is_unique = False
         self._warning = list()
-        if not os.path.exists(filename):
+        if not os.path.exists(os.path.join(BASE_DIR,filename)):
             self._warning.append('Не найден файл {}.'.format(filename))
             return
         self._config = configparser.ConfigParser()
-        self._config.read(filename, encoding="utf-8")
-        self._config_name = filename
+        self._config.read(os.path.join(BASE_DIR,filename), encoding="utf-8")
+        self._config_name = os.path.basename(filename)
         # разрыв между порядковыми номерами колонок
         self.column_difference = (0, 0)
         self.configuration_initialize()
