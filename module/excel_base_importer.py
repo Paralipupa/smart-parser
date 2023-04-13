@@ -4,8 +4,10 @@ import datetime
 import pathlib
 import uuid
 import csv
+import aiofiles, asyncio
 import json
 import logging
+from aiocsv import AsyncWriter, AsyncDictWriter
 from typing import Union
 from itertools import product
 from .gisconfig import GisConfig
@@ -31,23 +33,28 @@ logger = logging.getLogger(__name__)
 
 class ExcelBaseImporter:
     @fatal_error
-    def __init__(self, file_name: str, config_file: str, inn: str):
+    def __init__(
+        self,
+        file_name: str,
+        config_file: str,
+        inn: str,
+        index: int = 0,
+        output: str = "output",
+    ):
+        self._index = index
+        self._output = output
         self.is_file_exists = True
         self.is_hash = True
         self.is_check = False
-        self._teams = (
-            list()
-        )  # список данных сгруппированных по идентификатору - internal_id
+        # список данных, сгруппированных по идентификатору - internal_id
+        self._teams = list()
         self._dictionary = dict()
-        self._columns = dict()
-        self._headers = list()
         self.colontitul = {
             "status": 0,
             "is_parameters": False,
             "head": list(),  # до таблицы
             "foot": list(),  # после таблицы
         }  # список  записей вне таблицы
-        self._names = dict()  # колонки таблицы
         self._parameters = dict()  # параметры отчета (период, имя_файла, инн и др.)
         self._parameters["inn"] = {
             "fixed": True,
@@ -55,23 +62,12 @@ class ExcelBaseImporter:
         }
         self._parameters["filename"] = {"fixed": True, "value": [file_name]}
         self._parameters["config"] = {"fixed": True, "value": [config_file]}
-        self._collections = dict()  # коллекция выходных таблиц
         self._config = GisConfig(config_file)
         self._page_index = self._config._page_index[0][POS_NUMERIC_VALUE]
         self._page_name = self._config._page_name
         self._col_start = 0
         self.__set_functions()
-
-    def __check_incorrect_inn(self) -> bool:
-        return (
-            self._parameters["inn"]["value"][-1] != "0000000000"
-            and self._config._parameters.get("inn")
-            and self._config._parameters.get("inn")[0]["pattern"][0] != "@inn"
-            and not re.search(
-                self._parameters["inn"]["value"][-1],
-                self._config._parameters.get("inn")[0]["pattern"][0],
-            )
-        )
+        self.__init_page()
 
     # %% ##################  Проверка совместимости файла конфигурации ######################
     def check(self, headers: list, is_warning: bool = False) -> bool:
@@ -83,64 +79,6 @@ class ExcelBaseImporter:
         for headers in self._headers:
             if self.__check_controll(headers, is_warning):
                 return True
-        return False
-    
-
-    def __check_controll(self, headers: list, is_warning: bool = False) -> list:
-        self.is_check = True
-        is_check = False if self._config._check["pattern"][0]["pattern"] else True
-        for row in range(self._config._max_rows_heading[0][0]):
-            if row < len(headers):
-                if not is_check:
-                    for patt in self._config._check["pattern"]:
-                        if not patt["is_find"]:
-                            patt["is_find"] = any(
-                                [re.search(patt["pattern"], x) for x in headers[row]]
-                            )
-                    is_check = all(
-                        [x["is_find"] for x in self._config._check["pattern"]]
-                    )
-                names = self.__get_names(headers[row])
-                self.__check_columns(names, row)
-                if (
-                    is_check
-                    and self.__check_stable_columns()
-                    and self.__check_condition_team(self.__map_record(headers[row]))
-                ):
-                    self.is_check = False
-                    return self.__check_function()
-        self.is_check = False
-        if self._parameters["inn"]["value"][-1] != "0000000000" and not re.search(
-            "000_00", self._config._config_name
-        ):
-            mess = ""
-            x = [
-                x["pattern"]
-                for x in self.__get_columns_heading()
-                if not x["optional"] and not x["active"]
-            ]
-            if x:
-                s = ""
-                for patterns in x:
-                    for name in patterns:
-                        s += "\t" + name + ";\n"
-                mess += (
-                    "Не найдены обязательные колонки согласно шаблонов:\n{0}".format(s)
-                )
-            else:
-                x = [
-                    x["pattern"]
-                    for x in self._config._check["pattern"]
-                    if x["is_find"] == False
-                ]
-                if x:
-                    mess += (
-                        'Не найден текст перед табличными данными:\n\t"{0}"\n'.format(
-                            '"\n\t"'.join(x).replace("|", '"\n\t"')
-                        )
-                    )
-                if mess:
-                    self._config._warning.append(mess)
         return False
 
     @fatal_error
@@ -166,8 +104,10 @@ class ExcelBaseImporter:
                 f"\nОШИБКА чтения файла {self._parameters['filename']['value'][0]}"
             )
             return False
+        path = os.path.join(PATH_OUTPUT, self._output)        
         while data_reader.get_sheet():
             self.__init_data()
+            self.__init_page()
             if not self.__get_header("pattern"):
                 self.colontitul["status"] = 1
             for row, record in enumerate(data_reader):
@@ -188,7 +128,6 @@ class ExcelBaseImporter:
                 if self.colontitul["status"] == 2:
                     # Табличная область данных
                     self.__check_record_in_body(record, row)
-                row += 1
                 if row % 100 == 0:
                     print_message(
                         "         {} Обработано: {}                          \r".format(
@@ -198,6 +137,14 @@ class ExcelBaseImporter:
                         flush=True,
                     )
             self.__done()
+            asyncio.run(
+                self.write_results_async(
+                    num=self._index,
+                    path_output=path,
+                    collections=self._collections.copy(),
+                )
+            )
+
         self.__process_finish()
         return True
 
@@ -1243,8 +1190,42 @@ class ExcelBaseImporter:
     ################################################################################################################################################
     # --------------------------------------------------- Запись в файл ----------------------------------------------------------------------------
     ################################################################################################################################################
-    def write_collections(
-        self, num: int = 0, path_output: str = "output", output_format: str = ""
+    async def write_results_async(
+        self,
+        num: int = 0,
+        path_output: str = "output",
+        output_format: str = "",
+        collections: dict = None,
+    ):
+        await self.write_collections_async(
+            num=num,
+            path_output=path_output,
+            output_format=output_format,
+            collections=collections,
+        )
+        await self.write_logs_async(num=self._index, path_output=path_output)
+
+    async def write_json_async(self, filename: str, text: str):
+        async with aiofiles.open(filename, mode="w", encoding=ENCONING) as f:
+            await f.write(text)
+
+    async def write_csv_async(self, filename: str, records: list):
+        names = [x for x in records[0].keys()]
+        async with aiofiles.open(filename, mode="w", encoding=ENCONING) as f:
+            writer = AsyncDictWriter(
+                f, delimiter=";", lineterminator="\r", fieldnames=names
+            )
+            await writer.writeheader()
+            writer = AsyncWriter(f)
+            for rec in records:
+                await writer.writerow(rec)
+
+    async def write_collections_async(
+        self,
+        num: int = 0,
+        path_output: str = "output",
+        output_format: str = "",
+        collections: dict = None,
     ) -> None:
         if not self.__is_init() or len(self._collections) == 0:
             logger.warning(
@@ -1259,7 +1240,7 @@ class ExcelBaseImporter:
         self._current_id = ""
         id = self.func_id()
         inn = self.func_inn()
-        for name, pages in self._collections.items():
+        for name, pages in collections.items():
             for key, records in pages.items():
                 file_output = pathlib.Path(
                     path_output,
@@ -1267,25 +1248,13 @@ class ExcelBaseImporter:
                     + f'{"_"+key.replace(" ","_") if key != "noname" else ""}{id}_{name}',
                 )
                 if not output_format or output_format == "json":
-                    with open(
-                        f"{file_output}.json", mode="w", encoding=ENCONING
-                    ) as file:
-                        jstr = json.dumps(records, indent=4, ensure_ascii=False)
-                        file.write(jstr)
+                    jstr = json.dumps(records, indent=4, ensure_ascii=False)
+                    await self.write_json_async(f"{file_output}.json", jstr)
 
                 if not output_format or output_format == "csv":
-                    with open(
-                        f"{file_output}.csv", mode="w", encoding=ENCONING
-                    ) as file:
-                        names = [x for x in records[0].keys()]
-                        file_writer = csv.DictWriter(
-                            file, delimiter=";", lineterminator="\r", fieldnames=names
-                        )
-                        file_writer.writeheader()
-                        for rec in records:
-                            file_writer.writerow(rec)
+                    await self.write_csv_async(f"{file_output}.csv", records)
 
-    def write_logs(self, num: int = 0, path_output: str = "logs") -> None:
+    async def write_logs_async(self, num: int = 0, path_output: str = "logs") -> None:
         if not self.__is_init() or len(self._collections) == 0:
             return
         os.makedirs(path_output, exist_ok=True)
@@ -1296,35 +1265,40 @@ class ExcelBaseImporter:
         file_output = pathlib.Path(
             path_output, f'{inn}{"_"+str(num) if num != 0 else ""}{id}'
         )
-        with open(f"{file_output}.log", "w", encoding=ENCONING) as file:
-            file.write(f"{{")
+        async with aiofiles.open(
+            f"{file_output}.log", mode="w", encoding=ENCONING
+        ) as file:
+            text = f"{{\n"
             for key, value in self._parameters.items():
-                file.write(f'\t{key}:"')
+                text += f'\t{key}:"\n'
                 for index in value["value"]:
-                    file.write(f"{index} ")
-                file.write(f'",\n')
-            file.write(f"}},\n")
-            file.write(f"\n{{")
+                    text += f"{index}\n"
+                text += f'",\n'
+            text += f"}},\n"
+            text += f"\n{{\n"
             for item in self._config._columns_heading:
                 if item["row"] != -1:
-                    file.write(
-                        f"\t({item['col']}){item['name']}:  row={item['row']} col="
+                    text += (
+                        f"\t({item['col']}){item['name']}:  row={item['row']} col=\n"
                     )
                     for index in item["indexes"]:
-                        file.write(f"{index[POS_INDEX_VALUE]},")
-                    file.write(f'",\n')
-            file.write(f"}},\n\n")
-            file.write("\nself._parameters\n")
+                        text += f"{index[POS_INDEX_VALUE]},\n"
+                    text += f'",\n\n'
+            text += f"}},\n\n\n"
+            text += "\nself._parameters\n\n"
+            await file.write(text)
             jstr = json.dumps(self._parameters, indent=4, ensure_ascii=False)
-            file.write(jstr)
-            file.write("\nself._config._parameters\n")
+            await file.write(jstr)
+            text = "\nself._config._parameters\n\n"
+            await file.write(text)
             jstr = json.dumps(self._config._parameters, indent=4)
-            file.write(jstr)
-            file.write("\nself._config._columns_heading\n")
+            await file.write(jstr)
+            text += "\nself._config._columns_heading\n"
+            await file.write(text)
             jstr = json.dumps(
                 self._config._columns_heading, indent=4, ensure_ascii=False
             )
-            file.write(jstr)
+            await file.write(jstr)
 
     ################################################################################################################################################
     # ---------------------------------------------- Параметры конфигурации ------------------------------------------------------------------------
@@ -1412,6 +1386,12 @@ class ExcelBaseImporter:
 
         return self._parameters[name]
 
+    def __init_page(self):
+        self._collections = dict()  # коллекция выходных таблиц
+        self._columns = dict()
+        self._headers = list()
+        self._names = dict()  # колонки таблицы
+
     def __is_init(self) -> bool:
         return self._config._is_init
 
@@ -1468,6 +1448,74 @@ class ExcelBaseImporter:
     @warning_error
     def __get_check(self, name: str):
         return self._config._check[name]
+
+    def __check_controll(self, headers: list, is_warning: bool = False) -> list:
+        self.is_check = True
+        is_check = False if self._config._check["pattern"][0]["pattern"] else True
+        for row in range(self._config._max_rows_heading[0][0]):
+            if row < len(headers):
+                if not is_check:
+                    for patt in self._config._check["pattern"]:
+                        if not patt["is_find"]:
+                            patt["is_find"] = any(
+                                [re.search(patt["pattern"], x) for x in headers[row]]
+                            )
+                    is_check = all(
+                        [x["is_find"] for x in self._config._check["pattern"]]
+                    )
+                names = self.__get_names(headers[row])
+                self.__check_columns(names, row)
+                if (
+                    is_check
+                    and self.__check_stable_columns()
+                    and self.__check_condition_team(self.__map_record(headers[row]))
+                ):
+                    self.is_check = False
+                    return self.__check_function()
+        self.is_check = False
+        if self._parameters["inn"]["value"][-1] != "0000000000" and not re.search(
+            "000_00", self._config._config_name
+        ):
+            mess = ""
+            x = [
+                x["pattern"]
+                for x in self.__get_columns_heading()
+                if not x["optional"] and not x["active"]
+            ]
+            if x:
+                s = ""
+                for patterns in x:
+                    for name in patterns:
+                        s += "\t" + name + ";\n"
+                mess += (
+                    "Не найдены обязательные колонки согласно шаблонов:\n{0}".format(s)
+                )
+            else:
+                x = [
+                    x["pattern"]
+                    for x in self._config._check["pattern"]
+                    if x["is_find"] == False
+                ]
+                if x:
+                    mess += (
+                        'Не найден текст перед табличными данными:\n\t"{0}"\n'.format(
+                            '"\n\t"'.join(x).replace("|", '"\n\t"')
+                        )
+                    )
+                if mess:
+                    self._config._warning.append(mess)
+        return False
+
+    def __check_incorrect_inn(self) -> bool:
+        return (
+            self._parameters["inn"]["value"][-1] != "0000000000"
+            and self._config._parameters.get("inn")
+            and self._config._parameters.get("inn")[0]["pattern"][0] != "@inn"
+            and not re.search(
+                self._parameters["inn"]["value"][-1],
+                self._config._parameters.get("inn")[0]["pattern"][0],
+            )
+        )
 
     def __get_config_parameters(self, name: str = ""):
         if name:

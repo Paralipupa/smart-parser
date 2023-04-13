@@ -1,15 +1,18 @@
 ;Лицевой счет;
 ;accounts: Адрес@address	Квартира@room_number	Проживает@living_person_number	Площадь@total_square	@account_identifier	@account_number
 ;pp: Сальдо начальное@credit		Начисление@bill_value	Оплата@payment_value	@payment_date	Сальдо конечное@saldo
-name:ЖКУ Инициатива
+name:ЖКУ Уют
 main_page_index:-1
-main_max_rows_heading:3
+main_max_rows_heading:10
 
-pattern_ЛС:^2703[0-9]{5}$
+pattern_ЛС:^[0-9]{4}-[0-9]{2}.[0-9]{4}\s*ЖКУ$
 
-0:Л.счет
-0:Итого@bill_value	
-0:Всего@saldo
-0:кв.@room_number	Прож@living_person_number
-0:>Площ@total_square	
-1:Услуги
+0:Номер платежного документа
+0:Сумма к оплате за расчетный период, руб. (по всему платежному документу)@bill_value	
+0:Оплачено денежных средств, руб.@payment_value
+0:Итого к оплате за расчетный период c учетом задолженности/переплаты, руб. (по всему платежному документу)@saldo
+0:Расчетный период@payment_date
+0:Количество проживающих@living_person_number
+0:Общая площадь для ЛС@total_square	
+0:Идентификатор ЖКУ@account_identifier
+0:Идентификатор ЖКУ@account_number
