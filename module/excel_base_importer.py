@@ -59,13 +59,11 @@ class ExcelBaseImporter:
         self._config = GisConfig(config_file)
         self._page_index = self._config._page_index[0][POS_NUMERIC_VALUE]
         self._page_name = self._config._page_name
+        self._col_start = 0
         self.__set_functions()
 
-    # %% Проверка совместимости файла конфигурации
-    def check(self, headers: list, is_warning: bool = False) -> bool:
-        if not self.is_verify(self._parameters["filename"]["value"][0]):
-            return False
-        if (
+    def __check_incorrect_inn(self) -> bool:
+        return (
             self._parameters["inn"]["value"][-1] != "0000000000"
             and self._config._parameters.get("inn")
             and self._config._parameters.get("inn")[0]["pattern"][0] != "@inn"
@@ -73,7 +71,13 @@ class ExcelBaseImporter:
                 self._parameters["inn"]["value"][-1],
                 self._config._parameters.get("inn")[0]["pattern"][0],
             )
-        ):
+        )
+
+    # %% ##################  Проверка совместимости файла конфигурации ######################
+    def check(self, headers: list, is_warning: bool = False) -> bool:
+        if not self.is_verify(self._parameters["filename"]["value"][0]):
+            return False
+        if self.__check_incorrect_inn():
             return False
         self._headers = (
             self.__get_headers()
@@ -85,9 +89,9 @@ class ExcelBaseImporter:
             headers.extend(self._headers)
         if not self._headers:
             return False
-        return self._check_controll(self._headers, is_warning)
+        return self.__check_controll(self._headers, is_warning)
 
-    def _check_controll(self, headers: list, is_warning: bool = False) -> list:
+    def __check_controll(self, headers: list, is_warning: bool = False) -> list:
         self.is_check = True
         is_check = False if self._config._check["pattern"][0]["pattern"] else True
         for row in range(self._config._max_rows_heading[0][0]):
@@ -154,63 +158,51 @@ class ExcelBaseImporter:
             return False
         return True
 
-    # %% Точка входа, чтение и обработка файла
+    # %% ###################  Точка входа, чтение и обработка файла #############################
     @fatal_error
     def extract(self) -> bool:
         if not self.is_verify(self._parameters["filename"]["value"][0]):
             return False
         if not self.__get_col_start():
             self.__set_col_start(0)
-        for col_start in self.__get_col_start():
+        data_reader = self.__get_data_xls()
+        if not data_reader:
+            self._config._warning.append(
+                f"\nОШИБКА чтения файла {self._parameters['filename']['value'][0]}"
+            )
+            return False
+        for _ in next(data_reader.get_sheet()):
             self.__init_data()
-            self._col_start = col_start[0]
-            for page in self.__get_pages():
-                self._page_name = (
-                    page[POS_PAGE_VALUE]
-                    if isinstance(page[POS_PAGE_VALUE], str)
-                    else ""
-                )
-                self._page_index = (
-                    page[POS_PAGE_VALUE] if isinstance(page[POS_PAGE_VALUE], int) else 0
-                )
-                if not self.__get_header("pattern"):
-                    self.colontitul["status"] = 1
-                data_reader = self.__get_data_xls()
-                if not data_reader:
-                    self._config._warning.append(
-                        f"\nОШИБКА чтения файла {self._parameters['filename']['value'][0]}"
+            if not self.__get_header("pattern"):
+                self.colontitul["status"] = 1
+            for row, record in enumerate(data_reader):
+                if row < 100 and row % 10 == 0:
+                    print_message(
+                        "         {} Обработано: {}                          \r".format(
+                            self.func_inn(), row
+                        ),
+                        end="",
+                        flush=True,
                     )
-                    continue
-                row = 0
-                for record in data_reader:
-                    if row < 100 and row % 10 == 0:
-                        print_message(
-                            "         {} Обработано: {}                          \r".format(
-                                self.func_inn(), row
-                            ),
-                            end="",
-                            flush=True,
-                        )
-                    record = record[self._col_start :]
-                    if self.colontitul["status"] != 2:
-                        # Область до или после таблицы
-                        if not self.__check_bound_row(row):
-                            break
-                        self.__check_colontitul(self.__get_names(record), row, record)
-                    if self.colontitul["status"] == 2:
-                        # Табличная область данных
-                        self.__check_record_in_body(record, row)
-                    row += 1
-                    if row % 100 == 0:
-                        print_message(
-                            "         {} Обработано: {}                          \r".format(
-                                self.func_inn(), row
-                            ),
-                            end="",
-                            flush=True,
-                        )
-                self.__done()
-                self._page_index += 1
+                record = record[self._col_start :]
+                if self.colontitul["status"] != 2:
+                    # Область до или после таблицы
+                    if not self.__check_bound_row(row):
+                        break
+                    self.__check_colontitul(self.__get_names(record), row, record)
+                if self.colontitul["status"] == 2:
+                    # Табличная область данных
+                    self.__check_record_in_body(record, row)
+                row += 1
+                if row % 100 == 0:
+                    print_message(
+                        "         {} Обработано: {}                          \r".format(
+                            self.func_inn(), row
+                        ),
+                        end="",
+                        flush=True,
+                    )
+            self.__done()
         self.__process_finish()
         return True
 
@@ -709,11 +701,12 @@ class ExcelBaseImporter:
             return None
         headers = list()
         index = 0
-        for record in data_reader:
-            headers.append(record)
-            index += 1
-            if index > self._config._max_rows_heading[0][0]:
-                break
+        for sheet in next(data_reader.get_sheet()):
+            for record in data_reader:
+                headers.append(record)
+                index += 1
+                if index > self._config._max_rows_heading[0][0]:
+                    break
         return headers
 
     def __check_function(self) -> bool:
@@ -1059,7 +1052,7 @@ class ExcelBaseImporter:
                         param["data"]
                     )
 
-    #%%##############################################################################################################################################
+    # %%##############################################################################################################################################
     # --------------------------------------------------- Документы --------------------------------------------------------------------------------
     ################################################################################################################################################
     def __append_to_collection(self, name: str, doc: dict) -> None:
@@ -1489,6 +1482,7 @@ class ExcelBaseImporter:
             return self._config._documents
 
     def __init_data(self):
+        self._col_start = 0
         self.colontitul["head"] = list()
         if self.colontitul["foot"]:
             self.colontitul["head"].append(self.colontitul["foot"][-1])
@@ -1743,7 +1737,6 @@ class ExcelBaseImporter:
         return f"{str(self._current_id).strip()}_{d[3:5]}{d[6:]}"  # _mmyyyy
 
     def func_column_name(self):
-
         if self._current_value_col != -1:
             return self.__get_columns_heading(self._current_value_, "alias")
         return ""

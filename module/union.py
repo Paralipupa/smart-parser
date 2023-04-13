@@ -35,13 +35,13 @@ class UnionData:
             for file in files:
                 for fn in DOCUMENTS.split():
                     name: list = re.findall(
-                        '(?<=[0-9]{1}_)'+fn+'(?=\.json)', file, re.IGNORECASE)
+                        r'(?<=[0-9]{1}_)'+fn+'(?=\.json)', file, re.IGNORECASE)
                     if name:
                         inn: list = re.findall(
-                            '^[0-9]{8,10}(?=_)', file, re.IGNORECASE)
+                            r'^[0-9]{8,10}(?=_)', file, re.IGNORECASE)
                         if not re.search('bank',fn) and not re.search('tarif',fn):
                             period = re.findall(
-                                '(?<=[0-9]{1}_)[0-9]{2}[0-9]{4}(?=_)', file, re.IGNORECASE)
+                                r'(?<=[0-9]{1}_)[0-9]{2}[0-9]{4}(?=_)', file, re.IGNORECASE)
                         if inn and name and period:
                             del_files.append(file)
                             data.setdefault(inn[0], dict())

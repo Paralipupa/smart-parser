@@ -24,7 +24,7 @@ class TestGisConfig(unittest.TestCase):
             with open(os.path.join(path_old, f), "r", encoding=ENCONING) as file2:
                 lines2 = file2.readlines()
                 lines2 = [line.rstrip("\n") for line in lines2]
-            if len(lines1) >= len(lines2):
+            if len(lines1) > len(lines2):
                 for line in lines1:
                     if not line.strip() in lines2:
                         miss_lines[-1]["value"].append(line)
@@ -36,16 +36,16 @@ class TestGisConfig(unittest.TestCase):
                                 ";".join(["" for x in line.split(";")])
                             )
             else:
-                for line in lines2:
+                for row, line in enumerate(lines2,1):
                     if not line.strip() in lines1:
                         l = [i for i, x in enumerate(lines1) if line.split(";")[1] in x]
                         if l:
-                            miss_lines[-1]["value"].append(lines1[l[0]])
+                            miss_lines[-1]["value"].append(f'{l[0]} = {lines1[l[0]]}')
                         else:
-                            miss_lines[-1]["value"].append(
+                            miss_lines[-1]["value"].append("  = " +
                                 ";".join(["" for x in line.split(";")])
                             )
-                        miss_lines[-1]["value"].append(line)
+                        miss_lines[-1]["value"].append(f'{row} = {line}')
         path_log = os.path.join(os.path.join(os.path.dirname(__file__), "log"))
         for item in miss_lines:
             if item["value"]:
