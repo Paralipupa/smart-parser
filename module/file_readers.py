@@ -1,9 +1,11 @@
 import abc
 import csv
 import os
-
+import logging
 from openpyxl import load_workbook
 import xlrd
+
+logger = logging.getLogger(__name__)
 
 
 def rchop(s, sub):
@@ -17,6 +19,7 @@ class DataFile(abc.ABC):
         self._sheet_name = sheet_name
         self._columns = columns
         self._page_index = page_index
+        self._page_current = 0
         self._sheet = None
 
     def __iter__(self):
@@ -56,15 +59,20 @@ class CsvFile(DataFile):
 class XlsFile(DataFile):
     def __init__(self, fname, sheet_name, first_line, address_columns, page_index=0):
         super(XlsFile, self).__init__(fname, sheet_name, first_line, address_columns)
-        # with xlrd.open_workbook(fname, logfile=open(os.devnull, 'w')) as wb:
-        with xlrd.open_workbook(fname) as wb:
-            if self._sheet_name:
-                self._sheet = wb.sheet_by_name(self._sheet_name)
-            else:
-                self._sheet = wb.sheets()[page_index]
-            self._rows = (
-                self._sheet.row(index) for index in range(first_line, self._sheet.nrows)
-            )
+        self._wb = xlrd.open_workbook(fname)
+
+    def get_sheet(self) -> object:
+        try:
+            if self._page_current < len(self._wb.sheets()):
+                self._sheet = self._wb.sheets()[self._page_current]
+                self._rows = (
+                    self._sheet.row(index) for index in range(self._sheet.nrows)
+                )
+                self._page_current += 1
+                return self._sheet
+            return None
+        except Exception as ex:
+            logger.exception("getSheet")
 
     @staticmethod
     def get_cell_text(cell):
@@ -99,17 +107,15 @@ class XlsxFile(DataFile):
             self._wb = load_workbook(filename=fname, read_only=True)
 
     def get_sheet(self) -> object:
-        for sh in self._wb.worksheets:
-            if (self._sheet_name or self._page_index != -1) and self._sheet is not None:
-                raise StopIteration
-            if self._sheet_name:
-                self._sheet = self._wb.get_sheet_by_name(self._sheet_name)
-            elif self._page_index != -1:
-                self._sheet = self._wb.worksheets[self._page_index]
-            else:
-                self._sheet = sh
-            self._cursor = self._sheet.iter_rows()
-            yield self._sheet
+        try:
+            if self._page_current < len(self._wb.worksheets):
+                self._sheet = self._wb.worksheets[self._page_current]
+                self._cursor = self._sheet.iter_rows()
+                self._page_current += 1
+                return self._sheet
+            return None
+        except Exception as ex:
+            logger.exception("getSheet")
 
     @staticmethod
     def get_cell_text(cell):

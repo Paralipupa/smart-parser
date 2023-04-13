@@ -79,17 +79,12 @@ class ExcelBaseImporter:
             return False
         if self.__check_incorrect_inn():
             return False
-        self._headers = (
-            self.__get_headers()
-            if len(headers) < self._config._max_rows_heading[0][0]
-            else headers
-        )
-        if len(headers) < len(self._headers):
-            headers.clear()
-            headers.extend(self._headers)
-        if not self._headers:
-            return False
-        return self.__check_controll(self._headers, is_warning)
+        self._headers = self.__get_headers()
+        for headers in self._headers:
+            if self.__check_controll(headers, is_warning):
+                return True
+        return False
+    
 
     def __check_controll(self, headers: list, is_warning: bool = False) -> list:
         self.is_check = True
@@ -171,7 +166,7 @@ class ExcelBaseImporter:
                 f"\nОШИБКА чтения файла {self._parameters['filename']['value'][0]}"
             )
             return False
-        for _ in next(data_reader.get_sheet()):
+        while data_reader.get_sheet():
             self.__init_data()
             if not self.__get_header("pattern"):
                 self.colontitul["status"] = 1
@@ -700,13 +695,18 @@ class ExcelBaseImporter:
         if not data_reader:
             return None
         headers = list()
-        index = 0
-        for sheet in next(data_reader.get_sheet()):
-            for record in data_reader:
-                headers.append(record)
-                index += 1
-                if index > self._config._max_rows_heading[0][0]:
-                    break
+        try:
+            while data_reader.get_sheet():
+                sheet_headers = list()
+                index = 0
+                for record in data_reader:
+                    sheet_headers.append(record)
+                    index += 1
+                    if index > self._config._max_rows_heading[0][0]:
+                        break
+                headers.append(sheet_headers)
+        except Exception as ex:
+            logger.exception("generate")
         return headers
 
     def __check_function(self) -> bool:

@@ -18,6 +18,7 @@ class GisConfig:
         if not os.path.exists(os.path.join(BASE_DIR,filename)):
             self._warning.append('Не найден файл {}.'.format(filename))
             logger.error('Не найден файл {}.'.format(filename))
+            print ('Не найден файл {}.'.format(filename))
             return
         self._config = configparser.ConfigParser()
         self._config.read(os.path.join(BASE_DIR,filename), encoding="utf-8")
