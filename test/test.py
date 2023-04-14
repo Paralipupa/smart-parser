@@ -36,16 +36,16 @@ class TestGisConfig(unittest.TestCase):
                                 ";".join(["" for x in line.split(";")])
                             )
             else:
-                for row, line in enumerate(lines2,1):
+                for row, line in enumerate(lines2, 1):
                     if not line.strip() in lines1:
                         l = [i for i, x in enumerate(lines1) if line.split(";")[1] in x]
                         if l:
-                            miss_lines[-1]["value"].append(f'{l[0]} = {lines1[l[0]]}')
+                            miss_lines[-1]["value"].append(f"{l[0]} = {lines1[l[0]]}")
                         else:
-                            miss_lines[-1]["value"].append("  = " +
-                                ";".join(["" for x in line.split(";")])
+                            miss_lines[-1]["value"].append(
+                                "  = " + ";".join(["" for x in line.split(";")])
                             )
-                        miss_lines[-1]["value"].append(f'{row} = {line}')
+                        miss_lines[-1]["value"].append(f"{row} = {line}")
         path_log = os.path.join(os.path.join(os.path.dirname(__file__), "log"))
         for item in miss_lines:
             if item["value"]:
@@ -127,6 +127,14 @@ class TestGisConfig(unittest.TestCase):
             path_down=os.path.join(BASE_DIR, "test", "download"),
         )
 
+    def test_druzhba(self):
+        self.parser.name = os.path.join(BASE_DIR, "test", "input", "druzhba.zip")
+        self.parser.download_file = "druzhba.zip"
+        self.__remove_download()
+        self.parser.start()
+        hash_origin, hash_download = self.__check()
+        self.assertEqual(hash_origin, hash_download)
+
     def test_shustoff(self):
         self.parser.name = os.path.join(
             BASE_DIR, 'test', 'input', 'shustoff.zip')
@@ -136,44 +144,37 @@ class TestGisConfig(unittest.TestCase):
         hash_origin, hash_download = self.__check()
         self.assertEqual(hash_origin, hash_download)
 
-
-    def test_druzhba(self):
-        self.parser.name = os.path.join(BASE_DIR, "test", "input", "druzhba.zip")
-        self.parser.download_file = "druzhba.zip"
-        self.__remove_download()
-        self.parser.start()
-        hash_origin, hash_download = self.__check()
-        self.assertEqual(hash_origin, hash_download)
-
     def test_gefest(self):
-        self.parser.name = os.path.join(
-            BASE_DIR, 'test', 'input', 'gefest.zip')
-        self.parser.download_file = 'gefest.zip'
+        self.parser.name = os.path.join(BASE_DIR, "test", "input", "gefest.zip")
+        self.parser.download_file = "gefest.zip"
         self.__remove_download()
-        if os.path.exists(os.path.join(
-                BASE_DIR, 'test', 'download', self.parser.download_file)):
-            os.remove(os.path.join(
-                BASE_DIR, 'test', 'download', self.parser.download_file))
+        if os.path.exists(
+            os.path.join(BASE_DIR, "test", "download", self.parser.download_file)
+        ):
+            os.remove(
+                os.path.join(BASE_DIR, "test", "download", self.parser.download_file)
+            )
         self.parser.start()
         hash_origin, hash_download = self.__check()
         self.assertEqual(hash_origin, hash_download)
 
     def test_molod(self):
-        self.parser.name = os.path.join(BASE_DIR, 'test', 'input', 'molod.zip')
-        self.parser.download_file = 'molod.zip'
+        self.parser.name = os.path.join(BASE_DIR, "test", "input", "molod.zip")
+        self.parser.download_file = "molod.zip"
         self.__remove_download()
         self.parser.start()
         hash_origin, hash_download = self.__check()
         self.assertEqual(hash_origin, hash_download)
 
     def test_t414(self):
-        self.parser.name = os.path.join(BASE_DIR, 'test', 'input', '414.zip')
-        self.parser.download_file = '414.zip'
-        self.parser.inn = '7825455026'
+        self.parser.name = os.path.join(BASE_DIR, "test", "input", "414.zip")
+        self.parser.download_file = "414.zip"
+        self.parser.inn = "7825455026"
         self.__remove_download()
         self.parser.start()
         hash_origin, hash_download = self.__check()
         self.assertEqual(hash_origin, hash_download)
+
 
 @timing(
     start_message="Начало теста",
@@ -181,6 +182,7 @@ class TestGisConfig(unittest.TestCase):
 )
 def main():
     unittest.main()
+
 
 if __name__ == "__main__":
     path_log = os.path.join(os.path.join(os.path.dirname(__file__), "log"))

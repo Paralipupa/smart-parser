@@ -46,7 +46,7 @@ def fatal_error(func):
             raise InnMismatchException
         except Exception as ex:
             logger.exception("Fatal error")
-            raise FatalException("")
+            raise FatalException(f"{ex}")
 
     return wrapper
 
@@ -200,14 +200,13 @@ def get_hash_file(file_name: str):
 
 def get_config_files():
     try:
+        pattern :re.Pattern = re.compile(r"(?<=gisconfig_)[0-9]{3}")
         files = [
             x
             for x in os.listdir(PATH_CONFIG)
-            if re.search(
-                "gisconfig_[0-9]{3}_[0-9]{2}[0-9a-z_\-,()]*\.ini", x, re.IGNORECASE
-            )
+            if pattern.search(x, re.IGNORECASE) 
         ]
-        # сортировка: 002_05a.ini раньше чем 002_05.ini
+        # сортировка: 002_05a.ini раньше чем 002_05.ini gisconfig_000_02
         files = sorted(
             files,
             key=lambda x: (
@@ -215,6 +214,7 @@ def get_config_files():
                 x[14:17] if x[16:17] != "." else x[14:16] + "я",
             ),
         )
+        files = [{"name": x, "type": pattern.findall(x)[0] } for x in files] 
     except Exception as ex:
         files = []
     return files
@@ -276,7 +276,8 @@ def write_list(path_output: str, files: list):
                 is_warning = True
         for item in files:
             if item["config"]:
-                mess_conf += f"{item['inn']} \t {os.path.basename(item['name'])} \t ({os.path.basename(item['config'])})\n"
+                for conf in item['config']:
+                    mess_conf += f"{item['inn']} \t {os.path.basename(item['name'])} \t ({os.path.basename(conf['name'])})\n"
             else:
                 file.write(
                     f"{item['inn']} \t {os.path.basename(item['name'])} \t - файл не распознан\n"

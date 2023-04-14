@@ -2,8 +2,9 @@ import abc
 import csv
 import os
 import logging
-from openpyxl import load_workbook
 import xlrd
+from openpyxl import load_workbook
+from typing import List
 
 logger = logging.getLogger(__name__)
 
@@ -13,13 +14,8 @@ def rchop(s, sub):
 
 
 class DataFile(abc.ABC):
-    def __init__(self, fname, sheet_name, first_line, columns, page_index: int = 0):
+    def __init__(self, fname):
         self._fname = fname
-        self._first_line = first_line
-        self._sheet_name = sheet_name
-        self._columns = columns
-        self._page_index = page_index
-        self._page_current = 0
         self._sheet = None
 
     def __iter__(self):
@@ -30,10 +26,9 @@ class DataFile(abc.ABC):
 
 
 class CsvFile(DataFile):
-    def __init__(self, fname, first_line, address_columns, page_index=None):
-        super(CsvFile, self).__init__(fname, "", first_line, address_columns)
+    def __init__(self, fname):
+        super(CsvFile, self).__init__(fname)
         self._freader = open(fname, "r", encoding="cp1251")
-        self._first_line = first_line
         self._reader = csv.reader(self._freader, delimiter=";", quotechar="|")
         self._line_num = 0
 
@@ -57,14 +52,25 @@ class CsvFile(DataFile):
 
 
 class XlsFile(DataFile):
-    def __init__(self, fname, sheet_name, first_line, address_columns, page_index=0):
-        super(XlsFile, self).__init__(fname, sheet_name, first_line, address_columns)
+    def __init__(self, fname):
+        super(XlsFile, self).__init__(fname)
         self._wb = xlrd.open_workbook(fname)
+
+    def set_config(
+        self, page_indexes: List[int] = [], number_columns: int = 150
+    ) -> bool:
+        self._page_current = 0
+        self._columns = range(number_columns)
+        if page_indexes:
+            self._page_indexes = page_indexes
+        else:
+            self._page_indexes = range(len(self._wb.sheets()))
+        return True
 
     def get_sheet(self) -> object:
         try:
-            if self._page_current < len(self._wb.sheets()):
-                self._sheet = self._wb.sheets()[self._page_current]
+            if self._page_current < len(self._page_indexes):
+                self._sheet = self._wb.sheets()[self._page_indexes[self._page_current]]
                 self._rows = (
                     self._sheet.row(index) for index in range(self._sheet.nrows)
                 )
@@ -97,19 +103,30 @@ class XlsFile(DataFile):
 
 
 class XlsxFile(DataFile):
-    def __init__(self, fname, sheet_name, first_line, columns, page_index=-1):
-        super(XlsxFile, self).__init__(
-            fname, sheet_name, first_line, columns, page_index
-        )
+    def __init__(self, fname):
+        super(XlsxFile, self).__init__(fname)
         try:
             self._wb = load_workbook(filename=fname)
         except:
             self._wb = load_workbook(filename=fname, read_only=True)
 
+    def set_config(
+        self, page_indexes: List[int] = [], number_columns: int = 150
+    ) -> bool:
+        self._page_current = 0
+        self._columns = range(number_columns)
+        if page_indexes:
+            self._page_indexes = page_indexes
+        else:
+            self._page_indexes = range(len(self._wb.worksheets))
+        return True
+
     def get_sheet(self) -> object:
         try:
-            if self._page_current < len(self._wb.worksheets):
-                self._sheet = self._wb.worksheets[self._page_current]
+            if self._page_current < len(self._page_indexes):
+                self._sheet = self._wb.worksheets[
+                    self._page_indexes[self._page_current]
+                ]
                 self._cursor = self._sheet.iter_rows()
                 self._page_current += 1
                 return self._sheet

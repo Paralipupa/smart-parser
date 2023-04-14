@@ -8,7 +8,7 @@ import aiofiles, asyncio
 import json
 import logging
 from aiocsv import AsyncWriter, AsyncDictWriter
-from typing import Union
+from typing import Union, List
 from itertools import product
 from .gisconfig import GisConfig
 from module.exceptions import InnMismatchException
@@ -36,19 +36,19 @@ class ExcelBaseImporter:
     def __init__(
         self,
         file_name: str,
-        config_file: str,
+        config_files: list,
         inn: str,
         index: int = 0,
         output: str = "output",
     ):
         self._index = index
+        self.index_config: int = 0
+        self.config_files = config_files
         self._output = output
         self.is_file_exists = True
         self.is_hash = True
         self.is_check = False
         # список данных, сгруппированных по идентификатору - internal_id
-        self._teams = list()
-        self._dictionary = dict()
         self.colontitul = {
             "status": 0,
             "is_parameters": False,
@@ -61,25 +61,27 @@ class ExcelBaseImporter:
             "value": [inn if inn else "0000000000"],
         }
         self._parameters["filename"] = {"fixed": True, "value": [file_name]}
-        self._parameters["config"] = {"fixed": True, "value": [config_file]}
-        self._config = GisConfig(config_file)
-        self._page_index = self._config._page_index[0][POS_NUMERIC_VALUE]
-        self._page_name = self._config._page_name
-        self._col_start = 0
+        self._dictionary = dict()
         self.__set_functions()
         self.__init_page()
 
     # %% ##################  Проверка совместимости файла конфигурации ######################
-    def check(self, headers: list, is_warning: bool = False) -> bool:
+    def check(self, headers: list, is_warning: bool = False) -> List[int]:
+        self.__init_config()
+        self.__init_page()
         if not self.is_verify(self._parameters["filename"]["value"][0]):
-            return False
+            logger.warning(f'Файл не найден {self._parameters["filename"]["value"][0]}')
+            return []
         if self.__check_incorrect_inn():
-            return False
+            logger.warning(f"Проверка по ИНН не прошла")
+            return []
         self._headers = self.__get_headers()
-        for headers in self._headers:
+        sheet_numbers = []
+        for index, headers in enumerate(self._headers):
             if self.__check_controll(headers, is_warning):
-                return True
-        return False
+                sheet_numbers.append(index)
+        logger.debug(f'{os.path.basename(self._parameters["filename"]["value"][0]) } - {os.path.basename(self.config_files[self.index_config-1]["name"]) } = {len(sheet_numbers)}')
+        return sheet_numbers
 
     @fatal_error
     def is_verify(self, file_name: str) -> bool:
@@ -94,56 +96,53 @@ class ExcelBaseImporter:
     # %% ###################  Точка входа, чтение и обработка файла #############################
     @fatal_error
     def extract(self) -> bool:
-        if not self.is_verify(self._parameters["filename"]["value"][0]):
-            return False
-        if not self.__get_col_start():
-            self.__set_col_start(0)
         data_reader = self.__get_data_xls()
         if not data_reader:
             self._config._warning.append(
                 f"\nОШИБКА чтения файла {self._parameters['filename']['value'][0]}"
             )
             return False
-        path = os.path.join(PATH_OUTPUT, self._output)        
-        while data_reader.get_sheet():
-            self.__init_data()
-            self.__init_page()
-            if not self.__get_header("pattern"):
-                self.colontitul["status"] = 1
-            for row, record in enumerate(data_reader):
-                if row < 100 and row % 10 == 0:
-                    print_message(
-                        "         {} Обработано: {}                          \r".format(
-                            self.func_inn(), row
-                        ),
-                        end="",
-                        flush=True,
+        path = os.path.join(PATH_OUTPUT, self._output)
+        while self.__init_config() and data_reader.set_config(self._page_index):
+            while data_reader.get_sheet():
+                self.__init_data()
+                self.__init_page()
+                if not self.__get_header("pattern"):
+                    self.colontitul["status"] = 1
+                for row, record in enumerate(data_reader):
+                    if row < 100 and row % 10 == 0:
+                        print_message(
+                            "         {} Обработано: {}                          \r".format(
+                                self.func_inn(), row
+                            ),
+                            end="",
+                            flush=True,
+                        )
+                    record = record[self._col_start :]
+                    if self.colontitul["status"] != 2:
+                        # Область до или после таблицы
+                        if not self.__check_bound_row(row):
+                            break
+                        self.__check_colontitul(self.__get_names(record), row, record)
+                    if self.colontitul["status"] == 2:
+                        # Табличная область данных
+                        self.__check_record_in_body(record, row)
+                    if row % 100 == 0:
+                        print_message(
+                            "         {} Обработано: {}                          \r".format(
+                                self.func_inn(), row
+                            ),
+                            end="",
+                            flush=True,
+                        )
+                self.__done()
+                asyncio.run(
+                    self.write_results_async(
+                        num=self._index,
+                        path_output=path,
+                        collections=self._collections.copy(),
                     )
-                record = record[self._col_start :]
-                if self.colontitul["status"] != 2:
-                    # Область до или после таблицы
-                    if not self.__check_bound_row(row):
-                        break
-                    self.__check_colontitul(self.__get_names(record), row, record)
-                if self.colontitul["status"] == 2:
-                    # Табличная область данных
-                    self.__check_record_in_body(record, row)
-                if row % 100 == 0:
-                    print_message(
-                        "         {} Обработано: {}                          \r".format(
-                            self.func_inn(), row
-                        ),
-                        end="",
-                        flush=True,
-                    )
-            self.__done()
-            asyncio.run(
-                self.write_results_async(
-                    num=self._index,
-                    path_output=path,
-                    collections=self._collections.copy(),
                 )
-            )
 
         self.__process_finish()
         return True
@@ -572,13 +571,7 @@ class ExcelBaseImporter:
 
     def __get_data_xls(self):
         ReaderClass = get_file_reader(self._parameters["filename"]["value"][0])
-        data_reader = ReaderClass(
-            self._parameters["filename"]["value"][0],
-            self._page_name,
-            0,
-            range(self._col_start + self.__get_max_cols()),
-            self._page_index,
-        )
+        data_reader = ReaderClass(self._parameters["filename"]["value"][0])
         if not data_reader:
             self.is_file_exists = False
             self._config._warning.append(
@@ -641,6 +634,7 @@ class ExcelBaseImporter:
         data_reader = self.__get_data_xls()
         if not data_reader:
             return None
+        data_reader.set_config()
         headers = list()
         try:
             while data_reader.get_sheet():
@@ -1203,7 +1197,7 @@ class ExcelBaseImporter:
             output_format=output_format,
             collections=collections,
         )
-        await self.write_logs_async(num=self._index, path_output=path_output)
+        await self.write_logs_async(num_file=self._index, path_output=path_output)
 
     async def write_json_async(self, filename: str, text: str):
         async with aiofiles.open(filename, mode="w", encoding=ENCONING) as f:
@@ -1254,47 +1248,61 @@ class ExcelBaseImporter:
                 if not output_format or output_format == "csv":
                     await self.write_csv_async(f"{file_output}.csv", records)
 
-    async def write_logs_async(self, num: int = 0, path_output: str = "logs") -> None:
+
+    async def write_logs_async(
+        self,
+        num_config: int = 0,
+        num_page: int = 0,
+        num_file: int = 0,
+        path_output: str = "output",
+        collections: dict = None,
+    ) -> None:
+
         if not self.__is_init() or len(self._collections) == 0:
             return
-        os.makedirs(path_output, exist_ok=True)
+        os.makedirs(pathlib.Path(PATH_LOG, os.path.basename(str(path_output)) ), exist_ok=True)
         self._current_id = ""
         id = self.func_id()
         inn = self.func_inn()
-        i = 0
+
         file_output = pathlib.Path(
-            path_output, f'{inn}{"_"+str(num) if num != 0 else ""}{id}'
+            PATH_LOG,
+            os.path.basename(str(path_output)),
+            f'{inn}{"_"+str(num_file) if num_file != 0 else ""}'
+            + f'{"_"+str(num_page) if num_page!=0 else ""}'
+            + f'{"_"+str(num_config) if num_config!=0 else ""}'
+            + f"{id}",
         )
+
         async with aiofiles.open(
             f"{file_output}.log", mode="w", encoding=ENCONING
         ) as file:
-            text = f"{{\n"
+            # Параметры
+            await file.write(f"{{")
             for key, value in self._parameters.items():
-                text += f'\t{key}:"\n'
+                await file.write(f'\t{key}:"')
                 for index in value["value"]:
-                    text += f"{index}\n"
-                text += f'",\n'
-            text += f"}},\n"
-            text += f"\n{{\n"
+                    await file.write(f"{index} ")
+                await file.write(f'",\n')
+            await file.write(f"}},\n")
+            # Заголовки таблиц
+            await file.write(f"\n{{")
             for item in self._config._columns_heading:
                 if item["row"] != -1:
-                    text += (
-                        f"\t({item['col']}){item['name']}:  row={item['row']} col=\n"
+                    await file.write(
+                        f"\t({item['col']}){item['name']}:  row={item['row']} col="
                     )
                     for index in item["indexes"]:
-                        text += f"{index[POS_INDEX_VALUE]},\n"
-                    text += f'",\n\n'
-            text += f"}},\n\n\n"
-            text += "\nself._parameters\n\n"
-            await file.write(text)
+                        await file.write(f"{index[POS_INDEX_VALUE]},")
+                    await file.write(f'",\n')
+            await file.write(f"}},\n\n")
+            await file.write("\nself._parameters\n")
             jstr = json.dumps(self._parameters, indent=4, ensure_ascii=False)
             await file.write(jstr)
-            text = "\nself._config._parameters\n\n"
-            await file.write(text)
+            await file.write("\nself._config._parameters\n")
             jstr = json.dumps(self._config._parameters, indent=4)
             await file.write(jstr)
-            text += "\nself._config._columns_heading\n"
-            await file.write(text)
+            await file.write("\nself._config._columns_heading\n")
             jstr = json.dumps(
                 self._config._columns_heading, indent=4, ensure_ascii=False
             )
@@ -1386,7 +1394,19 @@ class ExcelBaseImporter:
 
         return self._parameters[name]
 
+    def __init_config(self) -> bool:
+        if self.index_config < len(self.config_files):
+            self._config = GisConfig(self.config_files[self.index_config]["name"])
+            self._page_index = self.config_files[self.index_config]["sheets"]
+            self._page_name = ""
+            self._col_start = 0
+            self.index_config += 1
+            return True
+        else:
+            return False
+
     def __init_page(self):
+        self._teams = list()
         self._collections = dict()  # коллекция выходных таблиц
         self._columns = dict()
         self._headers = list()

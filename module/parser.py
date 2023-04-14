@@ -61,31 +61,26 @@ class Parser:
                 isParser = False
                 if list_files:
                     for index, file_name in enumerate(list_files, 1):
-                        if file_name["config"]:
-                            if file_name["config"] != "000":
-                                t = regular_calc(
-                                    "[0-9]{3}(?=_)", str(file_name["config"])
-                                )
-                                if t != None:
-                                    rep: ExcelBaseImporter = ExcelBaseImporter(
-                                        file_name=file_name["name"],
-                                        inn=file_name["inn"],
-                                        config_file=str(file_name["config"]),
-                                        index=index,
-                                        output=self.output_path,
-                                    )
-                                    rep.is_hash = self.is_hash
-                                    rep._dictionary = self._dictionary.copy()
-                                    logger.info(
-                                        f"Начало обработки файла '{os.path.basename(file_name['name'])}'"
-                                    )
-                                    if rep.extract():
-                                        logger.info(f"Обработка завершена")
-                                        isParser = True
-                                        self._dictionary = rep._dictionary.copy()
-                                    else:
-                                        logger.info(f"Неудачное завершение обработки")
-                                    file_name["warning"] += rep._config._warning
+                        if file_name["config"] and file_name["config"][0]["sheets"]:
+                            rep: ExcelBaseImporter = ExcelBaseImporter(
+                                file_name=file_name["name"],
+                                inn=file_name["inn"],
+                                config_files=file_name["config"],
+                                index=index,
+                                output=self.output_path,
+                            )
+                            rep.is_hash = self.is_hash
+                            rep._dictionary = self._dictionary.copy()
+                            logger.info(
+                                f"Начало обработки файла '{os.path.basename(file_name['name'])}'"
+                            )
+                            if rep.extract():
+                                logger.info(f"Обработка завершена")
+                                isParser = True
+                                self._dictionary = rep._dictionary.copy()
+                            else:
+                                logger.info(f"Неудачное завершение обработки")
+                            file_name["warning"] += rep._config._warning
                     file_log = write_list(
                         path_output=os.path.join(PATH_LOG, self.output_path),
                         files=list_files,

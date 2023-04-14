@@ -1,6 +1,7 @@
+import pathlib, logging, re
 from multiprocessing import Pool, Manager
-import pathlib, logging
-from report.report_001_00 import Report_001_00
+from typing import List
+from .excel_base_importer import ExcelBaseImporter
 from .helpers import (
     print_message,
     get_inn,
@@ -46,48 +47,64 @@ class SearchConfig:
             pool.apply_async(self.put_data_file, args=(item,))
         pool.close()
         pool.join()
-        l = get_manager_list()
-        if l:
+        list_data_file = get_manager_list()
+        if list_data_file:
+            for data_file in list_data_file:
+                data_file["config"] = sorted(
+                    data_file["config"], key=lambda x: (x["name"], x["sheets"])
+                )
             self.list_files = sorted(
-                l, key=lambda x: (str(x["config"]), str(x["name"]))
+                list_data_file, key=lambda x: (x["config"][0]["name"], x["name"])
             )
+        else:
+            self.list_files = []
+        return
 
     def put_data_file(self, item: dict) -> dict:
         data_file = self.__get_data_file(item)
-        if item["config"]:
-            self.__check_config(data_file, item["config"])
-        else:
+        if item["config"] == "":
             self.__config_find(data_file)
+        else:
+            self.__check_config(data_file)
         return data_file
 
     def __config_find(self, data_file: dict) -> dict:
-        for conf_file in self.config_files:
-            if self.__check_config(
-                data_file, pathlib.Path(PATH_CONFIG, f"{conf_file}")
-            ):
-                break
+        retrieved = set()
+        try:
+            for conf_file in self.config_files:
+                if not conf_file["type"] in retrieved and self.__check_config(
+                    data_file,
+                    config_name=pathlib.Path(PATH_CONFIG, f"{conf_file['name']}"),
+                ):
+                    retrieved.add(conf_file["type"])
+        except Exception as ex:
+            logger.exception("config_find")
 
-    def __check_config(self, data_file: dict, file_config: str) -> bool:
-        rep = Report_001_00(
+    def __check_config(self, data_file: dict, config_name: str = None) -> bool:
+        if config_name is None:
+            config_file: dict = data_file["config"]
+        else:
+            config_file: dict = [{"name": config_name, "sheets": []}]
+        rep: ExcelBaseImporter = ExcelBaseImporter(
             file_name=data_file["name"],
-            config_file=str(file_config),
+            config_files=config_file,
             inn=data_file["inn"],
         )
         if rep.is_file_exists:
-            if not rep._config._is_unique:
-                key = hashit(data_file["name"].encode("utf-8"))
-                self.headers.setdefault(key, [])
-                if rep.check(self.headers[key]):
-                    data_file["config"] = file_config
-                    man_list.append(data_file)
-                    logger.debug(
-                        f"{ os.path.basename(data_file['name'])} - {file_config}"
-                    )
-                    return True
-                elif rep._config._warning:
-                    for w in rep._config._warning:
-                        data_file["warning"].append(w)
-                data_file["config"] = ""
+            key = hashit(data_file["name"].encode("utf-8"))
+            self.headers.setdefault(key, [])
+            sheets: List[int] = rep.check(self.headers[key])
+            if len(sheets) != 0:
+                if config_name is None:
+                    data_file["config"][-1]["sheets"] = sheets
+                else:
+                    config_file[0]["sheets"] = sheets
+                    data_file["config"].append(config_file[0])
+                man_list.append(data_file)
+                return True
+            elif rep._config._warning:
+                for w in rep._config._warning:
+                    data_file["warning"].append(w)
         if not rep.is_file_exists:
             data_file["warning"].append(
                 'ФАЙЛ НЕ НАЙДЕН или ПОВРЕЖДЕН "{}". skip'.format(data_file["name"])
@@ -121,7 +138,9 @@ class SearchConfig:
     def __get_data_file(self, item: dict) -> dict:
         return {
             "name": item["name"],
-            "config": item["config"],
+            "config": [{"name": item["config"], "sheets": []}]
+            if item["config"] != ""
+            else [],
             "inn": item["inn"],
             "warning": list(),
             "records": None,
