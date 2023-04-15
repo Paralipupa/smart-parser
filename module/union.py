@@ -62,7 +62,7 @@ class UnionData:
                         path_input, inn, id_period, file_data)
                     save_directories[key_record] = path_input
         self.__make_archive(path_output, file_output, save_directories)        
-        if os.path.isdir(path_input):
+        if False and os.path.isdir(path_input):
             shutil.rmtree(path_input)
         return os.path.join(path_output, file_output) 
 

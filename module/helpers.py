@@ -69,7 +69,7 @@ def print_message(msg: str, end: str = "\n", flush: bool = False) -> None:
 
 def regular_calc(pattern: str, value: str) -> str:
     try:
-        result = re.search(pattern, value.replace("\n", "").strip(), re.IGNORECASE)
+        result = re.search(pattern.replace("||","|"), value.replace("\n", "").strip(), re.IGNORECASE)
         if result is None or result.group(0).find("error") != -1:
             return None
         else:
@@ -78,6 +78,16 @@ def regular_calc(pattern: str, value: str) -> str:
         logger.exception("Regular error")
         return f"error in regular: '{pattern}' ({str(ex)})"
 
+def get_index_key( line: str) -> str:
+    return re.sub(r"[-.,() ]", "", line).lower()
+
+def get_index_find_any(text: str, delimeters: str) -> int:
+    a = []
+    for item in delimeters:
+        index = text.find(item)
+        if index != -1:
+            a.append(index)
+    return min(a) if a else -1
 
 def get_value_str(value: str, pattern: str) -> str:
     return regular_calc(pattern, value)

@@ -154,15 +154,6 @@ class TestGisConfig(unittest.TestCase):
         hash_origin, hash_download = self.__check()
         self.assertEqual(hash_origin, hash_download)
 
-    def test_shustoff(self):
-        self.parser.name = os.path.join(
-            BASE_DIR, 'test', 'input', 'shustoff.zip')
-        self.parser.download_file = 'shustoff.zip'
-        self.__remove_download()
-        self.parser.start()
-        hash_origin, hash_download = self.__check()
-        self.assertEqual(hash_origin, hash_download)
-
     def test_gefest(self):
         self.parser.name = os.path.join(BASE_DIR, "test", "input", "gefest.zip")
         self.parser.download_file = "gefest.zip"
@@ -189,6 +180,14 @@ class TestGisConfig(unittest.TestCase):
         self.parser.name = os.path.join(BASE_DIR, "test", "input", "414.zip")
         self.parser.download_file = "414.zip"
         self.parser.inn = "7825455026"
+        self.__remove_download()
+        self.parser.start()
+        hash_origin, hash_download = self.__check()
+        self.assertEqual(hash_origin, hash_download)
+
+    def test_shustoff(self):
+        self.parser.name = os.path.join(BASE_DIR, "test", "input", "shustoff.zip")
+        self.parser.download_file = "shustoff.zip"
         self.__remove_download()
         self.parser.start()
         hash_origin, hash_download = self.__check()
