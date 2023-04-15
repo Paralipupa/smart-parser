@@ -1,12 +1,11 @@
 from datetime import datetime
-import re
+import re, logging
 import os
 import pathlib
 import json
 import csv
 import zipfile
 import shutil
-from typing import NoReturn
 from collections import Counter
 from .helpers import warning_error, fatal_error, print_message
 from .exceptions import ConfigNotFoundException
@@ -14,6 +13,7 @@ from .settings import *
 
 # Объединение однотипных файлом
 
+logger = logging.getLogger(__name__)
 
 class UnionData:
 
@@ -23,7 +23,7 @@ class UnionData:
         self.file_log = file_log
         self.exclude = {'bill_value','payment_value','credit','saldo',}
 
-    def start(self, path_input: str, path_output: str, path_logs: str, file_output: str) -> list:
+    def start(self, path_input: str, path_output: str, file_output: str) -> list:
         save_directories = dict()
         files_o: list[str] = self.__get_files(path_input)
         files = [x for x in files_o if not re.search('bank',x) and not re.search('tarif',x) ]
@@ -35,7 +35,7 @@ class UnionData:
             for file in files:
                 for fn in DOCUMENTS.split():
                     name: list = re.findall(
-                        r'(?<=[0-9]{1}_)'+fn+'(?=\.json)', file, re.IGNORECASE)
+                        r'(?<=[0-9]{1}_)'+fn+r'(?=\.json)', file, re.IGNORECASE)
                     if name:
                         inn: list = re.findall(
                             r'^[0-9]{8,10}(?=_)', file, re.IGNORECASE)
@@ -51,21 +51,20 @@ class UnionData:
             for inn, item in data.items():
                 for id_period, files in item.items():
                     file_data = {}
+                    logger.debug(f"{inn} {id_period}:")
                     for file in files:
                         for key_record, record in file.items():
                             if file_data.get(key_record):
                                 record = self.__merge(
-                                    record, file_data.get(key_record))
+                                    record, file_data.get(key_record), key_record)
                             file_data[key_record] = record
                     key_record = self.__write(
                         path_input, inn, id_period, file_data)
                     save_directories[key_record] = path_input
-            self.__write_logs(path_output=path_logs)
-        self.__make_archive(path_output, file_output, save_directories)
+        self.__make_archive(path_output, file_output, save_directories)        
         if os.path.isdir(path_input):
             shutil.rmtree(path_input)
         return os.path.join(path_output, file_output) 
-        raise ConfigNotFoundException
 
     def __check_unique(self, file_name: str, arr: list) -> None:
         setarr = set(arr)
@@ -102,11 +101,13 @@ class UnionData:
         return files
 
     @warning_error
-    def __merge(self, a: dict, b: dict) -> dict:
+    def __merge(self, a: dict, b: dict, key_record:str) -> dict:
         for key, valA in a.items():
             valB = b.get(key, None)
             if (len(valB.strip()) != 0) and ((len(valA.strip()) == 0) or valA != valB):
                 if (len(valA.strip()) == 0) or (len(valA.replace(' ', '')) < len(valB.replace(' ', ''))):
+                    if a[key]:
+                        logger.debug(f"{key_record} {key}:{a[key]} = {valB}")
                     a[key] = valB
         return a
 

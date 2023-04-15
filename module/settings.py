@@ -184,6 +184,9 @@ LOGGING = {
             "handlers": ["console", "debug"],
             "propagate": False,
         },
+        "asyncio": {
+            "level": "WARNING",
+        },
     },
     "root": {
         "level": "DEBUG",

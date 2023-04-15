@@ -1,5 +1,5 @@
 ;Лицевой счет
-;accounts: Адрес@address	Квартира@room_number	Проживает@living_person_number	Площадь@total_square	@account_identifier	@account_number
+;accounts: Адрес@address	Квартира@room_number	Проживает@living_person_number	Площадь@total_square	@account_identifier	@account_number_pp
 ;pp: Сальдо начальное@credit		Начисление@bill_value	Оплата@payment_value	@payment_date	Сальдо конечное@saldo
 main_border_column_left:1
 main_border_column_right:2
@@ -13,7 +13,7 @@ pattern_ЛС:(?<=Кв\.).+$
 0:Лицевой счет	
 0:>Задолженность на начало@credit	
 0:<Итого начислено@bill_value	Итого оплачено@payment_value	Итоговая сумма на конец месяца@saldo
-0:Лицевой счет@account_number::(?<=Кв[.] )[0-9\/]+[а-я]?
+0:Лицевой счет@account_number_pp::(?<=Кв[.] )[0-9\/]+[а-я]?
 0:Лицевой счет@account_identifier@(?<=Кв[.] )[0-9\/]+[а-я]?
 0:Лицевой счет@room_number@(?<=Кв[.] )[0-9\/]+[а-я]?
 1:Водоотведение		Водоотведение МОП	Горячая вода		Горячая вода  МОП

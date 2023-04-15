@@ -50,37 +50,17 @@ def pp_charges(lines: list, path: str) -> str:
             file.write(
                 f'func=id+{line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()}+НЧ,spacerepl,hash\n\n')
 
-        # file.write('[pp_charges_2]\n')
-        # file.write('; Внутренний идентификатор платежного документа\n')
-        # file.write('name=pp_internal_id\n')
-        # file.write('pattern=@0\n')
-        # file.write('col_config=0\n')
-        # file.write('row_data=0\n')
-        # if not (len(lines['1a']) == 0 and len(lines['2a']) == 0):
-        #     file.write(
-        #         f'offset_col_config={lines["dic"].get("service", {"col":20})["col"]}\n')
-        #     name = get_name(get_ident(l[0]["name"].split(";")[0]), names)
-        #     file.write(f'offset_pattern=@{name}\n')
-        # else:
-        #     file.write(f'offset_col_config=0\n')
-        #     file.write(f'offset_pattern=.+\n')
-        # file.write(
-        #     f'func=id+ПД+dictionary(fias+{l[0]["name"].split(";")[0].replace(","," ").replace("+","").rstrip()},hash)[1],spacerepl,hash\n\n')
-        # for i, line in enumerate(l[1:]):
-        #     file.write(f'[pp_charges_2_{i}]\n')
-        #     if not (len(lines['1a']) == 0 and len(lines['2a']) == 0):
-        #         name = get_name(get_ident(line["name"].split(";")[0]), names)
-        #         file.write(f'offset_pattern=@{name}\n')
-        #     file.write(
-        #         f'func=id+ПД+dictionary(fias+{line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()},hash)[1],spacerepl,hash\n\n')
-
-
         file.write('[pp_charges_2]\n')
         file.write('; Внутренний идентификатор платежного документа\n')
         file.write('name=pp_internal_id\n')
         file.write('pattern=@0\n')
-        file.write('col_config=0\n')
         file.write('row_data=0\n')
+        if lines["dic"].get("pp_internal_id"):
+            file.write(
+                f'offset_col_config={lines["dic"].get("pp_internal_id", {"col":1})["col"]}\n'
+            )
+        else:
+            file.write("col_config=0\n")
         file.write('func=id+account_number,spacerepl,hash\n\n')
 
         names = []

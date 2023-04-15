@@ -25,8 +25,8 @@ class SearchConfig:
         self.inn = inn if inn else get_inn(file_name)
         self.file_conf = file_conf
         self.config_files = config_files
-        self.list_files = list()
-        self.zip_files = list()
+        self.list_files = []
+        self.zip_files = []
         self.headers: dict = dict()
         self.counter: int = 0
         print_message("", flush=True)
@@ -36,11 +36,13 @@ class SearchConfig:
         end_message="Поиск конфигурации завершен",
     )
     def get_list_files(self) -> list:
-        self.__extarct_zip_files()
+        self.__extact_zip_files()
         self.__enumeration_config_files()
         return self.list_files
 
     def __enumeration_config_files(self) -> None:
+        if self.list_files == []:
+            return
         clear_manager()
         pool = Pool()
         for item in self.list_files:
@@ -111,20 +113,14 @@ class SearchConfig:
             )
         return False
 
-    def __extarct_zip_files(self) -> None:
+    def __extact_zip_files(self) -> None:
         if self.file_name.find(".lst") != -1:
             self.zip_files = get_list_files(self.file_name)
         elif self.file_name.lower().find(".zip") != -1:
             self.zip_files.append(
                 {"file": self.file_name, "inn": self.inn, "config": self.file_conf}
             )
-        if self.zip_files:
-            for file_name in self.zip_files:
-                file_name["inn"] = self.inn
-                file_name["config"] = [self.file_conf]
-                file_conf = get_extract_files(archive_file=file_name)
-                self.list_files.extend(file_conf)
-        else:
+        elif self.file_name.lower().find(".xls") != -1:
             self.list_files.append(
                 {
                     "name": self.file_name,
@@ -134,6 +130,14 @@ class SearchConfig:
                     "zip": "",
                 }
             )
+
+        if self.zip_files:
+            for file_name in self.zip_files:
+                file_name["inn"] = self.inn
+                file_name["config"] = [self.file_conf]
+                file_conf = get_extract_files(archive_file=file_name)
+                self.list_files.extend(file_conf)
+        return
 
     def __get_data_file(self, item: dict) -> dict:
         return {

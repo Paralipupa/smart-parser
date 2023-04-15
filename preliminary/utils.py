@@ -3,7 +3,7 @@ import fileinput
 
 def set_lines() -> list:
     return {'0': [], '1': [], '1a': [], '2': [],
-            '2a': [], '3': [], '9': [], 'param': {}, 'dic': {}}
+            '2a': [], '3': [], '9': [], 'param': {}, 'dic': {}, 'required':{}}
 
 
 def set_parameters() -> list:

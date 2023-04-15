@@ -41,7 +41,7 @@ class ExcelBaseImporter:
         index: int = 0,
         output: str = "output",
     ):
-        self._index = index
+        self.num_file = index
         self.index_config: int = 0
         self.config_files = config_files
         self._output = output
@@ -68,7 +68,7 @@ class ExcelBaseImporter:
     # %% ##################  Проверка совместимости файла конфигурации ######################
     def check(self, headers: list, is_warning: bool = False) -> List[int]:
         self.__init_config()
-        self.__init_page()
+        self.__read_config()
         if not self.is_verify(self._parameters["filename"]["value"][0]):
             logger.warning(f'Файл не найден {self._parameters["filename"]["value"][0]}')
             return []
@@ -78,9 +78,11 @@ class ExcelBaseImporter:
         self._headers = self.__get_headers()
         sheet_numbers = []
         for index, headers in enumerate(self._headers):
+            self.__init_data()
+            self.__init_page()
             if self.__check_controll(headers, is_warning):
                 sheet_numbers.append(index)
-        logger.debug(f'{os.path.basename(self._parameters["filename"]["value"][0]) } - {os.path.basename(self.config_files[self.index_config-1]["name"]) } = {len(sheet_numbers)}')
+        # logger.debug(f'{os.path.basename(self._parameters["filename"]["value"][0]) } - {os.path.basename(self.config_files[self.index_config-1]["name"]) } = {len(sheet_numbers)}')
         return sheet_numbers
 
     @fatal_error
@@ -102,11 +104,20 @@ class ExcelBaseImporter:
                 f"\nОШИБКА чтения файла {self._parameters['filename']['value'][0]}"
             )
             return False
-        path = os.path.join(PATH_OUTPUT, self._output)
-        while self.__init_config() and data_reader.set_config(self._page_index):
-            while data_reader.get_sheet():
+        while self.__init_config():
+            self.num_config = data_reader.set_config(self._page_index)
+            is_init = True
+            while True:
+                if not is_init:
+                    self.__read_config()
+                is_init = False
+                page = data_reader.get_sheet()
+                if page is None:
+                    break
+                self.num_page = page
                 self.__init_data()
                 self.__init_page()
+                self.__set_parameters_page()
                 if not self.__get_header("pattern"):
                     self.colontitul["status"] = 1
                 for row, record in enumerate(data_reader):
@@ -138,23 +149,17 @@ class ExcelBaseImporter:
                 self.__done()
                 asyncio.run(
                     self.write_results_async(
-                        num=self._index,
-                        path_output=path,
+                        num_config=self.num_config + 1,
+                        num_page=self.num_page + 1,
+                        num_file=self.num_file + 1,
+                        path_output=self._output,
                         collections=self._collections.copy(),
+                        output_format="json",
                     )
                 )
 
         self.__process_finish()
         return True
-
-    def __get_pages(self):
-        pages = list()
-        page_indexes = self.__get_page_index()
-        if self.__get_page_name():
-            pages = [(x, False) for x in self.__get_page_name().split(",")]
-        else:
-            pages.append(page_indexes)
-        return pages
 
     # Формируем словарь колонок из записи исходной таблицы
     # key - имя колонки
@@ -637,7 +642,10 @@ class ExcelBaseImporter:
         data_reader.set_config()
         headers = list()
         try:
-            while data_reader.get_sheet():
+            while True:
+                page_number = data_reader.get_sheet()
+                if page_number is None:
+                    break
                 sheet_headers = list()
                 index = 0
                 for record in data_reader:
@@ -846,24 +854,32 @@ class ExcelBaseImporter:
 
     def __get_required_rows(self, name: str, doc: dict) -> set:
         s = set()
+        m = set()
+        is_main_field = False
         d = next((x for x in self.__get_config_documents() if x["name"] == name), None)
         if d and d["required_fields"]:
             for name_field in d["required_fields"].split(","):
+                is_main_field = is_main_field or (name_field.find("(") != -1)
                 fld_type = next(
                     (
                         x["type"] + x["offset_type"]
                         for x in d["fields"]
-                        if x["name"] == name_field
+                        if x["name"] == name_field.replace("(", "").replace(")", "")
                     ),
                     "",
                 )
-                for item in doc[name_field]:
+                for item in doc[name_field.replace("(", "").replace(")", "")]:
                     val = self.__get_value(str(item["value"]), ".+", fld_type)
                     if (
                         (fld_type == "" or fld_type == "str") and val.strip() != ""
                     ) or ((fld_type == "float" or fld_type == "int") and val != 0):
                         s.add(item["row"])
-        return s
+                        if name_field.find("(") != -1:
+                            m.add(item["row"])
+        if is_main_field:
+            return m & s
+        else:
+            return s
 
     def __is_data_depends(
         self, record: dict, doc: dict, doc_param: dict
@@ -1010,8 +1026,9 @@ class ExcelBaseImporter:
 
     # Формирование документа из части исходной таблицы - team (отдельной области или иерархии)
     # выбранной по идентификатору internal_id
-    def __set_document(self, team: dict, doc_param):
+    def __set_document(self, team: dict, doc_param: dict):
         doc = dict()
+        # self.__get_identificate(team, doc_param)
         for fld_item in doc_param["fields"]:  # перебор полей выходной таблицы
             # Формируем данные для записи в выходном файле
             # одно поле (ключ в doc) соответствует одной записи
@@ -1186,18 +1203,28 @@ class ExcelBaseImporter:
     ################################################################################################################################################
     async def write_results_async(
         self,
-        num: int = 0,
+        num_config: int = 0,
+        num_page: int = 0,
+        num_file: int = 0,
         path_output: str = "output",
-        output_format: str = "",
         collections: dict = None,
+        output_format: str = None,
     ):
         await self.write_collections_async(
-            num=num,
+            num_config=num_config,
+            num_page=num_page,
+            num_file=num_file,
             path_output=path_output,
+            collections=collections,
             output_format=output_format,
+        )
+        await self.write_logs_async(
+            num_config=num_config,
+            num_page=num_page,
+            num_file=num_file,
+            path_output=path_output,
             collections=collections,
         )
-        await self.write_logs_async(num_file=self._index, path_output=path_output)
 
     async def write_json_async(self, filename: str, text: str):
         async with aiofiles.open(filename, mode="w", encoding=ENCONING) as f:
@@ -1206,20 +1233,22 @@ class ExcelBaseImporter:
     async def write_csv_async(self, filename: str, records: list):
         names = [x for x in records[0].keys()]
         async with aiofiles.open(filename, mode="w", encoding=ENCONING) as f:
-            writer = AsyncDictWriter(
+            writer_head = AsyncDictWriter(
                 f, delimiter=";", lineterminator="\r", fieldnames=names
             )
-            await writer.writeheader()
-            writer = AsyncWriter(f)
+            await writer_head.writeheader()
+            writer_body = AsyncWriter(f)
             for rec in records:
-                await writer.writerow(rec)
+                await writer_body.writerow(rec.values())
 
     async def write_collections_async(
         self,
-        num: int = 0,
+        num_config: int = 0,
+        num_page: int = 0,
+        num_file: int = 0,
         path_output: str = "output",
-        output_format: str = "",
         collections: dict = None,
+        output_format: str = None,
     ) -> None:
         if not self.__is_init() or len(self._collections) == 0:
             logger.warning(
@@ -1229,7 +1258,7 @@ class ExcelBaseImporter:
             )
             return
 
-        os.makedirs(path_output, exist_ok=True)
+        os.makedirs(pathlib.Path(PATH_OUTPUT, path_output), exist_ok=True)
 
         self._current_id = ""
         id = self.func_id()
@@ -1237,17 +1266,20 @@ class ExcelBaseImporter:
         for name, pages in collections.items():
             for key, records in pages.items():
                 file_output = pathlib.Path(
+                    PATH_OUTPUT,
                     path_output,
-                    f'{inn}{"_"+str(num) if num != 0 else ""}'
-                    + f'{"_"+key.replace(" ","_") if key != "noname" else ""}{id}_{name}',
+                    f'{inn}{"_"+str(num_file) if num_file != 0 else ""}'
+                    + f'{"_"+key.replace(" ","_") if key != "noname" else ""}'
+                    + f'{"_"+str(num_page) if num_page!=0 else ""}'
+                    + f'{"_"+str(num_config) if num_config!=0 else ""}'
+                    + f"{id}_{name}",
                 )
-                if not output_format or output_format == "json":
+                if output_format is None or output_format == "json":
                     jstr = json.dumps(records, indent=4, ensure_ascii=False)
                     await self.write_json_async(f"{file_output}.json", jstr)
 
-                if not output_format or output_format == "csv":
+                if output_format is None or output_format == "csv":
                     await self.write_csv_async(f"{file_output}.csv", records)
-
 
     async def write_logs_async(
         self,
@@ -1257,17 +1289,16 @@ class ExcelBaseImporter:
         path_output: str = "output",
         collections: dict = None,
     ) -> None:
-
-        if not self.__is_init() or len(self._collections) == 0:
+        if not self.__is_init() or len(collections) == 0:
             return
-        os.makedirs(pathlib.Path(PATH_LOG, os.path.basename(str(path_output)) ), exist_ok=True)
+        os.makedirs(pathlib.Path(PATH_LOG, path_output), exist_ok=True)
         self._current_id = ""
         id = self.func_id()
         inn = self.func_inn()
 
         file_output = pathlib.Path(
             PATH_LOG,
-            os.path.basename(str(path_output)),
+            path_output,
             f'{inn}{"_"+str(num_file) if num_file != 0 else ""}'
             + f'{"_"+str(num_page) if num_page!=0 else ""}'
             + f'{"_"+str(num_config) if num_config!=0 else ""}'
@@ -1311,12 +1342,18 @@ class ExcelBaseImporter:
     ################################################################################################################################################
     # ---------------------------------------------- Параметры конфигурации ------------------------------------------------------------------------
     ################################################################################################################################################
+    def __set_parameters_page(self):
+        self._parameters["number_config"] = {"fixed": False, "value": [self.num_config]}
+        self._parameters["number_page"] = {"fixed": False, "value": [self.num_page]}
+        self._parameters["number_file"] = {"fixed": False, "value": [self.num_file]}
+
     def __set_parameters(self) -> None:
         for value in self._parameters.values():
             if not value["fixed"]:
                 value["value"] = list()
         for key in self.__get_config_parameters().keys():
             self.__set_parameter(key)
+
         self._parameters.setdefault("period", {"fixed": False, "value": list()})
 
         if not self._parameters["period"]["value"]:
@@ -1331,6 +1368,8 @@ class ExcelBaseImporter:
         self._parameters.setdefault("address", {"fixed": False, "value": list()})
         if not self._parameters["address"]["value"]:
             self._parameters["address"]["value"].append("")
+        self.__set_parameters_page()
+
         self.colontitul["is_parameters"] = True
         if self._parameters["inn"]["value"][
             0
@@ -1396,14 +1435,18 @@ class ExcelBaseImporter:
 
     def __init_config(self) -> bool:
         if self.index_config < len(self.config_files):
-            self._config = GisConfig(self.config_files[self.index_config]["name"])
             self._page_index = self.config_files[self.index_config]["sheets"]
-            self._page_name = ""
-            self._col_start = 0
             self.index_config += 1
+            self.__read_config()
             return True
         else:
             return False
+
+    def __read_config(self) -> None:
+        index = self.index_config - 1
+        self._config = GisConfig(self.config_files[index]["name"])
+        self._page_name = ""
+        self._col_start = 0
 
     def __init_page(self):
         self._teams = list()

@@ -1,4 +1,5 @@
 import os
+import shutil
 import sys
 from module.helpers import timing
 
@@ -19,33 +20,43 @@ class TestGisConfig(unittest.TestCase):
         for f in files:
             miss_lines.append({"name": f, "value": list()})
             with open(os.path.join(path_new, f), "r", encoding=ENCONING) as file1:
-                lines1 = file1.readlines()
-                lines1 = [line.rstrip("\n") for line in lines1]
+                lines_new = file1.readlines()
+                lines_new = [line.rstrip("\n") for line in lines_new]
             with open(os.path.join(path_old, f), "r", encoding=ENCONING) as file2:
-                lines2 = file2.readlines()
-                lines2 = [line.rstrip("\n") for line in lines2]
-            if len(lines1) > len(lines2):
-                for line in lines1:
-                    if not line.strip() in lines2:
+                lines_origin = file2.readlines()
+                lines_origin = [line.rstrip("\n") for line in lines_origin]
+            if len(lines_new) > len(lines_origin):
+                for line in lines_new:
+                    if not line.strip() in lines_origin:
                         miss_lines[-1]["value"].append(line)
-                        l = [i for i, x in enumerate(lines2) if line.split(";")[1] in x]
+                        l = [
+                            i
+                            for i, x in enumerate(lines_origin)
+                            if line.split(";")[1] in x
+                        ]
                         if l:
-                            miss_lines[-1]["value"].append(lines2[l[0]])
+                            miss_lines[-1]["value"].append(f"({lines_origin[l[0]]})")
                         else:
                             miss_lines[-1]["value"].append(
                                 ";".join(["" for x in line.split(";")])
                             )
             else:
-                for row, line in enumerate(lines2, 1):
-                    if not line.strip() in lines1:
-                        l = [i for i, x in enumerate(lines1) if line.split(";")[1] in x]
+                for row, line in enumerate(lines_origin, 1):
+                    if not line.strip() in lines_new:
+                        l = [
+                            i
+                            for i, x in enumerate(lines_new)
+                            if line.split(";")[1] in x
+                        ]
                         if l:
-                            miss_lines[-1]["value"].append(f"{l[0]} = {lines1[l[0]]}")
+                            miss_lines[-1]["value"].append(
+                                f"{l[0]} = {lines_new[l[0]]}"
+                            )
                         else:
                             miss_lines[-1]["value"].append(
                                 "  = " + ";".join(["" for x in line.split(";")])
                             )
-                        miss_lines[-1]["value"].append(f"{row} = {line}")
+                        miss_lines[-1]["value"].append(f"({row}) = {line}")
         path_log = os.path.join(os.path.join(os.path.dirname(__file__), "log"))
         for item in miss_lines:
             if item["value"]:
@@ -62,6 +73,12 @@ class TestGisConfig(unittest.TestCase):
         return files_new
 
     def __remove_download(self):
+        if os.path.isdir(os.path.join(BASE_DIR, "test", "download", "old")):
+            shutil.rmtree(os.path.join(BASE_DIR, "test", "download", "old"))
+        if os.path.isdir(os.path.join(BASE_DIR, "test", "download", "new")):
+            shutil.rmtree(os.path.join(BASE_DIR, "test", "download", "new"))
+        if os.path.isdir(os.path.join(BASE_DIR, "test", "download", "test")):
+            shutil.rmtree(os.path.join(BASE_DIR, "test", "download", "test"))
         if os.path.exists(
             os.path.join(BASE_DIR, "test", "download", self.parser.download_file)
         ):
@@ -94,6 +111,8 @@ class TestGisConfig(unittest.TestCase):
             path_download = os.path.dirname(a[0]["name"])
         if b:
             path_origin = os.path.dirname(b[0]["name"])
+        if a == [] or b == []:
+            return True, False
 
         os.makedirs(path_download, exist_ok=True)
         os.makedirs(path_origin, exist_ok=True)
@@ -170,6 +189,15 @@ class TestGisConfig(unittest.TestCase):
         self.parser.name = os.path.join(BASE_DIR, "test", "input", "414.zip")
         self.parser.download_file = "414.zip"
         self.parser.inn = "7825455026"
+        self.__remove_download()
+        self.parser.start()
+        hash_origin, hash_download = self.__check()
+        self.assertEqual(hash_origin, hash_download)
+
+    def test_comfort(self):
+        self.parser.name = os.path.join(BASE_DIR, "test", "input", "comfort.zip")
+        self.parser.download_file = "comfort.zip"
+        self.parser.inn = "7811334511"
         self.__remove_download()
         self.parser.start()
         hash_origin, hash_download = self.__check()

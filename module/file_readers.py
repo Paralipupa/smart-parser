@@ -65,7 +65,7 @@ class XlsFile(DataFile):
             self._page_indexes = page_indexes
         else:
             self._page_indexes = range(len(self._wb.sheets()))
-        return True
+        return self._page_current
 
     def get_sheet(self) -> object:
         try:
@@ -75,7 +75,7 @@ class XlsFile(DataFile):
                     self._sheet.row(index) for index in range(self._sheet.nrows)
                 )
                 self._page_current += 1
-                return self._sheet
+                return self._page_current-1
             return None
         except Exception as ex:
             logger.exception("getSheet")
@@ -119,7 +119,7 @@ class XlsxFile(DataFile):
             self._page_indexes = page_indexes
         else:
             self._page_indexes = range(len(self._wb.worksheets))
-        return True
+        return self._page_current
 
     def get_sheet(self) -> object:
         try:
@@ -129,7 +129,7 @@ class XlsxFile(DataFile):
                 ]
                 self._cursor = self._sheet.iter_rows()
                 self._page_current += 1
-                return self._sheet
+                return self._page_current-1
             return None
         except Exception as ex:
             logger.exception("getSheet")

@@ -111,14 +111,14 @@ def accounts(lines: list, path: str) -> str:
         file.write('[accounts_10]\n')
         file.write('; Номер ЛС\n')
         file.write('name=account_number\n')
-        if lines["dic"].get("account_number"):
+        if lines["dic"].get("account_number_accounts"):
             file.write('col_config=0\n')
             file.write('row_data=0\n')
             file.write('pattern=@0\n')
             file.write(
-                f'offset_col_config={lines["dic"].get("account_number", {"col":0})["col"]}\n')
-            if lines["dic"]["account_number"].get("pattern"):
-                file.write(f'offset_pattern={lines["dic"].get("account_number", {"pattern":""})["pattern"]}\n')
+                f'offset_col_config={lines["dic"].get("account_number_accounts", {"col":0})["col"]}\n')
+            if lines["dic"]["account_number_accounts"].get("pattern"):
+                file.write(f'offset_pattern={lines["dic"].get("account_number_accounts", {"pattern":""})["pattern"]}\n')
             else:
                 file.write('offset_pattern=.+\n')
         else:

@@ -12,7 +12,7 @@ def pu(lines:list, path: str)->str:
         file.write('[doc_4]\n')
         file.write('; Приборы учета (ПУ) \n')
         file.write('name=pu\n')
-        file.write('required_fields=internal_id\n')
+        file.write('required_fields=device_type\n')
         file.write('\n')
 
         file.write('[pu_0]\n')
@@ -52,6 +52,11 @@ def pu(lines:list, path: str)->str:
         file.write('pattern=@0\n')
         file.write('col_config=0\n')
         file.write('row_data=0\n')
+        if lines["dic"].get("account_internal_id"):
+            file.write(
+                f'offset_col_config={lines["dic"].get("account_internal_id", {"col":1})["col"]}\n'
+            )
+            file.write("offset_pattern=.+\n")
         file.write('func=spacerepl,hash\n')
         file.write('\n')
 

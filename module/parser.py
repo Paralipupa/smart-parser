@@ -46,7 +46,6 @@ class Parser:
                     return u.start(
                         path_input=os.path.join(PATH_OUTPUT, self.output_path),
                         path_output=self.download_path,
-                        path_logs=os.path.join(PATH_LOG, self.output_path),
                         file_output=self.download_file,
                     )
 
@@ -90,7 +89,6 @@ class Parser:
                         return u.start(
                             path_input=os.path.join(PATH_OUTPUT, self.output_path),
                             path_output=self.download_path,
-                            path_logs=os.path.join(PATH_LOG, self.output_path),
                             file_output=self.download_file,
                         )
                 else:
