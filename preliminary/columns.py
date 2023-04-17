@@ -1,5 +1,5 @@
 import re
-from utils import get_ident, get_reg, get_name
+from utils import get_ident, get_reg, get_name, get_pattern
 from settings import *
 
 
@@ -26,16 +26,12 @@ def set_columns(lines: list, path: str) -> str:
             if line['name'][0] == '<':
                 lines["param"]["main_border_column_right"] = [i]
                 line['name'] = line['name'][1:]
-            index = line['name'].find("::")
-            patt: str = line['name'][index+2:] if index != -1 else ''
+            patt = get_pattern(line['name'])
             ls = line['name'].split('@')
             line['name'] = ls[0]
             for x in ls[1:]:
-                index = x.find("::")
-                if index != -1:
-                    lines['dic'][x[:index].strip()] = {
-                        'col': i, 'pattern': x[index+2:].strip()}
-                elif patt:
+                patt = get_pattern(x)
+                if patt:
                     lines['dic'][x.strip()] = {'col': i, 'pattern': patt}
                 else:
                     lines['dic'][x.strip()] = {'col': i}
@@ -87,7 +83,7 @@ def set_columns(lines: list, path: str) -> str:
                     patts.append(x)
                 else:
                     is_duplicate = True
-            if len(lines['1a']) == 0 and len(lines['2a']) == 0:
+            if not lines["dic"].get("service"):
                 if lines["param"].get("main_border_column_left"):
                     file.write(
                         f'border_column_left={lines["param"].get("main_border_column_left", ["2"])[0]}\n')
@@ -103,7 +99,7 @@ def set_columns(lines: list, path: str) -> str:
                 file.write(f'is_duplicate=true\n')
             if i < len(lines['1'])-1:
                 file.write('\n')
-        if len(lines['1a']) == 0 and len(lines['2a']) == 0:
+        if not lines["dic"].get("service"):
             file.write('is_only_after_stable=true\n')
             file.write(
                 f'pattern_0=.+\n')
@@ -127,7 +123,7 @@ def set_columns(lines: list, path: str) -> str:
             file.write('is_optional=true\n')
         file.write('\n')
 
-        if len(lines['1a']) == 0 and len(lines['2a']) == 0:
+        if not lines["dic"].get("service"):
             if lines["3"]:
                 file.write(
                     ';--------------------------------------------------------------------------------------------------------------------\n')

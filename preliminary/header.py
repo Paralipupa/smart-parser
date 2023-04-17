@@ -1,5 +1,5 @@
 import re
-from utils import get_ident, get_reg, get_name
+from utils import get_ident, get_reg, get_name, get_pattern
 from settings import *
 
 
@@ -17,7 +17,7 @@ def header(lines: list, path: str) -> str:
         file.write(f"row={lines['param'].get('check_row',['0<15'])[0]}\n")
         if lines["param"].get("check_pattern"):
             for i, p in enumerate(lines["param"]["check_pattern"]) :
-                file.write(f'pattern{"_" if i>0 else ""}{i-1 if i>0 else ""}={p}\n')
+                file.write(f'pattern{"_" if i>0 else ""}{i-1 if i>0 else ""}={get_pattern(p)}\n')
         file.write('\n')
 
         file.write('[main]\n')
@@ -59,8 +59,10 @@ def header(lines: list, path: str) -> str:
         if not lines['param'].get('pattern_timezone'):
             file.write(f'[pattern_{k}]\n')
             file.write('name=timezone\n')
-            file.write('pattern=@+3\n\n')
+            file.write('pattern=@+3\n')
+            file.write('\n')
             k += 1
+
 
         for i, line in enumerate(lines["1a"]):
             file.write(f'[pattern_{COLUMN_BEGIN+i}]\n')
@@ -68,10 +70,18 @@ def header(lines: list, path: str) -> str:
             file.write(f'name={name}\n')
             for j, x in enumerate(get_reg(line["name"]).split(';')):
                 file.write(
-                    f'pattern{"_" if j >0 else ""}{str(j-1) if j >0 else ""}={x}\n')
-            file.write(f'\n')
-        if (len(lines["1a"]) > 1 and lines["1a"][-1]['name'] == 'Прочие'):
-            file.write(f'pattern_0=.+\n')
+                    f'pattern{"_" if j >0 else ""}{str(j-1) if j >0 else ""}={get_pattern(x,x)}\n')
+                file.write('\n')
+        file.write('\n')
+
+        for i, line in enumerate(lines["1"],len(lines["1a"])):
+            file.write(f'[pattern_{COLUMN_BEGIN+i}]\n')
+            name = get_name(get_ident(line["name"].split(";")[0]), names)
+            file.write(f'name={name}\n')
+            for j, x in enumerate(get_reg(line["name"]).split(';')):
+                file.write(
+                    f'pattern{"_" if j >0 else ""}{str(j-1) if j >0 else ""}={get_pattern(x,x)}\n')
+                file.write('\n')
         file.write('\n')
 
         file.write(

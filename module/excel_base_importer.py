@@ -197,8 +197,7 @@ class ExcelBaseImporter:
     # группируем записи по идентификатору
     def __append_to_team(self, mapped_record: list) -> bool:
         if self.__check_condition_team(mapped_record):
-            # запись относится к текущему идентификатору
-            self.__check_column_service(mapped_record)
+            # Новый идентификатор
             self._teams.append(mapped_record)
             return True
         elif len(self._teams) != 0:
@@ -239,16 +238,6 @@ class ExcelBaseImporter:
                         if b:
                             return b
         return b
-
-    def __check_column_service(self, mapped_record: dict) -> None:
-        if False and self._is_column_service_exist:
-            name_service = mapped_record["Услуга"][0]["value"]
-            if not self.__is_column_heading_exist(get_ident(name_service)):
-                index_service = self._column_names["Услуга"]["indexes"][0][
-                    POS_NUMERIC_VALUE
-                ]
-                self._possible_columns[index_service] = name_service
-        return
 
     # Область до или после таблицы
     def __check_bound_row(self, row: int) -> bool:
@@ -321,7 +310,8 @@ class ExcelBaseImporter:
                 ) or self.__check_condition_team(self.__map_record(record)):
                     # переход в табличную область данных
                     self.colontitul["status"] = 2
-                    self.__dynamic_change_config()
+                    if not self._is_column_service_exist:
+                        self.__dynamic_change_config()
                     self._config._parameters.setdefault(
                         "table_start",
                         [
@@ -773,7 +763,7 @@ class ExcelBaseImporter:
         for name in names:
             if not (name["col"] in cols_exclude):
                 result = regular_calc(f"{pattern}", name["name"])
-                if result != None:
+                if result is not None:
                     b = True
                     if item and item.get("offset") and item["offset"]["pattern"][0]:
                         b = self.__check_column_offset(item, name["col"])
@@ -974,9 +964,9 @@ class ExcelBaseImporter:
             self.__change_pp_charges_and_pp_service()
 
     # Добавляем колонки (услуги), отсутствующие в конфигурации, но имеющиеся в заголовках таблицы
-    def __change_heading(self)->bool:
+    def __change_heading(self) -> bool:
         bResult = False
-        for key, name in self._possible_columns.items():            
+        for key, name in self._possible_columns.items():
             b = self.__heading_append(key, name)
             bResult |= b
         return bResult
@@ -1041,12 +1031,13 @@ class ExcelBaseImporter:
     def __append_to_fld_sub(self, fld_sub: list) -> None:
         if fld_sub:
             ls = []
+            last_rec = fld_sub.pop()
             for name in self._possible_columns.values():
-                ls.append(fld_sub[-1].copy())
+                ls.append(last_rec.copy())
                 ls[-1]["func"] = ls[-1]["func"].replace(
                     "Прочие", name.replace(",", " ")
                 )
-                if len(fld_sub[-1]["offset_column"]) > 0:
+                if len(last_rec["offset_column"]) > 0:
                     l = [
                         x
                         for x in self._config._columns_heading
@@ -1054,9 +1045,12 @@ class ExcelBaseImporter:
                     ]
                     if l:
                         ls[-1]["offset_column"] = [(l[0]["col"], True, False)]
-            fld_sub[-1]["offset_column"] = [(-1, True, False)]
+            last_rec["offset_column"] = [(-1, True, False)]
+            fld_sub.clear()
             fld_sub.extend(ls)
+            fld_sub.append(last_rec)
             return
+
 
     # если текущая таблица типа словарь (задается в gisconfig_000_00),
     # то формируем глобальный словарь значений
@@ -1092,12 +1086,12 @@ class ExcelBaseImporter:
             and doc.get("value")
         ):
             self.__build_global_dictionary(doc)
+        return
 
     # Формирование документа из части исходной таблицы - team (отдельной области или иерархии)
     # выбранной по идентификатору internal_id
     def __set_document(self, team: dict, doc_param: dict):
         doc = dict()
-        # self.__get_identificate(team, doc_param)
         for fld_item in doc_param["fields"]:  # перебор полей выходной таблицы
             # Формируем данные для записи в выходном файле
             # одно поле (ключ в doc) соответствует одной записи
@@ -1110,7 +1104,8 @@ class ExcelBaseImporter:
                 main_rows_exclude.add((table_row[0], -1))
             # собираем все поля (sub): name_attr, name_attr_0, ... , name_attr_N
             fld_records = self.__get_fld_records(fld_item)
-            for fld_record in fld_records:
+            x=0
+            for index, fld_record in enumerate(fld_records):
                 if (
                     not fld_record["column"]
                     or not fld_record["pattern"]
@@ -1241,7 +1236,7 @@ class ExcelBaseImporter:
         ]
         i = -1
         done = True
-
+        elem = dict()
         while done:
             i += 1
             done = i < rows_count
@@ -1266,6 +1261,7 @@ class ExcelBaseImporter:
                 and (not doc_param["required_fields"] or i in rows_required)
             ):
                 self.__append_to_collection(name, elem)
+        return
 
     ################################################################################################################################################
     # --------------------------------------------------- Запись в файл ----------------------------------------------------------------------------
@@ -1824,8 +1820,12 @@ class ExcelBaseImporter:
         m = self.__get_func_list(part, m)
         self._current_value_func[part]["expression"] = m
         self._current_value.append(value)
-        self.__recalc_expression(part)
-        value = self._current_value.pop()
+        try:
+            self.__recalc_expression(part)
+            value = self._current_value.pop()
+        except Exception as ex:
+            logger.exception("Func:")
+            value = ''
         if self._current_value_func_is_no_return and str(value).strip():
             for x in [
                 x

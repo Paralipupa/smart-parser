@@ -30,7 +30,7 @@ def pu(lines:list, path: str)->str:
         if lines["dic"].get("rr1"):
             file.write('pattern=@0\n')
             file.write('col_config=0\n')
-            if not (len(lines['1a'])==0 and len(lines['2a'])==0):
+            if lines["dic"].get("service"):
                 file.write(f'offset_col_config={lines["dic"].get("service", {"col":20})["col"]}\n')
                 name = get_name(get_ident(l[0]["name"].split(";")[0]), names)
                 file.write(f'offset_pattern=@{name}\n')
@@ -40,7 +40,7 @@ def pu(lines:list, path: str)->str:
             file.write('\n')
             for i, line in enumerate(l[1:]):
                 file.write(f'[pu_1_{i}]\n')
-                if not (len(lines['1a'])==0 and len(lines['2a'])==0):
+                if lines["dic"].get("service"):
                     name = get_name(get_ident(line["name"].split(";")[0]), names)
                     file.write(f'offset_pattern=@{name}\n')
                 file.write(f'func=id+{line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()}+ПУ,spacerepl,hash\n')

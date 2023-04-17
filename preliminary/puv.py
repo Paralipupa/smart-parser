@@ -33,7 +33,7 @@ def puv(lines: list, path: str) -> str:
             file.write('pattern=@0\n')
             file.write('col_config=0\n')
             file.write('row_data=0\n')
-            if not (len(lines['1a']) == 0 and len(lines['2a']) == 0):
+            if lines["dic"].get("service"):
                 file.write(f'offset_col_config={lines["dic"].get("service", {"col":20})["col"]}\n')
                 name = get_name(get_ident(l[0]["name"].split(";")[0]), names)
                 file.write(f'offset_pattern=@{name}\n')
@@ -44,7 +44,7 @@ def puv(lines: list, path: str) -> str:
                 f'func=id+{l[0]["name"].split(";")[0].replace(","," ").replace("+","")}+ПУП,spacerepl,hash\n\n')
             for i, line in enumerate(l[1:]):
                 file.write(f'[puv_1_{i}]\n')
-                if not (len(lines['1a']) == 0 and len(lines['2a']) == 0):
+                if lines["dic"].get("service"):
                     name = get_name(get_ident(line["name"].split(";")[0]), names)
                     file.write(f'offset_pattern=@{name}\n')
                 file.write(
@@ -63,7 +63,7 @@ def puv(lines: list, path: str) -> str:
             file.write('pattern=@0\n')
             file.write('col_config=0\n')
             file.write('row_data=0\n')
-            if not (len(lines['1a']) == 0 and len(lines['2a']) == 0):
+            if lines["dic"].get("service"):
                 file.write(f'offset_col_config={lines["dic"].get("service", {"col":20})["col"]}\n')
                 name = get_name(get_ident(l[0]["name"].split(";")[0]), names)
                 file.write(f'offset_pattern=@{name}\n')
@@ -74,7 +74,7 @@ def puv(lines: list, path: str) -> str:
                 f'func=id+{l[0]["name"].split(";")[0].replace(","," ").replace("+","")}+ПУ,spacerepl,hash\n\n')
             for i, line in enumerate(l[1:]):
                 file.write(f'[puv_3_{i}]\n')
-                if not (len(lines['1a']) == 0 and len(lines['2a']) == 0):
+                if lines["dic"].get("service"):
                     name = get_name(get_ident(line["name"].split(";")[0]), names)
                     file.write(f'offset_pattern=@{name}\n')
                 file.write(
@@ -95,7 +95,7 @@ def puv(lines: list, path: str) -> str:
         file.write(f'; {l[0]["name"]}\n')
         file.write('name=rr1\n')
         if lines["dic"].get("rr1"):
-            if not (len(lines['1a']) == 0 and len(lines['2a']) == 0):
+            if lines["dic"].get("service"):
                 name = get_name(get_ident(l[0]["name"].split(";")[0]), names)
                 file.write(f'pattern=@{name}\n')
                 file.write(f'col_config={lines["dic"].get("service", {"col":20})["col"]}\n')
@@ -112,7 +112,7 @@ def puv(lines: list, path: str) -> str:
                 file.write('offset_type=float\n')
                 file.write('func=round6\n\n')
             for i, line in enumerate(l[1:]):
-                if not (len(lines['1a']) == 0 and len(lines['2a']) == 0):
+                if lines["dic"].get("service"):
                     file.write(f'[puv_5_{i}]\n')
                     file.write('; Показание 1\n')
                     file.write(f'; {line["name"].rstrip()}\n')

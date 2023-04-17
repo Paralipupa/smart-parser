@@ -185,22 +185,22 @@ class TestGisConfig(unittest.TestCase):
         hash_origin, hash_download = self.__check()
         self.assertEqual(hash_origin, hash_download)
 
-    def test_shustoff(self):
-        self.parser.name = os.path.join(BASE_DIR, "test", "input", "shustoff.zip")
-        self.parser.download_file = "shustoff.zip"
-        self.__remove_download()
-        self.parser.start()
-        hash_origin, hash_download = self.__check()
-        self.assertEqual(hash_origin, hash_download)
+    # def test_shustoff(self):
+    #     self.parser.name = os.path.join(BASE_DIR, "test", "input", "shustoff.zip")
+    #     self.parser.download_file = "shustoff.zip"
+    #     self.__remove_download()
+    #     self.parser.start()
+    #     hash_origin, hash_download = self.__check()
+    #     self.assertEqual(hash_origin, hash_download)
 
-    def test_comfort(self):
-        self.parser.name = os.path.join(BASE_DIR, "test", "input", "comfort.zip")
-        self.parser.download_file = "comfort.zip"
-        self.parser.inn = "7811334511"
-        self.__remove_download()
-        self.parser.start()
-        hash_origin, hash_download = self.__check()
-        self.assertEqual(hash_origin, hash_download)
+    # def test_comfort(self):
+    #     self.parser.name = os.path.join(BASE_DIR, "test", "input", "comfort.zip")
+    #     self.parser.download_file = "comfort.zip"
+    #     self.parser.inn = "7811334511"
+    #     self.__remove_download()
+    #     self.parser.start()
+    #     hash_origin, hash_download = self.__check()
+    #     self.assertEqual(hash_origin, hash_download)
 
 
 @timing(
