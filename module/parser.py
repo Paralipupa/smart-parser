@@ -2,7 +2,7 @@ import os
 import re
 import logging
 from .excel_base_importer import ExcelBaseImporter
-from .helpers import regular_calc, get_config_files, write_list
+from .helpers import get_config_files, write_list
 from .union import UnionData
 from .exceptions import InnMismatchException, FatalException, ConfigNotFoundException
 from .search_config_tasks import SearchConfig
@@ -79,7 +79,6 @@ class Parser:
                                 self._dictionary = rep._dictionary.copy()
                             else:
                                 logger.info(f"Неудачное завершение обработки")
-                            file_name["warning"] += rep._config._warning
                     file_log = write_list(
                         path_output=os.path.join(PATH_LOG, self.output_path),
                         files=list_files,

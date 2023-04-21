@@ -7,14 +7,16 @@ from .helpers import (
     get_inn,
     get_list_files,
     get_extract_files,
+    get_data_file,
     timing,
+    fatal_error,
     hashit,
 )
 from .settings import *
 
 logger = logging.getLogger(__name__)
 manager = Manager()
-man_list = manager.list()
+man_list: list = manager.list()
 
 
 class SearchConfig:
@@ -31,17 +33,14 @@ class SearchConfig:
         self.counter: int = 0
         print_message("", flush=True)
 
-    @timing(
-        start_message="Начало поиска конфигурации",
-        end_message="Поиск конфигурации завершен",
-    )
+    @fatal_error
     def get_list_files(self) -> list:
         self.__extact_zip_files()
         self.__enumeration_config_files()
         return self.list_files
 
     def __enumeration_config_files(self) -> None:
-        if self.list_files == []:
+        if len(self.list_files) == 0:
             return
         clear_manager()
         pool = Pool()
@@ -49,22 +48,14 @@ class SearchConfig:
             pool.apply_async(self.put_data_file, args=(item,))
         pool.close()
         pool.join()
-        list_data_file = get_manager_list()
-        if list_data_file:
-            for data_file in list_data_file:
-                data_file["config"] = sorted(
-                    data_file["config"], key=lambda x: (x["name"], x["sheets"])
-                )
-            self.list_files = sorted(
-                list_data_file, key=lambda x: (x["config"][0]["name"], x["name"])
-            )
-        else:
-            self.list_files = []
+        # sync
+        # for item in self.list_files:
+        #     self.put_data_file(item)
+        self.__to_collect_out_files()
         return
 
-    def put_data_file(self, item: dict) -> dict:
-        data_file = self.__get_data_file(item)
-        if item["config"] == "":
+    def put_data_file(self, data_file: dict) -> dict:
+        if data_file["config"][-1]["name"] == "":
             self.__config_find(data_file)
         else:
             self.__check_config(data_file)
@@ -74,41 +65,36 @@ class SearchConfig:
         retrieved = set()
         try:
             for conf_file in self.config_files:
-                if not conf_file["type"] in retrieved and self.__check_config(
-                    data_file,
-                    config_name=pathlib.Path(PATH_CONFIG, f"{conf_file['name']}"),
-                ):
-                    retrieved.add(conf_file["type"])
+                if not conf_file["type"] in retrieved:
+                    data_file["config"][-1]["name"] = pathlib.Path(
+                        PATH_CONFIG, f"{conf_file['name']}"
+                    )
+                    if self.__check_config(data_file):
+                        retrieved.add(conf_file["type"])
         except Exception as ex:
+            logger.info(
+                f"error  {conf_file['name']} \t {os.path.basename(data_file['name'])}  ${ex}"
+            )
             logger.exception("config_find")
 
-    def __check_config(self, data_file: dict, config_name: str = None) -> bool:
-        if config_name is None:
-            config_file: dict = data_file["config"]
-        else:
-            config_file: dict = [{"name": config_name, "sheets": []}]
+    def __check_config(self, data_file: dict) -> bool:
+        config_file: dict = data_file["config"]
+        logger.debug(
+            f"check: {os.path.basename(config_file[0]['name'])} \t {os.path.basename(data_file['name'])}"
+        )
         rep: ExcelBaseImporter = ExcelBaseImporter(
             file_name=data_file["name"],
-            config_files=config_file,
+            config_files=data_file["config"],
             inn=data_file["inn"],
         )
         if rep.is_file_exists:
             key = hashit(data_file["name"].encode("utf-8"))
             self.headers.setdefault(key, [])
-            sheets: List[int] = rep.check(self.headers[key])
-            if len(sheets) != 0:
-                if config_name is None:
-                    data_file["config"][-1]["sheets"] = sheets
-                else:
-                    config_file[0]["sheets"] = sheets
-                    data_file["config"].append(config_file[0])
-                man_list.append(data_file)
-                return True
-            elif rep._config._warning:
-                for w in rep._config._warning:
-                    data_file["warning"].append(w)
+            b = rep.check(self.headers[key])
+            man_list.append(data_file)
+            return b
         if not rep.is_file_exists:
-            data_file["warning"].append(
+            data_file["config"]["warning"].append(
                 'ФАЙЛ НЕ НАЙДЕН или ПОВРЕЖДЕН "{}". skip'.format(data_file["name"])
             )
         return False
@@ -122,13 +108,14 @@ class SearchConfig:
             )
         elif self.file_name.lower().find(".xls") != -1:
             self.list_files.append(
-                {
-                    "name": self.file_name,
-                    "config": self.file_conf,
-                    "inn": self.inn,
-                    "warning": list(),
-                    "zip": "",
-                }
+                get_data_file(
+                    {
+                        "name": self.file_name,
+                        "config": self.file_conf,
+                        "inn": self.inn,
+                        "zip": "",
+                    }
+                )
             )
 
         if self.zip_files:
@@ -139,17 +126,46 @@ class SearchConfig:
                 self.list_files.extend(file_conf)
         return
 
-    def __get_data_file(self, item: dict) -> dict:
-        return {
-            "name": item["name"],
-            "config": [{"name": item["config"], "sheets": []}]
-            if item["config"] != ""
-            else [],
-            "inn": item["inn"],
-            "warning": list(),
-            "records": None,
-            "zip": item["zip"],
-        }
+    def __to_collect_out_files(self) -> None:
+        manage_list = get_manager_list()
+        manage_dict = dict()
+        for l in manage_list:
+            if len(l["config"][0]["sheets"]) != 0:
+                manage_dict.setdefault(l["name"], get_data_file())
+                manage_dict[l["name"]]["config"] = l["config"]
+                manage_dict[l["name"]]["name"] = l["name"]
+                manage_dict[l["name"]]["inn"] = l["inn"]
+            else:
+                if manage_dict.get(l["name"]) is None:
+                    manage_dict.setdefault(l["name"], get_data_file())
+                    manage_dict[l["name"]]["config"][0]["warning"].extend(
+                        l["config"][0]["warning"]
+                    )
+                    manage_dict[l["name"]]["name"] = l["name"]
+                    manage_dict[l["name"]]["inn"] = l["inn"]
+
+        list_data_file = []
+        for l in manage_dict.values():
+            list_data_file.append(l)
+            
+        #сортируем сначала найденые конфинурации
+        #сортируем сначала конфигурация 000_00 (словари)
+        if list_data_file:
+            for data_file in list_data_file:
+                data_file["config"] = sorted(
+                    data_file["config"], key=lambda x: (x["name"], x["sheets"])
+                )
+            self.list_files = sorted(
+                list_data_file,
+                key=lambda x: (
+                    -len(str(x["config"][0]["name"])),
+                    str(x["config"][0]["name"]),
+                    str(x["name"]),
+                ),
+            )
+        else:
+            self.list_files = []
+        return
 
 
 def clear_manager():

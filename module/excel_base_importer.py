@@ -49,7 +49,8 @@ class ExcelBaseImporter:
         self._output = output
         self.is_file_exists = True
         self.is_hash = True
-        self.is_check = False
+        self.is_check_mode = False
+        self.is_condition_check = False
         # список данных, сгруппированных по идентификатору - internal_id
         self.colontitul = {
             "status": 0,
@@ -68,34 +69,37 @@ class ExcelBaseImporter:
         self.__init_page()
 
     # %% ##################  Проверка совместимости файла конфигурации ######################
-    def check(self, headers: list, is_warning: bool = False) -> List[int]:
+    def check(self, headers: list, is_warning: bool = False) -> bool:
         self.__init_config()
         self.__read_config()
+        is_find = False
         if not self.is_verify(self._parameters["filename"]["value"][0]):
-            logger.warning(f'Файл не найден {self._parameters["filename"]["value"][0]}')
-            return []
+            mess = f'Файл не найден {self._parameters["filename"]["value"][0]}'
+            self.__add_warning(mess)
+            logger.warning(mess)
+            return False
         if self.__check_incorrect_inn():
-            logger.warning(f"Проверка по ИНН не прошла")
-            return []
+            mess = f"Не прошла проверка по ИНН "
+            self.__add_warning(mess)
+            logger.warning(mess)
+            return False
         self._headers = self.__get_headers()
-        sheet_numbers = []
         for index, headers in enumerate(self._headers):
             self.__init_data()
             self.__init_page()
-            if self.__check_controll(headers, is_warning):
-                sheet_numbers.append(index)
-        mess = f'{os.path.basename(self._parameters["filename"]["value"][0]) } - {os.path.basename(self.config_files[self.index_config-1]["name"]) } = {len(sheet_numbers)}'
-        if len(self._config._warning) != 0:
-            mess += r"\n"
+            if self.__check_controll(headers, True):
+                self.config_files[self.index_config - 1]["sheets"].append(index)
+                is_find = True
+        mess = f'\t{os.path.basename(self.config_files[self.index_config-1]["name"])}'
         logger.debug(mess)
-        return sheet_numbers
+        return is_find
 
     @fatal_error
     def is_verify(self, file_name: str) -> bool:
         if not self.__is_init():
             return False
         if not os.path.exists(self._parameters["filename"]["value"][0]):
-            self._config._warning.append(f"ОШИБКА чтения файла {file_name}")
+            self.__add_warning(f"ОШИБКА чтения файла {file_name}")
             self.is_file_exists = False
             return False
         return True
@@ -105,12 +109,13 @@ class ExcelBaseImporter:
     def extract(self) -> bool:
         data_reader = self.__get_data_xls()
         if not data_reader:
-            self._config._warning.append(
+            self.__add_warning(
                 f"\nОШИБКА чтения файла {self._parameters['filename']['value'][0]}"
             )
             return False
         while self.__init_config():
             self.num_config = data_reader.set_config(self._page_index)
+            self.config_files[self.num_config]["warning"] = []
             is_init = True
             while True:
                 if not is_init:
@@ -236,7 +241,8 @@ class ExcelBaseImporter:
                             )
                             b = result != pred
                         if b:
-                            return b
+                            self.is_condition_check = True
+                            return True
         return b
 
     # Область до или после таблицы
@@ -258,27 +264,23 @@ class ExcelBaseImporter:
                     s2 += f"{item['name']} {c}\n"
 
             if is_active_find:
-                self._config._warning.append(
+                self.__add_warning(
                     '\n{}:\nВ загружаемом файле "{}"\nне все колонки найдены \n'.format(
                         self._config._config_name,
                         self._parameters["filename"]["value"][0],
                     )
                 )
                 if s2:
-                    self._config._warning.append(
-                        "Найдены колонки:\n{}\n".format(s2.strip())
-                    )
+                    self.__add_warning("\tНайдены колонки:\n{}\n".format(s2.strip()))
                 if s1:
-                    self._config._warning.append(
-                        "Не найдены колонки:\n{}\n".format(s1.strip())
-                    )
+                    self.__add_warning("\tНе найдены колонки:\n{}\n".format(s1.strip()))
             else:
                 s = "Найдены колонки:"
                 for key, value in self._column_names.items():
                     s += f"\n{key} - {value['indexes'][0][POS_INDEX_VALUE]}"
-                self._config._warning.append(
+                self.__add_warning(
                     '\n{0}:\nВ загружаемом файле "{1}" \
-                \nне верен шаблон нахождения начала области данных(({3})condition_begin_team(\n{2}\n))\n{4}\n'.format(
+                \nневерен шаблон нахождения начала области данных(({3})condition_begin_team(\n{2}\n))\n{4}\n'.format(
                         self._config._config_name,
                         self._parameters["filename"]["value"][0],
                         self.__get_condition_team()[0]["pattern"]
@@ -290,7 +292,6 @@ class ExcelBaseImporter:
                         s,
                     )
                 )
-
             return False
         return True
 
@@ -621,7 +622,7 @@ class ExcelBaseImporter:
         data_reader = ReaderClass(self._parameters["filename"]["value"][0])
         if not data_reader:
             self.is_file_exists = False
-            self._config._warning.append(
+            self.__add_warning(
                 f"\nОШИБКА чтения файла {self._parameters['filename']['value'][0]}"
             )
             return None
@@ -1051,7 +1052,6 @@ class ExcelBaseImporter:
             fld_sub.append(last_rec)
             return
 
-
     # если текущая таблица типа словарь (задается в gisconfig_000_00),
     # то формируем глобальный словарь значений
     # для последующих таблиц
@@ -1104,7 +1104,7 @@ class ExcelBaseImporter:
                 main_rows_exclude.add((table_row[0], -1))
             # собираем все поля (sub): name_attr, name_attr_0, ... , name_attr_N
             fld_records = self.__get_fld_records(fld_item)
-            x=0
+            x = 0
             for index, fld_record in enumerate(fld_records):
                 if (
                     not fld_record["column"]
@@ -1570,7 +1570,7 @@ class ExcelBaseImporter:
         return self._config._check[name]
 
     def __check_controll(self, headers: list, is_warning: bool = False) -> list:
-        self.is_check = True
+        self.is_check_mode = True
         is_check = False if self._config._check["pattern"][0]["pattern"] else True
         for row in range(self._config._max_rows_heading[0][0]):
             if row < len(headers):
@@ -1591,12 +1591,12 @@ class ExcelBaseImporter:
                     and self.__check_stable_columns()
                     and self.__check_condition_team(self.__map_record(headers[row]))
                 ):
-                    self.is_check = False
+                    self.is_check_mode = False
                     return self.__check_function()
-        self.is_check = False
+        self.is_check_mode = False
         # Причина, почему не распозданы данные по конфигурации
         if not regular_calc("000_00", self._config._config_name):
-            mess = ""
+            mess = f"\n\t{self._config._config_name} :\n"
             x = [
                 x["pattern"]
                 for x in self.__get_columns_heading()
@@ -1608,7 +1608,9 @@ class ExcelBaseImporter:
                     for name in patterns:
                         s += "\t" + name + ";\n"
                 mess += (
-                    "Не найдены обязательные колонки согласно шаблонов:\n{0}".format(s)
+                    "\tНе найдены обязательные колонки согласно шаблонов:\n{0}".format(
+                        s
+                    )
                 )
             if is_check is False:
                 x = [
@@ -1618,7 +1620,7 @@ class ExcelBaseImporter:
                 ]
                 if x:
                     mess += (
-                        'Не найден текст перед табличными данными:\n\t"{0}"\n'.format(
+                        '\tНе найден текст перед табличными данными:\n\t"{0}"\n'.format(
                             '"\n\t"'.join(x).replace("|", '"\n\t"')
                         )
                     )
@@ -1626,7 +1628,7 @@ class ExcelBaseImporter:
                 logger.debug("\n" + mess.strip())
                 self._config._debug.append(mess)
                 if is_warning:
-                    self._config._warning.append(mess)
+                    self.__add_warning(mess)
         return False
 
     def __check_incorrect_inn(self) -> bool:
@@ -1662,6 +1664,9 @@ class ExcelBaseImporter:
             col["active"] = False
         self._column_names = dict()
         self._teams = list()
+
+    def __add_warning(self, text: str):
+        self.config_files[self.index_config - 1]["warning"].append(text)
 
     ################################################################################################################################################
     # ----------------------------------------------------- Функции --------------------------------------------------------------------------------
@@ -1825,7 +1830,7 @@ class ExcelBaseImporter:
             value = self._current_value.pop()
         except Exception as ex:
             logger.exception("Func:")
-            value = ''
+            value = ""
         if self._current_value_func_is_no_return and str(value).strip():
             for x in [
                 x
@@ -2048,8 +2053,8 @@ class ExcelBaseImporter:
             u[item["account_number"]] += 1
         if exist_overhaul == False:
             mess = 'В тарифах отсутствует колонка "Кап.ремонт"'
-            self._config._warning.append(mess)
+            self.__add_warning(mess)
         if [x for x in u.values() if x > 1]:
             mess = "Конфликт в расчетном счете по капитальному ремонту"
-            self._config._warning.append(mess)
+            self.__add_warning(mess)
         return ""

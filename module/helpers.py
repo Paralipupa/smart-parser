@@ -69,7 +69,9 @@ def print_message(msg: str, end: str = "\n", flush: bool = False) -> None:
 
 def regular_calc(pattern: str, value: str) -> str:
     try:
-        result = re.search(pattern.replace("||","|"), value.replace("\n", "").strip(), re.IGNORECASE)
+        result = re.search(
+            pattern.replace("||", "|"), value.replace("\n", "").strip(), re.IGNORECASE
+        )
         if result is None or result.group(0).find("error") != -1:
             return None
         else:
@@ -78,8 +80,10 @@ def regular_calc(pattern: str, value: str) -> str:
         logger.exception("Regular error")
         return f"error in regular: '{pattern}' ({str(ex)})"
 
-def get_index_key( line: str) -> str:
+
+def get_index_key(line: str) -> str:
     return re.sub(r"[-.,() ]", "", line).lower()
+
 
 def get_index_find_any(text: str, delimeters: str) -> int:
     a = []
@@ -88,6 +92,7 @@ def get_index_find_any(text: str, delimeters: str) -> int:
         if index != -1:
             a.append(index)
     return min(a) if a else -1
+
 
 def get_value_str(value: str, pattern: str) -> str:
     return regular_calc(pattern, value)
@@ -210,12 +215,8 @@ def get_hash_file(file_name: str):
 
 def get_config_files():
     try:
-        pattern :re.Pattern = re.compile(r"(?<=gisconfig_)[0-9]{3}")
-        files = [
-            x
-            for x in os.listdir(PATH_CONFIG)
-            if pattern.search(x, re.IGNORECASE) 
-        ]
+        pattern: re.Pattern = re.compile(r"(?<=gisconfig_)[0-9]{3}")
+        files = [x for x in os.listdir(PATH_CONFIG) if pattern.search(x, re.IGNORECASE)]
         # сортировка: 002_05a.ini раньше чем 002_05.ini gisconfig_000_02
         files = sorted(
             files,
@@ -224,7 +225,7 @@ def get_config_files():
                 x[14:17] if x[16:17] != "." else x[14:16] + "я",
             ),
         )
-        files = [{"name": x, "type": pattern.findall(x)[0] } for x in files] 
+        files = [{"name": x, "type": pattern.findall(x)[0]} for x in files]
     except Exception as ex:
         files = []
     return files
@@ -267,38 +268,24 @@ def get_list_files(name: str) -> list:
 
 def write_list(path_output: str, files: list):
     os.makedirs(path_output, exist_ok=True)
-    is_warning = False
     mess = ""
-    mess_conf = ""
     file_output = pathlib.Path(
         path_output, f'session{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log'
     )
     with open(file_output, "w", encoding=ENCONING) as file:
+        b = False
         for item in files:
-            if item["warning"]:
-                s = " ".join([f"{x}" for x in item["warning"]]).strip()
-                mess += "{0}{1}\t{2}: \n{3}".format(
-                    "\n\n" if mess != "" else "",
-                    item["inn"],
-                    os.path.basename(item["name"]),
-                    s,
-                )
-                is_warning = True
-        for item in files:
-            if item["config"]:
-                for conf in item['config']:
-                    mess_conf += f"{item['inn']} \t {os.path.basename(item['name'])} \t ({os.path.basename(conf['name'])})\n"
-            else:
-                file.write(
-                    f"{item['inn']} \t {os.path.basename(item['name'])} \t - файл не распознан\n"
-                )
-                is_warning = True
-        if is_warning:
-            file.write("\n")
-            file.write(mess)
-        else:
-            file.write(mess_conf)
-    return file_output if is_warning else ""
+            for conf in item['config']: 
+                if conf["name"] == "":
+                    if b is False:
+                        mess += '\n\n------------------ Следующие файлы не распознаны ---------------------------------------\n\n'
+                        b = True
+                    mess += f"{item['inn']} \t {os.path.basename(item['name'])}\n"
+                if conf["warning"]:
+                    s = " ".join([f"{x}" for x in conf["warning"]]).strip()
+                    mess += f"\t{s}\n"
+        file.write(mess)
+    return file_output if mess else ""
 
 
 def get_extract_files(
@@ -308,10 +295,13 @@ def get_extract_files(
         return []
     list_files = []
     names = []
-    with zipfile.ZipFile(archive_file["file"], "r") as zip_file:
-        names = [text_file.filename for text_file in zip_file.infolist()]
-        for z in names:
-            zip_file.extract(z, extract_dir)
+    if pathlib.Path(archive_file["file"]).suffix == ".zip":
+        with zipfile.ZipFile(archive_file["file"], "r") as zip_file:
+            names = [text_file.filename for text_file in zip_file.infolist()]
+            for z in names:
+                zip_file.extract(z, extract_dir)
+    else:
+        names.append(archive_file["file"])
     i = 0
     for name in names:
         try:
@@ -324,17 +314,42 @@ def get_extract_files(
         if re.search(ext, new_name):
             conf = archive_file["config"][i] if archive_file.get("config") else ""
             list_files.append(
-                {
-                    "name": new_name,
-                    "inn": archive_file.get("inn", ""),
-                    "config": conf,
-                    "warning": list(),
-                    "zip": archive_file.get("file", ""),
-                }
+                get_data_file(
+                    {
+                        "name": new_name,
+                        "inn": archive_file.get("inn", ""),
+                        "config": conf,
+                        "zip": archive_file.get("file", ""),
+                    }
+                )
             )
+            #     {
+            #         "name": new_name,
+            #         "inn": archive_file.get("inn", ""),
+            #         "config": conf,
+            #         "warning": list(),
+            #         "zip": archive_file.get("file", ""),
+            #     }
+            # )
             if i < len(archive_file.get("config", "")) - 1:
                 i += 1
     return list_files
+
+
+def get_data_file(item: dict = None) -> dict:
+    return {
+        "name": item["name"] if item is not None else "",
+        "config": [
+            {
+                "name": item["config"] if item is not None else "",
+                "sheets": [],
+                "warning": [],
+            }
+        ],
+        "inn": item["inn"] if item is not None else "",
+        "records": None,
+        "zip": item["zip"] if item is not None else "",
+    }
 
 
 def hashit(s):

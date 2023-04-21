@@ -17,7 +17,7 @@ def header(lines: list, path: str) -> str:
         file.write(f"row={lines['param'].get('check_row',['0<15'])[0]}\n")
         if lines["param"].get("check_pattern"):
             for i, p in enumerate(lines["param"]["check_pattern"]) :
-                file.write(f'pattern{"_" if i>0 else ""}{i-1 if i>0 else ""}={get_pattern(p)}\n')
+                file.write(f'pattern{"_" if i>0 else ""}{i-1 if i>0 else ""}={get_pattern(p,p)}\n')
         file.write('\n')
 
         file.write('[main]\n')
