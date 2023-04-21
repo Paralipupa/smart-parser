@@ -44,13 +44,12 @@ def set_columns(lines: list, path: str) -> str:
                 name = get_name(get_ident(line["name"].split(";")[0]), names)
                 file.write(f"name={name}\n")
             is_duplicate = False
+            col_offset = ''
             for j, x in enumerate(get_reg(line["name"]).split(";")):
                 col_off:str = re.sub(r"\(|\)|\+|-|\^|\$|\\|,|\s", "", x)
                 if str(col_off).isdigit():
                     col_off:str = re.sub(r"\^|\$|\\", "", x)
-                    file.write(
-                        f'col_data_offset=+0,{col_off}\n'
-                    )
+                    col_offset += col_off + ","
                 else:
                     file.write(
                         f'pattern{"_" if j >0 else ""}{str(j-1) if j >0 else ""}={x}\n'
@@ -59,6 +58,11 @@ def set_columns(lines: list, path: str) -> str:
                         patts.append(x)
                     else:
                         is_duplicate = True
+            if col_offset:
+                file.write(
+                    f'col_data_offset=+0,{col_offset.strip(",")}\n'
+                )
+
             if offset:
                 file.write(f'offset_row={offset[0] if len(offset)>0 else ""}\n')
                 file.write(f'offset_col={offset[1] if len(offset)>1 else ""}\n')

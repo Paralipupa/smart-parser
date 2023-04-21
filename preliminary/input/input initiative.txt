@@ -2,14 +2,19 @@
 ;accounts: Адрес@address	Квартира@room_number	Проживает@living_person_number	Площадь@total_square	@account_identifier	@account_number_pp
 ;pp: Сальдо начальное@credit		Начисление@bill_value	Оплата@payment_value	@payment_date	Сальдо конечное@saldo
 name:ЖКУ Инициатива
+check_pattern:Кв.|Инициатива
+
 main_page_index:-1
 main_max_rows_heading:3
 
 pattern_ЛС:^2703[0-9]{5}$
 
 0:Л.счет
-0:Итого@bill_value	
-0:Всего@saldo
-0:кв.@room_number	Прож@living_person_number
+0:Дебет Н.;+(1)@credit
+0:Начислено;+1;+4@bill_value
+0:Поступило@payment_value
+0:Дебет К.;+(1)@saldo{{+0;-1;пеня}}
+0:Итого	Всего
+0:Кв.@room_number	Прож@living_person_number
 0:>Площ@total_square	
 1:Услуги

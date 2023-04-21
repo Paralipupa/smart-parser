@@ -147,19 +147,26 @@ class SearchConfig:
         list_data_file = []
         for l in manage_dict.values():
             list_data_file.append(l)
-            
-        #сортируем сначала найденые конфинурации
-        #сортируем сначала конфигурация 000_00 (словари)
+
+        # сортируем сначала найденые конфигурации
+        # сортируем сначала конфигурация 000_00 (словари)
         if list_data_file:
             for data_file in list_data_file:
                 data_file["config"] = sorted(
-                    data_file["config"], key=lambda x: (x["name"], x["sheets"])
+                    data_file["config"],
+                    key=lambda x: (
+                        0
+                        if str(x["name"]).find("000") != -1
+                        else (1 if str(x["name"]).find("002") != -1 else 2),
+                        x["sheets"],
+                    ),
                 )
             self.list_files = sorted(
                 list_data_file,
                 key=lambda x: (
-                    -len(str(x["config"][0]["name"])),
-                    str(x["config"][0]["name"]),
+                    0
+                    if str(x["config"][0]["name"]).find("000") != -1
+                    else (1 if str(x["config"][0]["name"]).find("002") != -1 else 2),
                     str(x["name"]),
                 ),
             )
