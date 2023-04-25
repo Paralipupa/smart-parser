@@ -68,7 +68,7 @@ class ExcelBaseImporter:
         self.__set_functions()
         self.__init_page()
 
-    # %% ##################  Проверка совместимости файла конфигурации ######################
+    ###################  Проверка совместимости файла конфигурации ######################
     def check(self, headers: list, is_warning: bool = False) -> bool:
         self.__init_config()
         self.__read_config()
@@ -104,7 +104,7 @@ class ExcelBaseImporter:
             return False
         return True
 
-    # %% ###################  Точка входа, чтение и обработка файла #############################
+    ####################  Точка входа, чтение и обработка файла #############################
     @fatal_error
     def extract(self) -> bool:
         data_reader = self.__get_data_xls()
@@ -959,7 +959,7 @@ class ExcelBaseImporter:
                     fld_param=param, team=self._collections.get(doc_param["name"])
                 )
 
-    # %% #######################   Изменение конфигурации "на ходу" #################################
+    ########################   Изменение конфигурации "на ходу" #################################
     def __dynamic_change_config(self):
         if self.__change_heading():
             self.__change_pp_charges_and_pp_service()
@@ -987,7 +987,7 @@ class ExcelBaseImporter:
         name = get_ident(name)
         if not self.__is_column_heading_exist(name):
             fld_new = self._config._columns_heading[-1].copy()
-            fld_new["name"] = name
+            fld_new["name"] = name.replace('*','_').replace("+",'')
             fld_new["pattern"] = [get_reg(name)]
             fld_new["indexes"] = [(key, False)]
             fld_new["col"] = len(self._config._columns_heading)
@@ -1072,7 +1072,7 @@ class ExcelBaseImporter:
                 if not param["data"] in self._dictionary[get_index_key(param["key"])]:
                     self._dictionary[get_index_key(param["key"])].append(param["data"])
 
-    # %%##############################################################################################################################################
+    ###############################################################################################################################################
     # --------------------------------------------------- Документы --------------------------------------------------------------------------------
     ################################################################################################################################################
     def __append_to_collection(self, name: str, doc: dict) -> None:

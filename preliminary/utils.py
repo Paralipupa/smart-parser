@@ -30,7 +30,8 @@ def get_reg(name: str) -> str:
     name = name.replace("\\", "\\\\").replace("/", "\/")
     name = name.replace("[", "\[").replace("]", "\]")
     name = name.replace("(", "\(").replace(")", "\)")
-    name = name.replace(".", "[.]").replace("_", "")
+    name = name.replace(".", "[.]").replace("*", "[*]")
+    name = name.replace("+", "[+]").replace("_", "")
     return (
         f'^{name.rstrip().replace(";","$;^")}$'
         if name.find("^") == -1 and name.find("$") == -1
