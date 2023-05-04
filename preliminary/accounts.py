@@ -15,7 +15,8 @@ def accounts(lines: list, path: str) -> str:
         file.write('[doc_0]\n')
         file.write('; Лицевые счета\n')
         file.write('name=accounts\n')
-        file.write('required_fields=address,account_number,living_person_number,total_square\n\n')
+        file.write(
+            'required_fields=address,account_number,living_person_number,total_square\n\n')
 
         file.write('[accounts_0]\n')
         file.write('; ИНН, ОГРН или OrgID\n')
@@ -62,7 +63,7 @@ def accounts(lines: list, path: str) -> str:
             file.write('row_data=0\n')
             if lines["dic"].get("room_number"):
                 file.write(
-                    f'func=_+кв.+column_value({lines["dic"].get("room_number", {"col":7})["col"]})\n')
+                    f'func=_+кв.+column_value({lines["dic"].get("room_number").get("col","7")})\n')
         # elif lines["param"].get("pattern_address"):
         else:
             file.write(f'col_config=0\n')
@@ -70,7 +71,7 @@ def accounts(lines: list, path: str) -> str:
             file.write('pattern=@0\n')
             if lines["dic"].get("room_number"):
                 file.write(
-                    f'func=address+кв.+column_value({lines["dic"].get("room_number", {"col":7})["col"]})\n')
+                    f'func=address+кв.+column_value({lines["dic"].get("room_number").get("col","7")})\n')
             else:
                 file.write(f'func=address\n')
             file.write('func_is_no_return=true\n')
@@ -84,9 +85,10 @@ def accounts(lines: list, path: str) -> str:
             file.write('row_data=0\n')
             file.write('pattern=@0\n')
             file.write(
-                f'offset_col_config={lines["dic"].get("room_number", {"col":0})["col"]}\n')
+                f'offset_col_config={lines["dic"].get("room_number").get("col","0")}\n')
             if lines["dic"]["room_number"].get("pattern"):
-                file.write(f'offset_pattern={lines["dic"].get("room_number", {"pattern":""})["pattern"]}\n')
+                file.write(
+                    f'offset_pattern={lines["dic"].get("room_number").get("pattern",".+")}\n')
             else:
                 file.write('offset_pattern=.+\n')
             file.write('func=spacerepl\n')
@@ -116,9 +118,10 @@ def accounts(lines: list, path: str) -> str:
             file.write('row_data=0\n')
             file.write('pattern=@0\n')
             file.write(
-                f'offset_col_config={lines["dic"].get("account_number_accounts", {"col":0})["col"]}\n')
+                f'offset_col_config={lines["dic"].get("account_number_accounts").get("col","0")}\n')
             if lines["dic"]["account_number_accounts"].get("pattern"):
-                file.write(f'offset_pattern={lines["dic"].get("account_number_accounts", {"pattern":""})["pattern"]}\n')
+                file.write(
+                    f'offset_pattern={lines["dic"].get("account_number_accounts").get("pattern",".+")}\n')
             else:
                 file.write('offset_pattern=.+\n')
         else:
@@ -143,7 +146,7 @@ def accounts(lines: list, path: str) -> str:
             file.write('pattern=@0\n')
             file.write('col_config=0\n')
             file.write(
-                f'offset_col_config={lines["dic"].get("total_square", {"col":9})["col"]}\n')
+                f'offset_col_config={lines["dic"].get("total_square").get("col","9")}\n')
             file.write('offset_pattern=@currency\n')
         file.write('\n')
 
@@ -158,8 +161,9 @@ def accounts(lines: list, path: str) -> str:
             file.write('pattern=@0\n')
             file.write('col_config=0\n')
             file.write(
-                f'offset_col_config={lines["dic"].get("living_person_number", {"col":8})["col"]}\n')
-            file.write('offset_pattern=.+\n')
+                f'offset_col_config={lines["dic"].get("living_person_number").get("col","8")}\n')
+            file.write(
+                f'offset_pattern={lines["dic"].get("living_person_number").get("pattern",".+")}\n')
         file.write('\n')
 
         file.write('[accounts_16]\n')
@@ -182,9 +186,10 @@ def accounts(lines: list, path: str) -> str:
             file.write('row_data=0\n')
             file.write('pattern=@0\n')
             file.write(
-                f'offset_col_config={lines["dic"].get("account_identifier", {"col":0})["col"]}\n')
+                f'offset_col_config={lines["dic"].get("account_identifier").get("col","0")}\n')
             if lines["dic"]["account_identifier"].get("pattern"):
-                file.write(f'offset_pattern={lines["dic"].get("account_identifier", {"pattern":""})["pattern"]}\n')
+                file.write(
+                    f'offset_pattern={lines["dic"].get("account_identifier").get("pattern",".+")}\n')
             else:
                 file.write('offset_pattern=.+\n')
         else:

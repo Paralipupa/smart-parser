@@ -33,7 +33,7 @@ def set_columns(lines: list, path: str) -> str:
             for x in ls[1:]:
                 patt = get_pattern(x)
                 if patt != "":
-                    lines["dic"][x.strip()] = {"col": i, "pattern": patt}
+                    lines["dic"][x.replace('::'+patt,'').strip()] = {"col": i, "pattern": patt}
                 else:
                     lines["dic"][x.strip()] = {"col": i}
             file.write(f"[col_{i}]\n")

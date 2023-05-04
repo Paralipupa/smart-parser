@@ -543,6 +543,7 @@ class ExcelBaseImporter:
         patts = [
             "%d-%m-%Y",
             "%d.%m.%Y",
+            "%m.%Y",
             "%d/%m/%Y",
             "%Y-%m-%d",
             "%d-%m-%y",
@@ -987,7 +988,7 @@ class ExcelBaseImporter:
         name = get_ident(name)
         if not self.__is_column_heading_exist(name):
             fld_new = self._config._columns_heading[-1].copy()
-            fld_new["name"] = name
+            fld_new["name"] = name.replace('*','_').replace("+",'')
             fld_new["pattern"] = [get_reg(name)]
             fld_new["indexes"] = [(key, False)]
             fld_new["col"] = len(self._config._columns_heading)

@@ -1,20 +1,31 @@
 ;Лицевой счет;
-;accounts: Адрес@address	Квартира@room_number	Проживает@living_person_number	Площадь@total_square	@account_identifier	@account_number_pp
+;accounts: Адрес@address	Квартира@room_number	Проживает@living_person_number	Площадь@total_square	@account_identifier	@account_number_accounts
 ;pp: Сальдо начальное@credit		Начисление@bill_value	Оплата@payment_value	@payment_date	Сальдо конечное@saldo
-name:ЖКУ Инициатива
-check_pattern:Кв.|Инициатива
-
+name:ЖКУ Уют
 main_page_index:-1
-main_max_rows_heading:3
+check_pattern:Номер платежного документа
+check_pattern:Идентификатор ЖКУ|Услуга|Номер платежного реквизита
+main_max_rows_heading:10
 
-pattern_ЛС:^2703[0-9]{5}$
+pattern_ЛС:^[0-9]{4}-[0-9]{2}.[0-9]{4}\s*[А-Я]{1,4}$|^[0-9]{3}-[0-9]{9}-[0-9]{6}-[0-9]{1,2}[А-Яа-яA-Za-z]?$|^[0-9]{1,4}-[а-яА-Я]+[_\s][0-9]{4}[_\s][а-я]{3,4}$
+pattern_ЛС:^[А-Яа-я\s]+$
 
-0:Л.счет
-0:Дебет Н.;+(1)@credit
-0:Начислено;+1;+4@bill_value
-0:Поступило@payment_value
-0:Дебет К.;+(1)@saldo{{+0;-1;пеня}}
-0:Итого	Всего
-0:Кв.@room_number	Прож@living_person_number
-0:>Площ@total_square	
-1:Услуги
+pattern_period:^[0-9]{2}[.][0-9]{4}$
+
+required_pp:bill_value,payment_value,(account_number)
+required_accounts:bill_value,payment_value,(account_number)
+
+0:Номер платежного документа;Номер платежного реквизита;Услуга
+0:Сумма к оплате за расчетный период, руб. в рамках платежного реквизита@bill_value	
+0:^Итого к оплате с учетом задолженности@saldo
+0:Количество проживающих@living_person_number
+0:К оплате за расчетный период, руб.@calc_value
+0:^Тариф@tariff
+0:Общая площадь для ЛС@total_square	
+0:Идентификатор ЖКУ@account_identifier
+0:Идентификатор ЖКУ@account_number_accounts
+0:Начислено за расчетный период, руб.@accounting_period_total
+0:БИК банка@bank_bik	Расчетный счет@account_number_pp
+0:Номер платежного документа@account_internal_id
+0:Номер платежного документа;Номер платежного реквизита@pp_internal_id
+1:Услуга@service
