@@ -79,7 +79,7 @@ class ExcelBaseImporter:
             logger.warning(mess)
             return False
         if self.__check_incorrect_inn():
-            mess = f"Не прошла проверка по ИНН "
+            mess = f"\tНе прошла проверка по ИНН "
             self.__add_warning(mess)
             logger.warning(mess)
             return False
@@ -1464,7 +1464,10 @@ class ExcelBaseImporter:
                 for pattern in patterns:
                     if pattern:
                         if pattern[0] == "@":
-                            self._parameters[name]["value"].append(pattern[1:])
+                            if pattern[1:] == name and param.get("value") is not None:
+                                self._parameters[name]["value"].append(param["value"])
+                            else:
+                                self._parameters[name]["value"].append(pattern[1:])
                         else:
                             for row, col in product(rows, cols):
                                 result = self.__get_value_after_validation(
@@ -1555,7 +1558,7 @@ class ExcelBaseImporter:
         return self._config._condition_end_table_column
 
     def __get_row_start(self) -> int:
-        return get_value_int(self._config._row_start)[0]
+        return get_value_int(self._config._row_start)[0] if self._config._row_start else 0
 
     def __set_row_start(self, row: int):
         self._config._row_start = [(row, True)]

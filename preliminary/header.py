@@ -93,9 +93,12 @@ def header(lines: list, path: str) -> str:
                 file.write(f'name={key[8:]}\n')
                 file.write(f'pattern=@{key[8:]}\n')
                 for i, p in enumerate(val) :
-                    index = p.find('@')
-                    if index != -1:
-                        file.write(f'value={p[index+1:]}\n')
+                    if p == '':
+                        file.write(f'value=\n')
+                    else:
+                        index = p.find('@')
+                        if index != -1:
+                            file.write(f'value={p[index+1:]}\n')
                 file.write('\n')
                 k += 1
             elif key[:7] == 'header_':

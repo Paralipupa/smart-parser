@@ -26,16 +26,21 @@ def get_ident(name: str) -> str:
     return result
 
 
-def get_reg(name: str) -> str:
-    name = name.replace("\\", "\\\\").replace("/", "\/")
-    name = name.replace("[", "\[").replace("]", "\]")
-    name = name.replace("(", "\(").replace(")", "\)")
-    name = name.replace(".", "[.]").replace("*", "[*]")
-    name = name.replace("+", "[+]").replace("_", "")
+def get_reg(pattern: str) -> str:
+    new_pattern = ''
+    for patt in pattern.split(";"):
+        if patt and not patt[0] in ("+-("):
+            patt = patt.replace("\\", "\\\\").replace("/", "\/")
+            patt = patt.replace("[", "\[").replace("]", "\]")
+            patt = patt.replace("(", "\(").replace(")", "\)")
+            patt = patt.replace(".", "[.]").replace("*", "[*]")
+            patt = patt.replace("+", "[+]").replace("_", "")        
+        new_pattern += (patt + ";")
+    new_pattern = new_pattern.strip(";").strip()
     return (
-        f'^{name.rstrip().replace(";","$;^")}$'
-        if name.find("^") == -1 and name.find("$") == -1
-        else name.rstrip()
+        f'^{new_pattern.rstrip().replace(";","$;^")}$'
+        if new_pattern.find("^") == -1 and new_pattern.find("$") == -1
+        else new_pattern.rstrip()
     )
 
 
