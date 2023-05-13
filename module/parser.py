@@ -1,6 +1,7 @@
 import os
 import re
 import logging
+import shutil
 from .excel_base_importer import ExcelBaseImporter
 from .helpers import get_config_files, write_list
 from .union import UnionData
@@ -86,7 +87,8 @@ class Parser:
                     if self.union:
                         u = UnionData(isParser, file_log)
                         return u.start(
-                            path_input=os.path.join(PATH_OUTPUT, self.output_path),
+                            path_input=os.path.join(
+                                PATH_OUTPUT, self.output_path),
                             path_output=self.download_path,
                             file_output=self.download_file,
                         )
@@ -101,7 +103,8 @@ class Parser:
         except Exception as ex:
             logger.exception("Error start")
             return f"{ex}"
-        return self.download_path
+        shutil.copy(os.path.join(BASE_DIR, "doc", "error.txt"), os.path.join(self.download_path,"error.txt"))
+        return "error.txt"
 
     @staticmethod
     def get_path(pathname: str) -> str:
