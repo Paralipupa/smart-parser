@@ -19,7 +19,7 @@ def pp_charges(lines: list, path: str) -> str:
         file.write("[doc_2]\n")
         file.write("; Документ Начисления платежей\n")
         file.write("name=pp_charges\n")
-        file.write("required_fields=calc_value,recalculation\n\n")
+        file.write("required_fields=calc_value,recalculation,tariff\n\n")
 
         file.write("[pp_charges_0]\n")
         file.write("; ИНН, ОГРН или OrgID\n")

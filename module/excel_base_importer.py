@@ -1085,7 +1085,7 @@ class ExcelBaseImporter:
             self.__get_doc_type(name) == "dictionary"
             and doc.get("key")
             and doc.get("value")
-        ):
+        ):  
             self.__build_global_dictionary(doc)
         return
 
@@ -1374,6 +1374,8 @@ class ExcelBaseImporter:
         async with aiofiles.open(
             f"{file_output}.log", mode="w", encoding=ENCONING
         ) as file:
+            for item in self.config_files:
+                await file.write(f"{os.path.basename(str(item['name']))}\n")
             # Параметры
             await file.write(f"{{")
             for key, value in self._parameters.items():
