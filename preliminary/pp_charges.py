@@ -130,14 +130,14 @@ def pp_charges(lines: list, path: str) -> str:
             file.write("col_config=0\n")
             file.write("row_data=0\n")
             file.write(
-                f'func=fias+{l[0]["name"].split(";")[0].replace(","," ").replace("+","")},hash,dictionary\n\n'
+                f'func=key+fias+{l[0]["name"].split(";")[0].replace(","," ").replace("+","")},hash,dictionary\n\n'
             )
             for i, line in enumerate(l[1:]):
                 file.write(f"[pp_charges_4_{i}]\n")
                 file.write("; тариф при однотарифном начислении\n")
                 file.write(f'; {line["name"].rstrip()}\n')
                 file.write(
-                    f'func=fias+{line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()},hash,dictionary\n'
+                    f'func=key+fias+{line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()},hash,dictionary\n'
                 )
                 file.write("\n")
 

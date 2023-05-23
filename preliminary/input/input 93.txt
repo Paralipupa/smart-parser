@@ -1,0 +1,21 @@
+;Лицевой счет;
+;accounts: Адрес@address	Квартира@room_number	Проживает@living_person_number	Площадь@total_square	@account_identifier	@account_number_accounts
+;pp: Сальдо начальное@credit		Начисление@bill_value	Оплата@payment_value	@payment_date	Сальдо конечное@saldo
+name:ЖСК "93"
+check_pattern:ЖСК-93|93[0-9]{5}
+
+pattern_period:(?<=за )[0-9]{1,2}\.[0-9]{4}
+pattern_ЛС:93[0-9]{5}$
+
+pattern_address:@г. Санкт-Петербург, проспект Пискарёвский, д. 17 к. 3
+pattern_fias:
+
+0:Л.счет
+0:Дебет Н.;+(1)@credit
+0:Начислено;+1;+4@bill_value
+0:Поступило@payment_value
+0:Дебет К.;+(1)@saldo{{+0;-1;пеня}}
+0:Итого	Всего
+0:Кв.@room_number	Проп@living_person_number
+0:>Площ@total_square	
+1:Услуги
