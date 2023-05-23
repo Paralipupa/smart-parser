@@ -1,21 +1,29 @@
-;Лицевой счет;
+;Лицевой счет
 ;accounts: Адрес@address	Квартира@room_number	Проживает@living_person_number	Площадь@total_square	@account_identifier	@account_number_accounts
 ;pp: Сальдо начальное@credit		Начисление@bill_value	Оплата@payment_value	@payment_date	Сальдо конечное@saldo
-name:ЖСК "93"
-check_pattern:ЖСК-93|93[0-9]{5}
+name:ТСЖ Гефест
+check_pattern:Гефест
+check_pattern:Оборотно-сальдовая ведомость по лицевым счетам|Ведомость начислений
+pattern_inn:@7801636143
+pattern_account_number:@40702810955040003172
+pattern_bik:@044030653
+pattern_period:(?<=за )[А-Яа-яЁё]+\s[0-9]{4}
+pattern_ЛС:^[0-9]{1,3}-?[.]?[А-Я]?[A-Z]?$
+pattern_ЛС:(?<=ИНН: )[0-9]+
+pattern_ЛС:^(?![0-9])(?:[А-Яа-яЁё"«»])+\s["«»А-Яа-я]+
+pattern_Число:^[0-9]{1,3}$
+pattern_fias_6:6-я В[.]О[.] линия@21083d72-fddc-45b2-b12f-5d995902dfb3
+pattern_fias_11:11-я В[.]О[.] линия@dd152032-3cb5-4497-bb92-c2331c68beb7
+pattern_fias_Кадетская:Кадетская В[.]О[.] линия@f93f3cbb-947d-422c-9581-e63c136d6055
+pattern_fias_Малый:Малый В[.]О[.] пр-кт@dd0c6749-c088-4bd2-b23d-f8a2ffe005c2
+header_fias:@fias_6+fias_11+fias_Кадетская+fias_Малый
 
-pattern_period:(?<=за )[0-9]{1,2}\.[0-9]{4}
-pattern_ЛС:93[0-9]{5}$
-
-pattern_address:@г. Санкт-Петербург, проспект Пискарёвский, д. 17 к. 3
-pattern_fias:
-
-0:Л.счет
-0:Дебет Н.;+(1)@credit
-0:Начислено;+1;+4@bill_value
-0:Поступило@payment_value
-0:Дебет К.;+(1)@saldo{{+0;-1;пеня}}
-0:Итого	Всего
-0:Кв.@room_number	Проп@living_person_number
-0:>Площ@total_square	
+0:№ пом.;№ кв.;ФИО;Плательщик
+0:Сальдо  вход.@credit	
+0:Начислено@bill_value	Оплачено@payment_value	Сальдо  исх.@saldo
+0:В т.ч.  пени	
+0:>Всего начислено
+0:Адрес@address	№ пом.@room_number	Проживает;Прож@living_person_number	Площадь;Общая площадь@total_square
+0:Лицевой счет@account_number_pp@account_identifier	Всего начислено
 1:Услуги
+

@@ -1086,7 +1086,7 @@ class ExcelBaseImporter:
         param = {}
         for key, value in doc.items():
             if key == "key":
-                param = {"value": doc["key"], "func": "hash"}
+                param = {"value": "key"+doc["key"], "func": "hash"}
                 param["key"] = self.func(fld_param=param)
             elif regular_calc("^value", key):
                 param["data"] = value
@@ -1095,7 +1095,7 @@ class ExcelBaseImporter:
                 if not value in self._dictionary[get_index_key(key)]:
                     self._dictionary[get_index_key(key)].append(value)
             if param.get("key") and param.get("data"):
-                index_key = "key" + get_index_key(param["key"])
+                index_key = get_index_key(param["key"])
                 self._dictionary.setdefault(index_key, [])
                 if not param["data"] in self._dictionary[index_key]:
                     self._dictionary[index_key].append(param["data"])
@@ -2082,10 +2082,11 @@ class ExcelBaseImporter:
             return ""
 
     def func_dictionary(self):
-        if len(self._dictionary.get(get_index_key(self._current_value[-1]), [])) > self._current_index:
-            return self._dictionary.get(get_index_key(self._current_value[-1]), [])[self._current_index]
-        elif len(self._dictionary.get(get_index_key(self._current_value[-1]), [])) > 0:
-            return self._dictionary.get(get_index_key(self._current_value[-1]), [])[-1]
+        dictionary = self._dictionary.get(get_index_key(self._current_value[-1]), [])
+        if len(dictionary) > self._current_index:
+            return dictionary[self._current_index]
+        elif len(dictionary) > 0:
+            return dictionary[-1]
         else:
             return ""
 
