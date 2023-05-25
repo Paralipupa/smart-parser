@@ -34,7 +34,7 @@ def puv(lines: list, path: str) -> str:
             file.write('col_config=0\n')
             file.write('row_data=0\n')
             if lines["dic"].get("service"):
-                file.write(f'offset_col_config={lines["dic"].get("service", {"col":20})["col"]}\n')
+                file.write(f'offset_col_config={lines["dic"]["service"][0]["col"]}\n')
                 name = get_name(get_ident(l[0]["name"].split(";")[0]), names)
                 file.write(f'offset_pattern=@{name}\n')
             else:
@@ -64,7 +64,7 @@ def puv(lines: list, path: str) -> str:
             file.write('col_config=0\n')
             file.write('row_data=0\n')
             if lines["dic"].get("service"):
-                file.write(f'offset_col_config={lines["dic"].get("service", {"col":20})["col"]}\n')
+                file.write(f'offset_col_config={lines["dic"]["service"][0]["col"]}\n')
                 name = get_name(get_ident(l[0]["name"].split(";")[0]), names)
                 file.write(f'offset_pattern=@{name}\n')
             else:
@@ -98,8 +98,8 @@ def puv(lines: list, path: str) -> str:
             if lines["dic"].get("service"):
                 name = get_name(get_ident(l[0]["name"].split(";")[0]), names)
                 file.write(f'pattern=@{name}\n')
-                file.write(f'col_config={lines["dic"].get("service", {"col":20})["col"]}\n')
-                file.write(f'offset_col_config={lines["dic"].get("rr1", {"col":""})["col"]}\n')
+                file.write(f'col_config={lines["dic"]["service"][0]["col"]}\n')
+                file.write(f'offset_col_config={lines["dic"]["rr1"][0]["col"]}\n')
                 file.write('offset_pattern=.+\n')
                 file.write('offset_type=float\n')
                 file.write('func=round6\n\n')
@@ -132,7 +132,7 @@ def puv(lines: list, path: str) -> str:
             file.write("pattern=@0\n")
             file.write("col_config=0\n")
             file.write(
-                f'offset_col_config={lines["dic"].get("rr2", {"col":1})["col"]}\n'
+                f'offset_col_config={lines["dic"]["rr2"][0]["col"]}\n'
             )
             file.write("offset_pattern=.+\n")
         file.write('\n')
@@ -144,7 +144,7 @@ def puv(lines: list, path: str) -> str:
             file.write("pattern=@0\n")
             file.write("col_config=0\n")
             file.write(
-                f'offset_col_config={lines["dic"].get("rr3", {"col":1})["col"]}\n'
+                f'offset_col_config={lines["dic"]["rr3"][0]["col"]}\n'
             )
             file.write("offset_pattern=.+\n")
         file.write('\n')

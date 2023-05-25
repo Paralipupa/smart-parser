@@ -1,4 +1,4 @@
-import os
+import os,re
 import shutil
 import sys
 from module.helpers import timing
@@ -19,12 +19,16 @@ class TestGisConfig(unittest.TestCase):
         files_new = []
         for f in files:
             miss_lines.append({"name": f, "value": list()})
-            with open(os.path.join(path_new, f), "r", encoding=ENCONING) as file1:
-                lines_new = file1.readlines()
-                lines_new = [line.rstrip("\n") for line in lines_new]
-            with open(os.path.join(path_old, f), "r", encoding=ENCONING) as file2:
-                lines_origin = file2.readlines()
-                lines_origin = [line.rstrip("\n") for line in lines_origin]
+            lines_new = []
+            lines_origin = []
+            if os.path.exists(os.path.join(path_new, f)):
+                with open(os.path.join(path_new, f), "r", encoding=ENCONING) as file1:
+                    lines_new = file1.readlines()
+                    lines_new = [line.rstrip("\n") for line in lines_new]
+            if os.path.exists(os.path.join(path_old, f)):
+                with open(os.path.join(path_old, f), "r", encoding=ENCONING) as file2:
+                    lines_origin = file2.readlines()
+                    lines_origin = [line.rstrip("\n") for line in lines_origin]
             if len(lines_new) > len(lines_origin):
                 for line in lines_new:
                     if not line.strip() in lines_origin:
@@ -122,12 +126,12 @@ class TestGisConfig(unittest.TestCase):
         if len(files_download) == 0:
             return True, False
 
-        # получаем общие имена
-        common = list(files_download & files_origin)
+        # получаем все имена
+        common = list(files_download | files_origin)
 
         # Теперь проверяем список common
         # на файлы, чтобы не попался каталог
-        common_files = [file_name for file_name in common]
+        common_files = [file_name for file_name in common if re.search("csv",file_name)]
 
         # Сравниваем общие файлы каталогов
         mismatch = self.__diff(path_download, path_origin, common_files)
@@ -146,35 +150,35 @@ class TestGisConfig(unittest.TestCase):
             path_down=os.path.join(BASE_DIR, "test", "download"),
         )
 
-    # def test_druzhba(self):
-    #     self.parser.name = os.path.join(BASE_DIR, "test", "input", "druzhba.zip")
-    #     self.parser.download_file = "druzhba.zip"
-    #     self.__remove_download()
-    #     self.parser.start()
-    #     hash_origin, hash_download = self.__check()
-    #     self.assertEqual(hash_origin, hash_download)
+    def test_druzhba(self):
+        self.parser.name = os.path.join(BASE_DIR, "test", "input", "druzhba.zip")
+        self.parser.download_file = "druzhba.zip"
+        self.__remove_download()
+        self.parser.start()
+        hash_origin, hash_download = self.__check()
+        self.assertEqual(hash_origin, hash_download)
 
-    # def test_gefest(self):
-    #     self.parser.name = os.path.join(BASE_DIR, "test", "input", "gefest.zip")
-    #     self.parser.download_file = "gefest.zip"
-    #     self.__remove_download()
-    #     if os.path.exists(
-    #         os.path.join(BASE_DIR, "test", "download", self.parser.download_file)
-    #     ):
-    #         os.remove(
-    #             os.path.join(BASE_DIR, "test", "download", self.parser.download_file)
-    #         )
-    #     self.parser.start()
-    #     hash_origin, hash_download = self.__check()
-    #     self.assertEqual(hash_origin, hash_download)
+    def test_gefest(self):
+        self.parser.name = os.path.join(BASE_DIR, "test", "input", "gefest.zip")
+        self.parser.download_file = "gefest.zip"
+        self.__remove_download()
+        if os.path.exists(
+            os.path.join(BASE_DIR, "test", "download", self.parser.download_file)
+        ):
+            os.remove(
+                os.path.join(BASE_DIR, "test", "download", self.parser.download_file)
+            )
+        self.parser.start()
+        hash_origin, hash_download = self.__check()
+        self.assertEqual(hash_origin, hash_download)
 
-    # def test_molod(self):
-    #     self.parser.name = os.path.join(BASE_DIR, "test", "input", "molod.zip")
-    #     self.parser.download_file = "molod.zip"
-    #     self.__remove_download()
-    #     self.parser.start()
-    #     hash_origin, hash_download = self.__check()
-    #     self.assertEqual(hash_origin, hash_download)
+    def test_molod(self):
+        self.parser.name = os.path.join(BASE_DIR, "test", "input", "molod.zip")
+        self.parser.download_file = "molod.zip"
+        self.__remove_download()
+        self.parser.start()
+        hash_origin, hash_download = self.__check()
+        self.assertEqual(hash_origin, hash_download)
 
     def test_t414(self):
         self.parser.name = os.path.join(BASE_DIR, "test", "input", "414.zip")
@@ -186,22 +190,24 @@ class TestGisConfig(unittest.TestCase):
         hash_origin, hash_download = self.__check()
         self.assertEqual(hash_origin, hash_download)
 
-    # def test_shustoff(self):
-    #     self.parser.name = os.path.join(BASE_DIR, "test", "input", "shustoff.zip")
-    #     self.parser.download_file = "shustoff.zip"
-    #     self.__remove_download()
-    #     self.parser.start()
-    #     hash_origin, hash_download = self.__check()
-    #     self.assertEqual(hash_origin, hash_download)
+    def test_shustoff(self):
+        self.parser.name = os.path.join(BASE_DIR, "test", "input", "shustoff.zip")
+        self.parser.download_file = "shustoff.zip"
+        # self.parser.is_hash = False
+        self.__remove_download()
+        self.parser.start()
+        hash_origin, hash_download = self.__check()
+        self.assertEqual(hash_origin, hash_download)
 
-    # def test_comfort(self):
-    #     self.parser.name = os.path.join(BASE_DIR, "test", "input", "comfort.zip")
-    #     self.parser.download_file = "comfort.zip"
-    #     self.parser.inn = "7811334511"
-    #     self.__remove_download()
-    #     self.parser.start()
-    #     hash_origin, hash_download = self.__check()
-    #     self.assertEqual(hash_origin, hash_download)
+    def test_comfort(self):
+        self.parser.name = os.path.join(BASE_DIR, "test", "input", "comfort.zip")
+        self.parser.download_file = "comfort.zip"
+        self.parser.inn = "7811334511"
+        self.parser.is_hash=False
+        self.__remove_download()
+        self.parser.start()
+        hash_origin, hash_download = self.__check()
+        self.assertEqual(hash_origin, hash_download)
 
 
 @timing(

@@ -22,8 +22,7 @@ required_accounts:bill_value,payment_value,(account_number)
 0:К оплате за расчетный период, руб.@calc_value
 0:^Тариф@tariff
 0:Общая площадь для ЛС@total_square	
-0:Идентификатор ЖКУ@account_identifier
-0:Идентификатор ЖКУ@account_number_accounts
+0:Идентификатор ЖКУ@account_identifier@account_number_accounts
 0:Начислено за расчетный период, руб.@accounting_period_total
 0:БИК банка@bank_bik	Расчетный счет@account_number_pp
 0:Номер платежного документа@account_internal_id

@@ -54,11 +54,15 @@ def parsing_lines(file, lines: list, ldict: dict, lparam: dict, names: list, pat
         ls = line["name"].split("@")
         line["name"] = ls[0]
         for x in ls[1:]:
+            off = re.findall('<.+\>', x)
+            if off:
+                x = x.replace(off[0],"")
+                off[0] = off[0].replace("<","").replace(">","")
             patt = get_pattern(x)
             key_dic = x.replace('::'+patt, '').strip()
             ldict.setdefault(key_dic, [])
             ldict[key_dic].append(
-                {"col": col_begin + idx_col, "pattern": patt})
+                {"col": col_begin + idx_col, "pattern": patt, "offset":off})
         if col_begin + idx_col == 0:
             file.write(f"name=ЛС\n")
             file.write(f"condition_begin_team=@ЛС\n")
@@ -102,11 +106,6 @@ def parsing_lines(file, lines: list, ldict: dict, lparam: dict, names: list, pat
             file.write(f"is_optional=true\n")
         if is_duplicate:
             file.write(f"is_duplicate=true\n")
-        if line.get("is_unique") is None:
-            file.write(
-                f'is_unique={"true" if not is_duplicate and line["name"].find(";")==-1 else "false"}\n'
-            )
-        else:
-            file.write(
-                f'is_unique={line["is_unique"]}\n'
-            )
+
+        if (not is_duplicate and line["name"].find(";") == -1) and line["is_unique"]:
+            file.write(f'is_unique=true\n')

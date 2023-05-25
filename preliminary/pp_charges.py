@@ -20,7 +20,8 @@ def pp_charges(lines: list, path: str) -> str:
         file.write("; Документ Начисления платежей\n")
         file.write("name=pp_charges\n")
         if lines["required"].get("required_pp_charges"):
-            file.write(f'required_fields={",".join(lines["required"]["required_pp_charges"])}\n\n')
+            file.write(
+                f'required_fields={",".join(lines["required"]["required_pp_charges"])}\n\n')
         else:
             file.write("required_fields=calc_value,recalculation\n\n")
 
@@ -44,13 +45,19 @@ def pp_charges(lines: list, path: str) -> str:
             )
             name = get_name(get_ident(l[0]["name"].split(";")[0]), names)
             file.write(f"offset_pattern=@{name}\n")
-            file.write(f"func=id+НЧ,spacerepl,hash\n\n")
+            if len(l) > 2:
+                file.write(
+                    f'func=id+{l[0]["name"].split(";")[0].replace(","," ").replace("+","")}+НЧ,spacerepl,hash\n\n'
+                )
+            else:
+                file.write(f"func=id+НЧ,spacerepl,hash\n\n")
         else:
             file.write(f"offset_col_config=0\n")
             file.write(f"offset_pattern=.+\n")
             file.write(
                 f'func=id+{l[0]["name"].split(";")[0].replace(","," ").replace("+","")}+НЧ,spacerepl,hash\n\n'
             )
+        if not lines["dic"].get("service") or len(l) > 2:
             for i, line in enumerate(l[1:]):
                 file.write(f"[pp_charges_1_{i}]\n")
                 name = get_name(get_ident(line["name"].split(";")[0]), names)
@@ -58,7 +65,7 @@ def pp_charges(lines: list, path: str) -> str:
                 file.write(
                     f'func=id+{line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()}+НЧ,spacerepl,hash\n'
                 )
-            file.write("\n")
+                file.write("\n")
 
         file.write("[pp_charges_2]\n")
         file.write("; Внутренний идентификатор платежного документа\n")
@@ -82,9 +89,19 @@ def pp_charges(lines: list, path: str) -> str:
             name = get_name(get_ident(l[0]["name"].split(";")[0]), names)
             file.write(f"pattern=@{name}\n")
             file.write(f'col_config={lines["dic"]["service"][0]["col"]}\n')
-            file.write(
-                f'offset_col_config={lines["dic"]["calc_value"][0]["col"]}\n'
-            )
+            if lines["dic"].get("calc_value"):
+                file.write(
+                    f'offset_col_config={lines["dic"]["calc_value"][0]["col"]}\n'
+                )
+            else:
+                if lines["dic"].get("bill_value"):
+                    file.write(
+                        f'offset_col_config={lines["dic"]["bill_value"][0]["col"]}\n'
+                    )
+                else:
+                    file.write(
+                        f'offset_col_config=2\n'
+                    )
         else:
             file.write("pattern=@0\n")
             file.write("col_config=0\n")
@@ -125,7 +142,8 @@ def pp_charges(lines: list, path: str) -> str:
                     file.write(f"[pp_charges_4_{i}]\n")
                     file.write("; тариф при однотарифном начислении\n")
                     file.write(f'; {line["name"].rstrip()}\n')
-                    name = get_name(get_ident(line["name"].split(";")[0]), names)
+                    name = get_name(
+                        get_ident(line["name"].split(";")[0]), names)
                     file.write(f"pattern=@{name}\n")
                     file.write("\n")
         else:
@@ -151,10 +169,14 @@ def pp_charges(lines: list, path: str) -> str:
         file.write("name=service_internal_id\n")
         file.write("pattern=.+\n")
         file.write("row_data=0\n")
-
         if lines["dic"].get("service"):
             file.write(f'col_config={lines["dic"]["service"][0]["col"]}\n')
-            file.write(f"func=hash\n")
+            if len(l) > 2:
+                file.write(
+                    f'func={l[0]["name"].split(";")[0].replace(","," ").replace("+","")},hash\n'
+                )
+            else:
+                file.write(f"func=hash\n")
         else:
             file.write("col_config=0\n")
             file.write(
@@ -162,7 +184,7 @@ def pp_charges(lines: list, path: str) -> str:
             )
         file.write("\n")
 
-        if not lines["dic"].get("service"):
+        if not lines["dic"].get("service") or len(l) > 2:
             for i, line in enumerate(l[1:]):
                 file.write(f"[pp_charges_5_{i}]\n")
                 file.write("; Идентификатор услуги\n")
@@ -188,9 +210,14 @@ def pp_charges(lines: list, path: str) -> str:
                 file.write(
                     f'col_config={lines["dic"]["service"][0]["col"]}\n'
                 )
-                file.write(
-                    f'offset_col_config={lines["dic"]["recalculation"][0]["col"]}\n'
-                )
+                if lines["dic"]["recalculation"][0]["offset"]:
+                    file.write(
+                        f'offset_col_config={lines["dic"]["recalculation"][0]["offset"][0]}\n'
+                    )
+                else:
+                    file.write(
+                        f'offset_col_config={lines["dic"]["recalculation"][0]["col"]}\n'
+                    )
                 file.write("offset_pattern=@currency\n")
                 file.write("offset_type=float\n")
                 file.write("func=round2\n")
@@ -199,7 +226,8 @@ def pp_charges(lines: list, path: str) -> str:
                     file.write(f"[pp_charges_7_{i}]\n")
                     file.write("; перерасчет\n")
                     file.write(f'; {line["name"].rstrip()}\n')
-                    name = get_name(get_ident(line["name"].split(";")[0]), names)
+                    name = get_name(
+                        get_ident(line["name"].split(";")[0]), names)
                     file.write(f"pattern=@{name}\n")
                     file.write("\n")
         else:
@@ -214,9 +242,15 @@ def pp_charges(lines: list, path: str) -> str:
             name = get_name(get_ident(l[0]["name"].split(";")[0]), names)
             file.write(f"pattern=@{name}\n")
             file.write(f'col_config={lines["dic"]["service"][0]["col"]}\n')
-            file.write(
-                f'offset_col_config={lines["dic"]["accounting_period_total"][0]["col"]}\n'
-            )
+            if lines["dic"]["accounting_period_total"][0]["offset"]:
+                file.write(
+                    f'offset_col_config={lines["dic"]["accounting_period_total"][0]["offset"][0]}\n'
+                )
+            else:
+                file.write(
+                    f'offset_col_config={lines["dic"]["accounting_period_total"][0]["col"]}\n'
+                )
+
         else:
             file.write("pattern=@0\n")
             file.write("col_config=0\n")
