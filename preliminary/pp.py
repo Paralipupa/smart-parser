@@ -42,7 +42,7 @@ def pp(lines: list, path: str):
         file.write("row_data=0\n")
         if lines["dic"].get("account_internal_id"):
             file.write(
-                f'offset_col_config={lines["dic"].get("account_internal_id", {"col":1})["col"]}\n'
+                f'offset_col_config={lines["dic"]["account_internal_id"][0]["col"]}\n'
             )
             file.write("offset_pattern=.+\n")
         file.write("func=spacerepl,hash\n")
@@ -67,7 +67,7 @@ def pp(lines: list, path: str):
             file.write("pattern=@0\n")
             file.write("col_config=0\n")
             file.write(
-                f'offset_col_config={lines["dic"].get("credit", {"col":1})["col"]}\n'
+                f'offset_col_config={lines["dic"]["credit"][0]["col"]}\n'
             )
             file.write("offset_type=float\n")
             file.write("offset_pattern=@currency\n")
@@ -80,7 +80,7 @@ def pp(lines: list, path: str):
             file.write("pattern=@0\n")
             file.write("col_config=0\n")
             file.write(
-                f'offset_col_config={lines["dic"].get("saldo", {"col":4})["col"]}\n'
+                f'offset_col_config={lines["dic"]["saldo"][0]["col"]}\n'
             )
             file.write("offset_type=float\n")
             file.write("offset_pattern=@currency\n")
@@ -93,7 +93,7 @@ def pp(lines: list, path: str):
             file.write("pattern=@0\n")
             file.write("col_config=0\n")
             file.write(
-                f'offset_col_config={lines["dic"].get("payment_value", {"col":3})["col"]}\n'
+                f'offset_col_config={lines["dic"]["payment_value"][0]["col"]}\n'
             )
             file.write("offset_type=float\n")
             file.write("offset_pattern=@currency\n")
@@ -109,7 +109,7 @@ def pp(lines: list, path: str):
         file.write("row_data=0\n")
         if lines["dic"].get("payment_date"):
             file.write(
-                f'offset_col_config={lines["dic"].get("payment_date", {"col":5})["col"]}\n'
+                f'offset_col_config={lines["dic"]["payment_date"][0]["col"]}\n'
             )
             file.write("offset_pattern=.+\n")
         else:
@@ -124,7 +124,7 @@ def pp(lines: list, path: str):
             file.write("pattern=@0\n")
             file.write("col_config=0\n")
             file.write(
-                f'offset_col_config={lines["dic"].get("bill_value", {"col":2})["col"]}\n'
+                f'offset_col_config={lines["dic"]["bill_value"][0]["col"]}\n'
             )
             file.write("offset_type=float\n")
             file.write("offset_pattern=@currency\n")
@@ -138,11 +138,11 @@ def pp(lines: list, path: str):
             file.write("col_config=0\n")
             file.write("row_data=0\n")
             file.write(
-                f'offset_col_config={lines["dic"].get("account_number_pp", {"col":0})["col"]}\n'
+                f'offset_col_config={lines["dic"]["account_number_pp"][0]["col"]}\n'
             )
-            if lines["dic"]["account_number_pp"].get("pattern"):
+            if lines["dic"]["account_number_pp"][0]["pattern"]:
                 file.write(
-                    f'offset_pattern={lines["dic"].get("account_number_pp", {"pattern":""})["pattern"]}\n'
+                    f'offset_pattern={lines["dic"]["account_number_pp"][0]["pattern"]}\n'
                 )
             else:
                 file.write("offset_pattern=.+\n")
@@ -164,11 +164,11 @@ def pp(lines: list, path: str):
             file.write("col_config=0\n")
             file.write("row_data=0\n")
             file.write(
-                f'offset_col_config={lines["dic"].get("bank_bik", {"col":0})["col"]}\n'
+                f'offset_col_config={lines["dic"]["bank_bik"][0]["col"]}\n'
             )
-            if lines["dic"]["bank_bik"].get("pattern"):
+            if lines["dic"]["bank_bik"][0]["pattern"]:
                 file.write(
-                    f'offset_pattern={lines["dic"].get("bank_bik", {"pattern":""})["pattern"]}\n'
+                    f'offset_pattern={lines["dic"]["bank_bik"][0]["pattern"]}\n'
                 )
             else:
                 file.write("offset_pattern=.+\n")

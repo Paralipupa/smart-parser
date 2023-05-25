@@ -127,9 +127,25 @@ def puv(lines: list, path: str) -> str:
 
         file.write('[puv_6]\n')
         file.write('; Показание 2\n')
-        file.write('name=rr2\n\n')
+        file.write('name=rr2\n')
+        if lines["dic"].get("rr2"):
+            file.write("pattern=@0\n")
+            file.write("col_config=0\n")
+            file.write(
+                f'offset_col_config={lines["dic"].get("rr2", {"col":1})["col"]}\n'
+            )
+            file.write("offset_pattern=.+\n")
+        file.write('\n')
 
         file.write('[puv_7]\n')
         file.write('; Показание 3\n')
-        file.write('name=rr3\n\n')
+        file.write('name=rr3\n')
+        if lines["dic"].get("rr3"):
+            file.write("pattern=@0\n")
+            file.write("col_config=0\n")
+            file.write(
+                f'offset_col_config={lines["dic"].get("rr3", {"col":1})["col"]}\n'
+            )
+            file.write("offset_pattern=.+\n")
+        file.write('\n')
     return file_name

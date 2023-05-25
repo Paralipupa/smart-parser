@@ -30,7 +30,7 @@ def pp_service(lines:list, path: str):
 
         if lines["dic"].get("service"):
             file.write(
-                f'col_config={lines["dic"].get("service", {"col":20})["col"]}\n')
+                f'col_config={lines["dic"]["service"][0]["col"]}\n')
             file.write(f"func=hash\n")
         else:
             file.write('col_config=0\n')
@@ -57,7 +57,7 @@ def pp_service(lines:list, path: str):
             file.write('row_data=0\n')
             if lines["dic"].get("service"):
                 file.write(
-                    f'col_config={lines["dic"].get("service", {"col":20})["col"]}\n')
+                    f'col_config={lines["dic"]["service"][0]["col"]}\n')
             else:
                 file.write('col_config=0\n')
                 file.write(f'func={l[0]["name"].split(";")[0].replace(","," ").replace("+","")}\n\n')

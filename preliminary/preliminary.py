@@ -108,9 +108,9 @@ def read_from_text(file_name: str) -> list:
                             lines['param'][p].append(line[len(p)+1:].strip())
     lines = sorted_lines(lines)
     if len(lines['1a']) == 0 and len(lines['2a']) == 0:
-        lines['1'].append({'name': 'Прочие'})
+        lines['1'].append({'name': 'Прочие', 'is_unique': False, 'is_optional': True})
     else:
-        lines['1a'].append({'name': 'Прочие'})
+        lines['1a'].append({'name': 'Прочие', 'is_unique': False, 'is_optional': True})
     return lines
 
 

@@ -5,6 +5,7 @@ import logging
 from typing import Union
 from .helpers import warning_error, fatal_error
 from .settings import *
+from preliminary.settings import COLUMN_BEGIN
 
 logger = logging.getLogger(__name__)
 
@@ -257,13 +258,10 @@ class GisConfig:
                 self.set_column_conditions(i)
                 self.set_column_offset(i)
             i += 1
-            if (
-                (i < 20)
-                and not self.is_section_exist(f"col_{i}")
-                and self.is_section_exist(f"col_{20}")
-            ):
-                self.column_difference = (i, 20 - i)
-                i = 20
+            if i < COLUMN_BEGIN:
+                if not self.is_section_exist(f"col_{i}") and self.is_section_exist(f"col_{COLUMN_BEGIN}"):
+                    self.column_difference = (i, COLUMN_BEGIN - i)
+                    i = COLUMN_BEGIN
 
     def set_column_conditions(self, i: int) -> None:
         ls = list()
@@ -360,10 +358,10 @@ class GisConfig:
                     )
                     j += 1
             k += 1
-            if k < 20 and not self.is_section_exist(
+            if k < COLUMN_BEGIN and not self.is_section_exist(
                 f'pattern{"_" if k>=0 else ""}{k if k>=0 else ""}'
             ):
-                k = 20
+                k = COLUMN_BEGIN
 
     # ========================= Документы =======================================================
     @fatal_error

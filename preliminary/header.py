@@ -16,21 +16,30 @@ def header(lines: list, path: str) -> str:
         file.write('; входных данных и конфигурации\n')
         file.write(f"row={lines['param'].get('check_row',['0<15'])[0]}\n")
         if lines["param"].get("check_pattern"):
-            for i, p in enumerate(lines["param"]["check_pattern"]) :
-                file.write(f'pattern{"_" if i>0 else ""}{i-1 if i>0 else ""}={get_pattern(p,p)}\n')
+            for i, p in enumerate(lines["param"]["check_pattern"]):
+                file.write(
+                    f'pattern{"_" if i>0 else ""}{i-1 if i>0 else ""}={get_pattern(p,p)}\n')
         file.write('\n')
 
         file.write('[main]\n')
-        file.write(f"path_output={lines['param'].get('main_path_output',['output'])[0]}\n")
-        file.write(f"row_start={lines['param'].get('main_row_start',['0'])[0]}\n")
-        file.write(f"page_name={lines['param'].get('main_page_name',[''])[0]}\n")
-        file.write(f"page_index={lines['param'].get('main_page_index',['0'])[0]}\n")
-        file.write(f"max_columns={lines['param'].get('main_max_columns',[150])[0]}\n")
-        file.write(f"max_rows_heading={lines['param'].get('main_max_rows_heading',[15])[0]}\n")
+        file.write(
+            f"path_output={lines['param'].get('main_path_output',['output'])[0]}\n")
+        file.write(
+            f"row_start={lines['param'].get('main_row_start',['0'])[0]}\n")
+        file.write(
+            f"page_name={lines['param'].get('main_page_name',[''])[0]}\n")
+        file.write(
+            f"page_index={lines['param'].get('main_page_index',['0'])[0]}\n")
+        file.write(
+            f"max_columns={lines['param'].get('main_max_columns',[150])[0]}\n")
+        file.write(
+            f"max_rows_heading={lines['param'].get('main_max_rows_heading',[15])[0]}\n")
         if lines['param'].get('main_border_column_left'):
-            file.write(f'border_column_left={lines["param"]["main_border_column_left"][0]}\n')
+            file.write(
+                f'border_column_left={lines["param"]["main_border_column_left"][0]}\n')
         if lines['param'].get('main_border_column_right'):
-            file.write(f'border_column_right={lines["param"]["main_border_column_right"][0]}\n')
+            file.write(
+                f'border_column_right={lines["param"]["main_border_column_right"][0]}\n')
         file.write('\n')
 
         file.write(';---- шаблоны регулярных выражений ------------\n\n')
@@ -47,12 +56,14 @@ def header(lines: list, path: str) -> str:
             if key[:8] == 'pattern_':
                 file.write(f'[pattern_{k}]\n')
                 file.write(f'name={key[8:]}\n')
-                for i, p in enumerate(val) :
+                for i, p in enumerate(val):
                     index = p.find('@')
                     if index > 0:
-                        file.write(f'pattern{"_" if i>0 else ""}{i-1 if i>0 else ""}={p[:index] if index != -1 else p }\n')
+                        file.write(
+                            f'pattern{"_" if i>0 else ""}{i-1 if i>0 else ""}={p[:index] if index != -1 else p }\n')
                     else:
-                        file.write(f'pattern{"_" if i>0 else ""}{i-1 if i>0 else ""}={p}\n')
+                        file.write(
+                            f'pattern{"_" if i>0 else ""}{i-1 if i>0 else ""}={p}\n')
                 file.write('\n')
                 k += 1
 
@@ -62,7 +73,6 @@ def header(lines: list, path: str) -> str:
             file.write('pattern=@+3\n')
             file.write('\n')
             k += 1
-
 
         for i, line in enumerate(lines["1a"]):
             file.write(f'[pattern_{COLUMN_BEGIN+i}]\n')
@@ -74,7 +84,7 @@ def header(lines: list, path: str) -> str:
                 file.write('\n')
         file.write('\n')
 
-        for i, line in enumerate(lines["1"],len(lines["1a"])):
+        for i, line in enumerate(lines["1"], len(lines["1a"])):
             file.write(f'[pattern_{COLUMN_BEGIN+i}]\n')
             name = get_name(get_ident(line["name"].split(";")[0]), names)
             file.write(f'name={name}\n')
@@ -92,7 +102,7 @@ def header(lines: list, path: str) -> str:
                 file.write(f'[headers_{k}]\n')
                 file.write(f'name={key[8:]}\n')
                 file.write(f'pattern=@{key[8:]}\n')
-                for i, p in enumerate(val) :
+                for i, p in enumerate(val):
                     if p == '':
                         file.write(f'value=\n')
                     else:
@@ -104,10 +114,10 @@ def header(lines: list, path: str) -> str:
             elif key[:7] == 'header_':
                 file.write(f'[headers_{k}]\n')
                 file.write(f'name={key[7:]}\n')
-                for i, p in enumerate(val) :
+                for i, p in enumerate(val):
                     index = p.find('@')
                     if index != -1:
-                        if index>0:
+                        if index > 0:
                             file.write(f'pattern={p[:index]}\n')
                         file.write(f'func={p[index+1:]}\n')
                     else:
