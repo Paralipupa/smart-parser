@@ -12,7 +12,7 @@ def pu(lines:list, path: str)->str:
         file.write('[doc_4]\n')
         file.write('; Приборы учета (ПУ) \n')
         file.write('name=pu\n')
-        file.write('required_fields=internal_id,device_type,serial_number\n')
+        file.write('required_fields=internal_id\n')
         file.write('\n')
 
         file.write('[pu_0]\n')
@@ -30,18 +30,30 @@ def pu(lines:list, path: str)->str:
         if lines["dic"].get("rr1"):
             file.write('pattern=@0\n')
             file.write('col_config=0\n')
-            file.write('row_data=0\n')
-            file.write(f'func=id+ХВС+ПУ,spacerepl,hash\n')
+            if lines["dic"].get("service"):
+                file.write(f'offset_col_config={lines["dic"]["service"][0]["col"]}\n')
+                name = get_name(get_ident(l[0]["name"].split(";")[0]), names)
+                file.write(f'offset_pattern=@{name}\n')
+            else:
+                file.write('row_data=0\n')
+            if lines["dic"].get("internal_id_pu"):
+                file.write(f'func=id+{get_ident(lines["dic"]["internal_id_pu"][0]["name"])}+ПУ,spacerepl,hash\n')
+            else:
+                file.write(f'func=id+{l[0]["name"].split(";")[0].replace(","," ").replace("+","")}+ПУ,spacerepl,hash\n')
             file.write('\n')
-            file.write(f'[pu_1_0]\n')
-            file.write(f'func=id+ГВС+ПУ,spacerepl,hash\n')
-            file.write('\n')
-            file.write(f'[pu_1_1]\n')
-            file.write(f'func=id+ЭЭ+ПУ,spacerepl,hash\n')
-            file.write('\n')
-            file.write(f'[pu_1_2]\n')
-            file.write(f'func=id+ГАЗ+ПУ,spacerepl,hash\n')
-            file.write('\n')
+            if lines["dic"].get("internal_id_pu"):
+                for i, line in enumerate(lines["dic"]["internal_id_pu"][1:]):
+                    file.write(f'[pu_1_{i}]\n')
+                    file.write('; Внутренний идентификатор ПУ\n')
+                    file.write(f'func=id+{get_ident(line["name"])}+ПУ,spacerepl,hash\n')
+            else:
+                for i, line in enumerate(l[1:]):
+                    file.write(f'[pu_1_{i}]\n')
+                    file.write('; Внутренний идентификатор ПУ\n')
+                    if lines["dic"].get("service"):
+                        name = get_name(get_ident(line["name"].split(";")[0]), names)
+                        file.write(f'offset_pattern=@{name}\n')
+                    file.write(f'func=id+{line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()}+ПУ,spacerepl,hash\n')
         file.write('\n')
 
         file.write('[pu_2]\n')
@@ -73,6 +85,12 @@ def pu(lines:list, path: str)->str:
                 f'offset_col_config={lines["dic"]["serial_number"][0]["col"]}\n'
             )
             file.write("offset_pattern=.+\n")
+            for i, line in enumerate(lines["dic"]["serial_number"][1:]):
+                file.write(f'[pu_4_{i}]\n')
+                file.write('; Серийный номер\n')
+                file.write(
+                    f'offset_col_config={line["col"]}\n'
+                )
         file.write('\n')
 
         file.write('[pu_5]\n')
@@ -85,6 +103,12 @@ def pu(lines:list, path: str)->str:
                 f'offset_col_config={lines["dic"]["device_type"][0]["col"]}\n'
             )
             file.write("offset_pattern=.+\n")
+            for i, line in enumerate(lines["dic"]["device_type"][1:]):
+                file.write(f'[pu_5_{i}]\n')
+                file.write('; Тип устройства\n')
+                file.write(
+                    f'offset_col_config={line["col"]}\n'
+                )
         file.write('\n')
 
         file.write('[pu_6]\n')
@@ -97,6 +121,12 @@ def pu(lines:list, path: str)->str:
                 f'offset_col_config={lines["dic"]["manufacturer"][0]["col"]}\n'
             )
             file.write("offset_pattern=.+\n")
+            for i, line in enumerate(lines["dic"]["manufacturer"][1:]):
+                file.write(f'[pu_6_{i}]\n')
+                file.write('; Производитель\n')
+                file.write(
+                    f'offset_col_config={line["col"]}\n'
+                )
         file.write('\n')
 
         file.write('[pu_7]\n')
@@ -109,42 +139,66 @@ def pu(lines:list, path: str)->str:
                 f'offset_col_config={lines["dic"]["model"][0]["col"]}\n'
             )
             file.write("offset_pattern=.+\n")
+            for i, line in enumerate(lines["dic"]["model"][1:]):
+                file.write(f'[pu_7_{i}]\n')
+                file.write('; Модель\n')
+                file.write(
+                    f'offset_col_config={line["col"]}\n'
+                )
         file.write('\n')
 
         file.write('[pu_8]\n')
         file.write('; Показания момент установки. Тариф 1\n')
         file.write('name=rr1\n')
-        if lines["dic"].get("pu_rr1"):
+        if lines["dic"].get("rr1_pu"):
             file.write("pattern=@0\n")
             file.write("col_config=0\n")
             file.write(
-                f'offset_col_config={lines["dic"]["pu_rr1"][0]["col"]}\n'
+                f'offset_col_config={lines["dic"]["rr1_pu"][0]["col"]}\n'
             )
             file.write("offset_pattern=.+\n")
+            for i, line in enumerate(lines["dic"]["rr1_pu"][1:]):
+                file.write(f'[pu_8_{i}]\n')
+                file.write('; Показания момент установки. Тариф 1\n')
+                file.write(
+                    f'offset_col_config={line["col"]}\n'
+                )
         file.write('\n')
 
         file.write('[pu_9]\n')
         file.write('; Показания момент установки. Тариф 2\n')
         file.write('name=rr2\n')
-        if lines["dic"].get("pu_rr2"):
+        if lines["dic"].get("rr2_pu"):
             file.write("pattern=@0\n")
             file.write("col_config=0\n")
             file.write(
-                f'offset_col_config={lines["dic"]["pu_rr2"][0]["col"]}\n'
+                f'offset_col_config={lines["dic"]["rr2_pu"][0]["col"]}\n'
             )
             file.write("offset_pattern=.+\n")
+            for i, line in enumerate(lines["dic"]["rr2_pu"][1:]):
+                file.write(f'[pu_9_{i}]\n')
+                file.write('; Показания момент установки. Тариф 2\n')
+                file.write(
+                    f'offset_col_config={line["col"]}\n'
+                )
         file.write('\n')
 
         file.write('[pu_10]\n')
         file.write('; Показания момент установки. Тариф 3\n')
         file.write('name=rr3\n')
-        if lines["dic"].get("pu_rr3"):
+        if lines["dic"].get("rr3_pu"):
             file.write("pattern=@0\n")
             file.write("col_config=0\n")
             file.write(
-                f'offset_col_config={lines["dic"]["pu_rr3"][0]["col"]}\n'
+                f'offset_col_config={lines["dic"]["rr3_pu"][0]["col"]}\n'
             )
             file.write("offset_pattern=.+\n")
+            for i, line in enumerate(lines["dic"]["rr3_pu"][1:]):
+                file.write(f'[pu_10_{i}]\n')
+                file.write('; Показания момент установки. Тариф 3\n')
+                file.write(
+                    f'offset_col_config={line["col"]}\n'
+                )
         file.write('\n')
 
         file.write('[pu_11]\n')
@@ -157,6 +211,12 @@ def pu(lines:list, path: str)->str:
                 f'offset_col_config={lines["dic"]["installation_date"][0]["col"]}\n'
             )
             file.write("offset_pattern=.+\n")
+            for i, line in enumerate(lines["dic"]["installation_date"][1:]):
+                file.write(f'[pu_11_{i}]\n')
+                file.write('; Дата установки\n')
+                file.write(
+                    f'offset_col_config={line["col"]}\n'
+                )
         file.write('\n')
 
         file.write('[pu_12]\n')
@@ -169,6 +229,12 @@ def pu(lines:list, path: str)->str:
                 f'offset_col_config={lines["dic"]["commissioning_date"][0]["col"]}\n'
             )
             file.write("offset_pattern=.+\n")
+            for i, line in enumerate(lines["dic"]["commissioning_date"][1:]):
+                file.write(f'[pu_12_{i}]\n')
+                file.write('; Дата начала работы\n')
+                file.write(
+                    f'offset_col_config={line["col"]}\n'
+                )
         file.write('\n')
 
         file.write('[pu_13]\n')
@@ -181,6 +247,12 @@ def pu(lines:list, path: str)->str:
                 f'offset_col_config={lines["dic"]["next_verification_date"][0]["col"]}\n'
             )
             file.write("offset_pattern=.+\n")
+            for i, line in enumerate(lines["dic"]["next_verification_date"][1:]):
+                file.write(f'[pu_13_{i}]\n')
+                file.write('; Дата следующей поверки\n')
+                file.write(
+                    f'offset_col_config={line["col"]}\n'
+                )
         file.write('\n')
 
         file.write('[pu_14]\n')
@@ -193,6 +265,12 @@ def pu(lines:list, path: str)->str:
                 f'offset_col_config={lines["dic"]["first_verification_date"][0]["col"]}\n'
             )
             file.write("offset_pattern=.+\n")
+            for i, line in enumerate(lines["dic"]["first_verification_date"][1:]):
+                file.write(f'[pu_14_{i}]\n')
+                file.write('; Дата последней поверки\n')
+                file.write(
+                    f'offset_col_config={line["col"]}\n'
+                )
         file.write('\n')
 
         file.write('[pu_15]\n')
@@ -205,6 +283,12 @@ def pu(lines:list, path: str)->str:
                 f'offset_col_config={lines["dic"]["factory_seal_date"][0]["col"]}\n'
             )
             file.write("offset_pattern=.+\n")
+            for i, line in enumerate(lines["dic"]["factory_seal_date"][1:]):
+                file.write(f'[pu_15_{i}]\n')
+                file.write('; Дата опломбирования\n')
+                file.write(
+                    f'offset_col_config={line["col"]}\n'
+                )
         file.write('\n')
 
         file.write('[pu_16]\n')
@@ -217,6 +301,12 @@ def pu(lines:list, path: str)->str:
                 f'offset_col_config={lines["dic"]["checking_interval"][0]["col"]}\n'
             )
             file.write("offset_pattern=.+\n")
+            for i, line in enumerate(lines["dic"]["checking_interval"][1:]):
+                file.write(f'[pu_16_{i}]\n')
+                file.write('; Интервал проверки (кол-во месяцев)\n')
+                file.write(
+                    f'offset_col_config={line["col"]}\n'
+                )
         file.write('\n')
 
         file.write('[pu_17]\n')
@@ -224,21 +314,26 @@ def pu(lines:list, path: str)->str:
         file.write(f'; {l[0]["name"]}\n')
         file.write('name=service_internal_id\n')
         if lines["dic"].get("rr1"):
-            file.write('pattern=@0\n')
+            file.write('pattern=.+\n')
             file.write('col_config=0\n')
             file.write('row_data=0\n')
-            file.write(f'func=id+ХВС,spacerepl\n')
+            if lines["dic"].get("internal_id_pu"):
+                file.write(f'func={get_ident(lines["dic"]["internal_id_pu"][0]["name"])},spacerepl,hash\n')
+            else:
+                file.write(f'func={l[0]["name"].split(";")[0].replace(","," ").replace("+","")},hash\n')
             file.write('\n')
-            file.write(f'[pu_17_0]\n')
-            file.write(f'func=id+ГВС,spacerepl\n')
-            file.write('\n')
-            file.write(f'[pu_17_1]\n')
-            file.write(f'func=id+ЭЭ,spacerepl\n')
-            file.write('\n')
-            file.write(f'[pu_17_2]\n')
-            file.write(f'func=id+ГАЗ,spacerepl\n')
-            file.write('\n')
+            if lines["dic"].get("internal_id_pu"):
+                for i, line in enumerate(lines["dic"]["internal_id_pu"][1:]):
+                    file.write(f'[pu_17_{i}]\n')
+                    file.write('; Идентификатор услуги\n')
+                    file.write(f'func={get_ident(line["name"])},spacerepl,hash\n')
+            else:
+                for i, line in enumerate(l[1:]):
+                    file.write(f'[pu_17_{i}]\n')
+                    file.write('; Идентификатор услуги\n')
+                    file.write(f'; {line["name"].rstrip()}\n')
+                    file.write(f'func={line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()},hash\n')
         file.write('\n')
-
         
+
     return file_name

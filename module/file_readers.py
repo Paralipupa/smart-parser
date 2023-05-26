@@ -106,9 +106,9 @@ class XlsxFile(DataFile):
     def __init__(self, fname):
         super(XlsxFile, self).__init__(fname)
         try:
-            self._wb = load_workbook(filename=fname)
+            self._wb = load_workbook(filename=fname, data_only=True)
         except:
-            self._wb = load_workbook(filename=fname, read_only=True)
+            self._wb = load_workbook(filename=fname, read_only=True, data_only=True)
 
     def set_config(
         self, page_indexes: List[int] = [], number_columns: int = 150

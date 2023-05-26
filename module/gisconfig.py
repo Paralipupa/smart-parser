@@ -22,8 +22,11 @@ class GisConfig:
             logger.error("Не найден файл {}.".format(filename))
             print("Не найден файл {}.".format(filename))
             return
-        self._config = configparser.ConfigParser()
-        self._config.read(os.path.join(BASE_DIR, filename), encoding="utf-8")
+        try:
+            self._config = configparser.ConfigParser()
+            self._config.read(os.path.join(BASE_DIR, filename), encoding="utf-8")
+        except Exception as ex:
+            raise Exception(f"Ошибка в файле-конфигурации {filename}:\n {ex}")
         self._config_name = os.path.basename(filename)
         # разрыв между порядковыми номерами колонок
         self.column_difference = (0, 0)

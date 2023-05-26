@@ -1,13 +1,17 @@
 from utils import get_lines
 from settings import *
 
-def pp_service(lines:list, path: str):
+
+def pp_service(lines: list, path: str):
     l = get_lines(lines)
     file_name = f'{path}/ini/5_pp_service.ini'
     with open(file_name, 'w') as file:
-        file.write(';########################################################################################################################\n')
-        file.write(';----------------------------------------------------------- pp_service -------------------------------------------------\n')
-        file.write(';########################################################################################################################\n')
+        file.write(
+            ';########################################################################################################################\n')
+        file.write(
+            ';----------------------------------------------------------- pp_service -------------------------------------------------\n')
+        file.write(
+            ';########################################################################################################################\n')
         file.write('[doc_3]\n')
         file.write(';Документ. Услуги (pp_service.csv)\n')
         file.write('name=pp_service\n\n')
@@ -25,25 +29,31 @@ def pp_service(lines:list, path: str):
         file.write('; Внутренний идентификатор услуги \n')
         file.write(f'; {l[0]["name"]}\n')
         file.write('name=internal_id\n')
-        file.write('pattern=.+\n')        
+        file.write('pattern=.+\n')
         file.write('row_data=0\n')
 
         if lines["dic"].get("service"):
             file.write(
                 f'col_config={lines["dic"]["service"][0]["col"]}\n')
-            file.write(f"func=hash\n")
+            if len(l) > 2:
+                file.write(
+                    f'func={l[0]["name"].split(";")[0].replace(","," ").replace("+","")},hash\n\n')
+            else:
+                file.write(f"func=hash\n")
         else:
             file.write('col_config=0\n')
             file.write(
                 f'func={l[0]["name"].split(";")[0].replace(","," ").replace("+","")},hash\n\n')
+        if not lines["dic"].get("service") or len(l) > 2:
             for i, line in enumerate(l[1:]):
                 file.write(f'[pp_service_1_{i}]\n')
                 file.write('; Внутренний идентификатор услуги\n')
                 file.write(f'; {line["name"].rstrip()}\n')
-                file.write(f'func={line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()},hash\n')
-        file.write('\n')
+                file.write(
+                    f'func={line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()},hash\n')
+                file.write('\n')
 
-        for k in [2,3]:
+        for k in [2, 3]:
             file.write(f'[pp_service_{k}]\n')
             if k == 2:
                 file.write('; наименование в 1с\n')
@@ -58,15 +68,21 @@ def pp_service(lines:list, path: str):
             if lines["dic"].get("service"):
                 file.write(
                     f'col_config={lines["dic"]["service"][0]["col"]}\n')
+                if len(l) > 2:
+                    file.write(
+                        f'func={l[0]["name"].split(";")[0].replace(","," ").replace("+","")}\n')
             else:
                 file.write('col_config=0\n')
-                file.write(f'func={l[0]["name"].split(";")[0].replace(","," ").replace("+","")}\n\n')
+                file.write(
+                    f'func={l[0]["name"].split(";")[0].replace(","," ").replace("+","")}\n')
+            if not lines["dic"].get("service") or len(l) > 2:
                 for i, line in enumerate(l[1:]):
                     file.write(f'[pp_service_{k}_{i}]\n')
-                    file.write(f'func={line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()}\n')
+                    file.write(
+                        f'func={line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()}\n')
             file.write('\n')
 
         file.write('[pp_service_4]\n')
-        file.write('; код услуги в ГИС\n')	
+        file.write('; код услуги в ГИС\n')
         file.write('name=gis_code\n\n')
     return file_name

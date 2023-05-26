@@ -1124,12 +1124,10 @@ class ExcelBaseImporter:
             # Формируем данные для записи в выходном файле
             # одно поле (ключ в doc) соответствует одной записи
             doc.setdefault(fld_item["name"], list())
-            main_rows_exclude = (
-                set()
-            )  # набор записей для исключение по основному значению
+            main_rows_exclude =dict()  # набор записей для исключение по основному значению
             offset_rows_exclude = set()  # набор записей для исключение по смещению
             for table_row in doc_param["rows_exclude"]:
-                main_rows_exclude.add((table_row[0], -1))
+                main_rows_exclude[(table_row[0], -1)] = ""
             # собираем все поля (sub): name_attr, name_attr_0, ... , name_attr_N
             fld_records = self.__get_fld_records(fld_item)
             x = 0
@@ -1145,15 +1143,14 @@ class ExcelBaseImporter:
                 if not name_field:
                     continue
                 for table_row in fld_record["rows_exclude"]:
-                    main_rows_exclude.add((table_row[0], -1))
+                    main_rows_exclude[(table_row[0], -1)] = ""
                 table_rows = get_value_range(
                     fld_record["row"], len(team[name_field]))
                 for table_row in table_rows:  # обрабатываем все строки области данных
                     if (
                         len(team[name_field]) > table_row[0]
-                        and not (table_row[0], -1) in main_rows_exclude
-                        and not (table_row[POS_VALUE], col[POS_VALUE])
-                        in main_rows_exclude
+                        and main_rows_exclude.get((table_row[0], -1)) is None
+                        and main_rows_exclude.get((table_row[POS_VALUE], col[POS_VALUE])) is None
                     ):
                         for patt in fld_record["pattern"]:
                             # Берем данные из исходной таблицы
@@ -1166,7 +1163,7 @@ class ExcelBaseImporter:
                                 for x in team[name_field]
                                 if x["row"] == table_row[POS_VALUE]
                             ]
-                            # И получаем из них одно значение
+                            # И получаем из них одно значение (суммирование для чисел, конкатенация для строк)
                             x = self.__get_total_value_from_values(
                                 values=values, type_fld=fld_record["type"], pattern=patt
                             )
@@ -1206,12 +1203,14 @@ class ExcelBaseImporter:
                                                 ],
                                             )
                                         )
-                                else:
+                                elif main_rows_exclude.get((table_row[0], col[POS_VALUE])) is None:
                                     # запоминаем, чтобы не было повтора
-                                    main_rows_exclude.add(
-                                        (table_row[0], col[POS_VALUE])
-                                    )
+                                    main_rows_exclude[(table_row[0], col[POS_VALUE])] = x
                                 break  # пропускаем проверку по остальным шаблонам
+                    elif main_rows_exclude.get((table_row[POS_VALUE], col[POS_VALUE])) is not None and not fld_record["value"]:
+                        # если значение пустое, берем то что запомнили
+                        fld_record["value"] = main_rows_exclude.get((table_row[POS_VALUE], col[POS_VALUE]))
+
                 if fld_record["func"]:
                     # если есть, запускаем функцию
                     fld_record["value"] = self.func(

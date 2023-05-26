@@ -62,7 +62,7 @@ def parsing_lines(file, lines: list, ldict: dict, lparam: dict, names: list, pat
             key_dic = x.replace('::'+patt, '').strip()
             ldict.setdefault(key_dic, [])
             ldict[key_dic].append(
-                {"col": col_begin + idx_col, "pattern": patt, "offset":off})
+                {"name": ls[0], "col": col_begin + idx_col, "pattern": patt, "offset":off})
         if col_begin + idx_col == 0:
             file.write(f"name=ЛС\n")
             file.write(f"condition_begin_team=@ЛС\n")
