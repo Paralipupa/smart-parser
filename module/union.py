@@ -48,7 +48,7 @@ class UnionData:
                         if not re.search('bank',fn) and not re.search('tarif',fn):
                             period = re.findall(
                                 r'(?<=[0-9]{1}_)[0-9]{2}[0-9]{4}(?=_)', file, re.IGNORECASE)
-                            if period == period_current:
+                            if period and period[0] == period_current[0]:
                                 period = period_common
                         if inn and name and period:
                             del_files.append(file)
