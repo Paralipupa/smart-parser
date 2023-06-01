@@ -1084,16 +1084,17 @@ class ExcelBaseImporter:
     # для последующих таблиц
     def __build_global_dictionary(self, doc: dict):
         param = {}
-        for key, value in doc.items():
-            if key == "key":
+        for fld, value in doc.items():
+            if fld == "key":
                 param = {"value": "key"+doc["key"], "func": "hash"}
                 param["key"] = self.func(fld_param=param)
-            elif regular_calc("^value", key):
+            elif regular_calc("^value", fld):
                 param["data"] = value
             else:
-                self._dictionary.setdefault(get_index_key(key), [])
-                if not value in self._dictionary[get_index_key(key)]:
-                    self._dictionary[get_index_key(key)].append(value)
+                index_key = get_index_key(fld)
+                self._dictionary.setdefault(index_key, [])
+                if not value in self._dictionary[index_key]:
+                    self._dictionary[index_key].append(value)
             if param.get("key") and param.get("data"):
                 index_key = get_index_key(param["key"])
                 self._dictionary.setdefault(index_key, [])

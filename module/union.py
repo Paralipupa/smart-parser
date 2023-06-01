@@ -31,7 +31,13 @@ class UnionData:
         if files:
             data = dict()
             del_files = list()
-            period : list = [datetime.now().strftime('%m%Y')]
+            period_current : list = [datetime.now().strftime('%m%Y')]
+            period_common : list = period_current
+            for file in files:
+                period_file = re.findall(
+                    r'(?<=[0-9]{1}_)[0-9]{2}[0-9]{4}(?=_)', file, re.IGNORECASE)
+                period_common = self.__get_min_period(period_a=period_common, period_b=period_file)
+            period = period_common
             for file in files:
                 for fn in DOCUMENTS.split():
                     name: list = re.findall(
@@ -42,6 +48,8 @@ class UnionData:
                         if not re.search('bank',fn) and not re.search('tarif',fn):
                             period = re.findall(
                                 r'(?<=[0-9]{1}_)[0-9]{2}[0-9]{4}(?=_)', file, re.IGNORECASE)
+                            if period == period_current:
+                                period = period_common
                         if inn and name and period:
                             del_files.append(file)
                             data.setdefault(inn[0], dict())
@@ -165,3 +173,22 @@ class UnionData:
         with open(f'{file_output}.log', 'w', encoding=ENCONING) as file:
             for log in self.logs:
                 file.write(f'{log}\n')
+    
+    def __get_min_period(self, period_a: list, period_b : list) -> list:
+        if not period_a:
+            return period_b
+        elif not period_b:
+            return period_a
+        if period_a[0][2:] < period_b[0][2:]:
+            return period_a
+        elif period_a[0][2:] > period_b[0][2:]:
+            return period_b
+        else:
+            if period_a[0][:2] < period_b[0][:2]:
+                return period_a
+            elif period_a[0][:2] > period_b[0][:2]:
+                return period_b
+            else:
+                return period_a
+
+
