@@ -566,6 +566,10 @@ class ExcelBaseImporter:
             "%d.%m.%y",
             "%d/%m/%y",
             "%B %Y",
+            "%m_%Y",
+            "%m%Y",
+            "%m,%Y",
+            "%m,%y",
         ]
         d = None
         for item in self._parameters["period"]["value"]:
@@ -1458,9 +1462,8 @@ class ExcelBaseImporter:
             "period", {"fixed": False, "value": list()})
 
         if not self._parameters["period"]["value"]:
-            self._parameters["period"]["value"].append(
-                datetime.date.today().strftime("%d.%m.%Y")
-            )
+            period = self.__get_period_default()
+            self._parameters["period"]["value"].append(period)
         self.__check_period_value()
 
         self._parameters.setdefault("path", {"fixed": False, "value": list()})
@@ -1542,6 +1545,14 @@ class ExcelBaseImporter:
                                         break
 
         return self._parameters[name]
+    
+    def __get_period_default(self):
+        comp = re.compile("(?:01|02|03|04|05|06|07|08|09|10|11|12|)[.,_]?(?:202[0-9]|2[0-9])")
+        period = comp.findall(self._parameters['filename']['value'][0])
+        if period:
+            return period[0]
+        period = datetime.date.today().strftime("%d.%m.%Y")
+        return period
 
     def __init_config(self) -> bool:
         if self.index_config < len(self.config_files):
