@@ -17,8 +17,9 @@ def header(lines: list, path: str) -> str:
         file.write(f"row={lines['param'].get('check_row',['0<15'])[0]}\n")
         if lines["param"].get("check_pattern"):
             for i, p in enumerate(lines["param"]["check_pattern"]):
+                _, pattern = get_pattern(p,p)
                 file.write(
-                    f'pattern{"_" if i>0 else ""}{i-1 if i>0 else ""}={get_pattern(p,p)}\n')
+                    f'pattern{"_" if i>0 else ""}{i-1 if i>0 else ""}={pattern}\n')
         file.write('\n')
 
         file.write('[main]\n')
@@ -79,8 +80,9 @@ def header(lines: list, path: str) -> str:
             name = get_name(get_ident(line["name"].split(";")[0]), names)
             file.write(f'name={name}\n')
             for j, x in enumerate(get_reg(line["name"]).split(';')):
+                _, pattern = get_pattern(x,x)
                 file.write(
-                    f'pattern{"_" if j >0 else ""}{str(j-1) if j >0 else ""}={get_pattern(x,x)}\n')
+                    f'pattern{"_" if j >0 else ""}{str(j-1) if j >0 else ""}={pattern}\n')
                 file.write('\n')
         file.write('\n')
 
@@ -89,8 +91,9 @@ def header(lines: list, path: str) -> str:
             name = get_name(get_ident(line["name"].split(";")[0]), names)
             file.write(f'name={name}\n')
             for j, x in enumerate(get_reg(line["name"]).split(';')):
+                _, pattern = get_pattern(x,x)
                 file.write(
-                    f'pattern{"_" if j >0 else ""}{str(j-1) if j >0 else ""}={get_pattern(x,x)}\n')
+                    f'pattern{"_" if j >0 else ""}{str(j-1) if j >0 else ""}={pattern}\n')
                 file.write('\n')
         file.write('\n')
 

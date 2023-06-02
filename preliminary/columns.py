@@ -1,5 +1,7 @@
 import re
-from utils import get_ident, get_reg, get_name, get_pattern
+from utils import get_ident, get_reg, get_name, get_pattern, \
+    get_param_offset, get_param_function, get_param_type, get_param_anchor
+    
 from settings import *
 
 
@@ -37,12 +39,7 @@ def parsing_lines(file, lines: list, ldict: dict, lparam: dict, names: list, pat
     for idx_col, line in enumerate(lines):
         file.write("\n")
         file.write(f"[col_{col_begin + idx_col}]\n")
-
-        offset = re.findall("{{.+}}", line["name"])
-        if offset:
-            # проверяем наличие "якоря"
-            line["name"] = line["name"].replace(offset[0], "")
-            offset = offset[0].replace("{", "").replace("}", "").split(";")
+        line["name"], anchor = get_param_anchor(line["name"])
         if line["name"][0] == ">":
             # проверяем левую границу Услуг
             lparam["main_border_column_left"] = [idx_col]
@@ -54,19 +51,18 @@ def parsing_lines(file, lines: list, ldict: dict, lparam: dict, names: list, pat
         ls = line["name"].split("@")
         line["name"] = ls[0]
         for x in ls[1:]:
-            off = re.findall('<.+\>', x)
-            if off:
-                x = x.replace(off[0],"")
-                off[0] = off[0].replace("<","").replace(">","")
-            func = re.findall('{%.+\%}', x)
-            if func:
-                x = x.replace(func[0],"")
-                func[0] = func[0].replace("{%","").replace("%}","")
-            patt = get_pattern(x)
-            key_dic = x.replace('::'+patt, '').strip()
-            ldict.setdefault(key_dic, [])
-            ldict[key_dic].append(
-                {"name": ls[0], "col": col_begin + idx_col, "pattern": patt, "offset":off, "func":func})
+            x, param_off = get_param_offset(x)
+            x, param_func = get_param_function(x)
+            x, param_type = get_param_type(x)
+            x, param_pattern = get_pattern(x)
+            ldict.setdefault(x, [])
+            ldict[x].append(
+                {"name": ls[0], "col": col_begin + idx_col,
+                 "pattern": param_pattern,
+                 "offset": param_off,
+                 "func": param_func,
+                 "type": param_type}
+            )
         if col_begin + idx_col == 0:
             file.write(f"name=ЛС\n")
             file.write(f"condition_begin_team=@ЛС\n")
@@ -101,11 +97,11 @@ def parsing_lines(file, lines: list, ldict: dict, lparam: dict, names: list, pat
             file.write(
                 f'col_data_offset=+0,{col_offset.strip(",")}\n'
             )
-        if offset:
-            file.write(f'offset_row={offset[0] if len(offset)>0 else ""}\n')
-            file.write(f'offset_col={offset[1] if len(offset)>1 else ""}\n')
+        if anchor:
+            file.write(f'offset_row={anchor[0] if len(anchor)>0 else ""}\n')
+            file.write(f'offset_col={anchor[1] if len(anchor)>1 else ""}\n')
             file.write(
-                f'offset_pattern={offset[2] if len(offset)>2 else ""}\n')
+                f'offset_pattern={anchor[2] if len(anchor)>2 else ""}\n')
         if line["is_optional"]:
             file.write(f"is_optional=true\n")
         if is_duplicate:

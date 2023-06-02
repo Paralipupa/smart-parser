@@ -203,7 +203,6 @@ class TestGisConfig(unittest.TestCase):
     def test_shustoff(self):
         self.parser.name = os.path.join(BASE_DIR, "test", "input", "shustoff.zip")
         self.parser.download_file = "shustoff.zip"
-        # self.parser.is_hash = False
         self.__remove_download()
         self.parser.start()
         hash_origin, hash_download = self.__check()
