@@ -58,11 +58,15 @@ def parsing_lines(file, lines: list, ldict: dict, lparam: dict, names: list, pat
             if off:
                 x = x.replace(off[0],"")
                 off[0] = off[0].replace("<","").replace(">","")
+            func = re.findall('{%.+\%}', x)
+            if func:
+                x = x.replace(func[0],"")
+                func[0] = func[0].replace("{%","").replace("%}","")
             patt = get_pattern(x)
             key_dic = x.replace('::'+patt, '').strip()
             ldict.setdefault(key_dic, [])
             ldict[key_dic].append(
-                {"name": ls[0], "col": col_begin + idx_col, "pattern": patt, "offset":off})
+                {"name": ls[0], "col": col_begin + idx_col, "pattern": patt, "offset":off, "func":func})
         if col_begin + idx_col == 0:
             file.write(f"name=ЛС\n")
             file.write(f"condition_begin_team=@ЛС\n")

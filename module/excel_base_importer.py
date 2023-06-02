@@ -1547,7 +1547,7 @@ class ExcelBaseImporter:
         return self._parameters[name]
     
     def __get_period_default(self):
-        comp = re.compile("(?:01|02|03|04|05|06|07|08|09|10|11|12|)[.,_]?(?:202[0-9]|2[0-9])")
+        comp = re.compile("(?:01|02|03|04|05|06|07|08|09|10|11|12)[.,_]?(?:202[0-9]|[2,3][0-9])")
         period = comp.findall(self._parameters['filename']['value'][0])
         if period:
             return period[0]
