@@ -110,6 +110,14 @@ def get_param_function(x: str) -> Tuple[str, list]:
             "{func{", "").replace("}}", "")
     return x, param_func
 
+def get_param_function_is_no_return(x: str) -> Tuple[str, list]:
+    param_func_is_no = re.findall('{func_no{.+}}', x)
+    if param_func_is_no:
+        x = x.replace(param_func_is_no[0], "")
+        param_func_is_no[0] = param_func_is_no[0].replace(
+            "{func_no{", "").replace("}}", "")
+    return x, param_func_is_no
+
 def get_param_type(x: str) -> Tuple[str, list]:
     param_type = re.findall('{type{.+}}', x)
     if param_type:
@@ -122,5 +130,7 @@ def get_param_type(x: str) -> Tuple[str, list]:
 def get_pattern(x: str, default: str = '') -> Tuple[str, str]:
     index = x.find("::")
     pattern =  (x[index + 2:] if index != -1 else default).replace(r"^Прочие$", ".+")
+    if pattern and pattern[0] == "!":
+        pattern = "@" + pattern[1:]
     x = x.replace('::'+pattern, '').strip()
     return x, pattern

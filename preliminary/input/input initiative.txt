@@ -16,5 +16,5 @@ pattern_ЛС:^2703[0-9]{5}$
 0:Дебет К.;+(1)@saldo{{+0;-1;пеня}}
 0:Итого	Всего
 0:Кв.@room_number	Прож@living_person_number
-0:>Площ@total_square	
+0:>Площ@total_square{type{float}}{func{round2}}
 1:Услуги

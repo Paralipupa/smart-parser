@@ -1,6 +1,7 @@
 import re
 from utils import get_ident, get_reg, get_name, get_pattern, \
-    get_param_offset, get_param_function, get_param_type, get_param_anchor
+    get_param_offset, get_param_function, get_param_type, get_param_anchor,\
+    get_param_function_is_no_return
     
 from settings import *
 
@@ -53,6 +54,7 @@ def parsing_lines(file, lines: list, ldict: dict, lparam: dict, names: list, pat
         for x in ls[1:]:
             x, param_off = get_param_offset(x)
             x, param_func = get_param_function(x)
+            x, param_func_is_no = get_param_function_is_no_return(x)
             x, param_type = get_param_type(x)
             x, param_pattern = get_pattern(x)
             ldict.setdefault(x, [])
@@ -61,6 +63,7 @@ def parsing_lines(file, lines: list, ldict: dict, lparam: dict, names: list, pat
                  "pattern": param_pattern,
                  "offset": param_off,
                  "func": param_func,
+                 "func_is_no": param_func_is_no,
                  "type": param_type}
             )
         if col_begin + idx_col == 0:

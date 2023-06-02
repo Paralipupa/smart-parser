@@ -17,6 +17,7 @@ pattern_ЛС:^(?![0-9])[А-Яа-яЁё"«»-]+\s["«»А-Яа-яЁё-]+
 0:Сальдо Вх.@credit	Начисление;Дебет@bill_value	Оплачено;Кредит@payment_value	Сальдо исх.@saldo
 0:Дата оп.@payment_date
 0:Начислено	Квартира;№ пом.;№ кв.@room_number	Проживает@living_person_number
-0:>Площадь;Площадь, м2@total_square	Прописано
+0:>Площадь;Площадь, м2@total_square{type{float}}{func{round2}}
+0:Прописано
 0:Лицевой счет@account_number_accounts::[0-9]+-?[A-Za-zА-Яа-я]?@account_identifier::[0-9]+-?[A-Za-zА-Яа-я]?
 1:ПениКапремонт;Пени{{+0;-1;кап}}

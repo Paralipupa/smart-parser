@@ -32,6 +32,16 @@ def write_section_org_ppa_guid(file, lines: dict, sec_type: str, sec_number: int
     return
 
 
+def write_section_contract(file, lines: dict, sec_type: str, sec_number: int, sec_title: str, sec_name: str):
+    __write_section_head(file, sec_type, sec_number, sec_title, sec_name)
+    file.write('pattern=@0\n')
+    file.write('col_config=0\n')
+    file.write('row_data=0\n')
+    file.write('func=_+К,spacerepl,hash\n\n')
+    file.write('\n')
+    return
+
+
 def __write_section_service(file, lines: dict, sec_type: str, sec_number: int, sec_title: str, sec_name: str, sec_suffix: str = "", is_ident: bool = True):
     l: list = get_lines(lines)
     if lines["dic"].get("rr1_puv"):
@@ -86,10 +96,48 @@ def __write_section_service(file, lines: dict, sec_type: str, sec_number: int, s
     return
 
 
-def write_section_internal_id(file, lines: dict, sec_type: str, sec_number: int, sec_title: str, sec_name: str, sec_suffix: str = ""):
+def write_section_internal_id(file, lines: dict, sec_type: str, sec_number: int, sec_title: str, sec_name: str, sec_suffix: str = "", sec_is_service: bool = True):
     __write_section_head(file, sec_type, sec_number, sec_title, sec_name)
-    __write_section_service(file, lines, sec_type,
-                            sec_number, sec_title, sec_name, sec_suffix)
+    if sec_is_service:
+        __write_section_service(file, lines, sec_type,
+                                sec_number, sec_title, sec_name, sec_suffix)
+    else:
+        __write_section_internal_id(file)
+    return
+
+
+def write_section_fias(file, lines: dict, sec_type: str, sec_number: int, sec_title: str, sec_name: str, sec_suffix: str = "", sec_is_service: bool = True):
+    __write_section_head(file, sec_type, sec_number, sec_title, sec_name)
+    file.write('pattern=@0\n')
+    file.write('col_config=0\n')
+    file.write('row_data=0\n')
+    file.write('func=fias\n')
+    file.write('func_is_no_return=true\n')
+    file.write('\n')
+    return
+
+
+def write_section_address(file, lines: dict, sec_type: str, sec_number: int, sec_title: str, sec_name: str, sec_suffix: str = "", sec_is_service: bool = True):
+    __write_section_head(file, sec_type, sec_number, sec_title, sec_name)
+    if lines["dic"].get(f"{sec_name}"):
+        file.write('pattern=.+\n')
+        file.write(
+            f'col_config={lines["dic"][f"{sec_name}"][0]["col"]}\n')
+        file.write('row_data=0\n')
+        if lines["dic"].get("room_number"):
+            file.write(
+                f'func=_+кв.+column_value({lines["dic"]["room_number"][0]["col"]})\n')
+    else:
+        file.write(f'col_config=0\n')
+        file.write('row_data=0\n')
+        file.write('pattern=@0\n')
+        if lines["dic"].get("room_number"):
+            file.write(
+                f'func=address+кв.+column_value({lines["dic"]["room_number"][0]["col"]})\n')
+        else:
+            file.write(f'func=address\n')
+        file.write('func_is_no_return=true\n')
+    file.write('\n')
     return
 
 
@@ -162,7 +210,7 @@ def write_section_rr(file, lines: dict, sec_type: str, sec_number: int, sec_titl
     return
 
 
-def write_section(file, lines: dict, sec_type: str, sec_number: int, sec_title: str, sec_name: str, sec_prefix: str = ""):
+def write_section(file, lines: dict, sec_type: str, sec_number: int, sec_title: str, sec_name: str, sec_prefix: str = "", sec_func: str = ""):
     __write_section_head(file, sec_type, sec_number, sec_title, sec_name)
     if sec_prefix == "":
         sec_prefix = f"_{sec_type}"
@@ -171,10 +219,16 @@ def write_section(file, lines: dict, sec_type: str, sec_number: int, sec_title: 
     if lines["dic"].get(f"{sec_name}{sec_prefix}"):
         file.write("pattern=@0\n")
         file.write("col_config=0\n")
+        if lines["dic"].get("service") is None:
+            file.write("row_data=0\n")
         file.write(
             f'offset_col_config={lines["dic"][f"{sec_name}{sec_prefix}"][0]["col"]}\n'
         )
-        file.write("offset_pattern=.+\n")
+        if lines["dic"].get(f"{sec_name}{sec_prefix}")[0]['pattern']:
+            file.write(
+                f'offset_pattern={lines["dic"][f"{sec_name}{sec_prefix}"][0]["pattern"]}\n')
+        else:
+            file.write("offset_pattern=.+\n")
         if lines["dic"].get(f"{sec_name}{sec_prefix}")[0]['type']:
             file.write(
                 f'offset_type={lines["dic"][f"{sec_name}{sec_prefix}"][0]["type"][0]}\n'
@@ -183,6 +237,12 @@ def write_section(file, lines: dict, sec_type: str, sec_number: int, sec_title: 
             file.write(
                 f'func={lines["dic"][f"{sec_name}{sec_prefix}"][0]["func"][0]}\n'
             )
+        elif sec_func:
+            if sec_func[0] != '!':
+                file.write(f"func={sec_func}\n")
+            else:
+                file.write(f"func={sec_func[1:]}\n")
+                file.write(f"func_is_no_return=true\n")
         for i, line in enumerate(lines["dic"][f"{sec_name}{sec_prefix}"][1:]):
             file.write(f'[{sec_type}_{sec_number}_{i}]\n')
             file.write(f'; {sec_title}\n')
@@ -193,6 +253,21 @@ def write_section(file, lines: dict, sec_type: str, sec_number: int, sec_title: 
                 file.write(
                     f'func={line["func"][0]}\n'
                 )
+            elif sec_func:
+                if sec_func[0] != '!':
+                    file.write(f"func={sec_func}\n")
+                else:
+                    file.write(f"func={sec_func[1:]}\n")
+                    file.write(f"func_is_no_return=true\n")
+    elif sec_func:
+        file.write("pattern=@0\n")
+        file.write("col_config=0\n")
+        file.write("row_data=0\n")
+        if sec_func[0] != '!':
+            file.write(f"func={sec_func}\n")
+        else:
+            file.write(f"func={sec_func[1:]}\n")
+            file.write(f"func_is_no_return=true\n")
     file.write('\n')
 
 
@@ -201,3 +276,10 @@ def __write_section_head(file, sec_type: str, sec_number: int, sec_title: str, s
     file.write(f'; {sec_title}\n')
     file.write(f'name={sec_name}\n')
     return
+
+
+def __write_section_internal_id(file):
+    file.write('pattern=@0\n')
+    file.write('col_config=0\n')
+    file.write('row_data=0\n')
+    file.write('func=spacerepl,hash\n\n')

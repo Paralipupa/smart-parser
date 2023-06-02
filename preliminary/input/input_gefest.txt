@@ -23,7 +23,7 @@ header_fias:@fias_6+fias_11+fias_Кадетская+fias_Малый
 0:Начислено@bill_value	Оплачено@payment_value	Сальдо  исх.@saldo
 0:В т.ч.  пени	
 0:>Всего начислено
-0:Адрес@address	№ пом.@room_number	Проживает;Прож@living_person_number	Площадь;Общая площадь@total_square
+0:Адрес@address	№ пом.@room_number	Проживает;Прож@living_person_number	Площадь;Общая площадь@total_square{type{float}}{func{round2}}
 0:Лицевой счет@account_number_accounts@account_identifier	Всего начислено
 1:Услуги
 
