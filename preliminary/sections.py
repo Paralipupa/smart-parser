@@ -42,7 +42,8 @@ def write_section_contract(file, lines: dict, sec_type: str, sec_number: int, se
     return
 
 
-def __write_section_service(file, lines: dict, sec_type: str, sec_number: int, sec_title: str, sec_name: str, sec_suffix: str = "", is_ident: bool = True):
+def __write_section_service(file, lines: dict, sec_type: str, sec_number: int, sec_title: str,
+                            sec_name: str, sec_suffix: str = "", is_ident: bool = True, sec_is_hash: bool = True):
     l: list = get_lines(lines)
     if lines["dic"].get("rr1_puv"):
         file.write('pattern=@0\n')
@@ -56,15 +57,23 @@ def __write_section_service(file, lines: dict, sec_type: str, sec_number: int, s
             file.write('row_data=0\n')
         if lines["dic"].get(f"{sec_name}_{sec_type}"):
             if is_ident:
-                file.write(
-                    f'func=id+{get_ident(lines["dic"][f"{sec_name}_{sec_type}"][0]["name"])}+{sec_suffix},spacerepl,hash\n')
+                if sec_suffix:
+                    file.write(
+                        f'func=id+{get_ident(lines["dic"][f"{sec_name}_{sec_type}"][0]["name"])}+{sec_suffix},spacerepl,hash\n')
+                else:
+                    file.write(
+                        f'func={get_ident(lines["dic"][f"{sec_name}_{sec_type}"][0]["name"])}{",hash" if sec_is_hash else ""}\n')
             else:
                 file.write(
                     f'func={get_ident(lines["dic"][f"{sec_name}_{sec_type}"][0]["name"])},hash\n')
         else:
             if is_ident:
-                file.write(
-                    f'func=id+{l[0]["name"].split(";")[0].replace(","," ").replace("+","")}+{sec_suffix},spacerepl,hash\n')
+                if sec_suffix:
+                    file.write(
+                        f'func=id+{l[0]["name"].split(";")[0].replace(","," ").replace("+","")}+{sec_suffix},spacerepl,hash\n')
+                else:
+                    file.write(
+                        f'func={l[0]["name"].split(";")[0].replace(","," ").replace("+","")}{",hash" if sec_is_hash else ""}\n')
             else:
                 file.write(
                     f'func={l[0]["name"].split(";")[0].replace(","," ").replace("+","")},hash\n')
@@ -73,8 +82,12 @@ def __write_section_service(file, lines: dict, sec_type: str, sec_number: int, s
                 file.write(f'[{sec_type}_{sec_number}_{i}]\n')
                 file.write(f'; {sec_title}\n')
                 if is_ident:
-                    file.write(
-                        f'func=id+{get_ident(line["name"])}+{sec_suffix},spacerepl,hash\n')
+                    if sec_suffix:
+                        file.write(
+                            f'func=id+{get_ident(line["name"])}+{sec_suffix},spacerepl,hash\n')
+                    else:
+                        file.write(
+                            f'func={get_ident(line["name"])}{",hash" if sec_is_hash else ""}\n')
                 else:
                     file.write(
                         f'func={get_ident(line["name"])},hash\n')
@@ -87,8 +100,12 @@ def __write_section_service(file, lines: dict, sec_type: str, sec_number: int, s
                         get_ident(line["name"].split(";")[0]))
                     file.write(f'offset_pattern=@{name}\n')
                 if is_ident:
-                    file.write(
-                        f'func=id+{line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()}+{sec_suffix},spacerepl,hash\n')
+                    if sec_suffix:
+                        file.write(
+                            f'func=id+{line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()}+{sec_suffix},spacerepl,hash\n')
+                    else:
+                        file.write(
+                            f'func={line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()}{",hash" if sec_is_hash else ""}\n')
                 else:
                     file.write(
                         f'func={line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()},hash\n')
@@ -96,11 +113,13 @@ def __write_section_service(file, lines: dict, sec_type: str, sec_number: int, s
     return
 
 
-def write_section_internal_id(file, lines: dict, sec_type: str, sec_number: int, sec_title: str, sec_name: str, sec_suffix: str = "", sec_is_service: bool = True):
+def write_section_internal_id(file, lines: dict, sec_type: str, sec_number: int,
+                              sec_title: str, sec_name: str, sec_suffix: str = "",
+                              sec_is_service: bool = True, sec_is_hash: bool = True):
     __write_section_head(file, sec_type, sec_number, sec_title, sec_name)
     if sec_is_service:
         __write_section_service(file, lines, sec_type,
-                                sec_number, sec_title, sec_name, sec_suffix)
+                                sec_number, sec_title, sec_name, sec_suffix, sec_is_hash=sec_is_hash)
     else:
         __write_section_internal_id(file)
     return
