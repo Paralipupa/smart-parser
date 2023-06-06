@@ -1,5 +1,6 @@
 from datetime import datetime
-import re, logging
+import re
+import logging
 import os
 import pathlib
 import json
@@ -15,28 +16,37 @@ from .settings import *
 
 logger = logging.getLogger(__name__)
 
+
 class UnionData:
 
-    def __init__(self, isParser:bool, file_log: str) -> None:
+    def __init__(self, isParser: bool, file_log: str) -> None:
         self.logs = list()
         self.isParser = isParser
         self.file_log = file_log
-        self.exclude = {'bill_value','payment_value','credit','saldo',}
+        self.exclude = {'bill_value', 'payment_value', 'credit', 'saldo', }
 
     def start(self, path_input: str, path_output: str, file_output: str) -> list:
         save_directories = dict()
         files_o: list[str] = self.__get_files(path_input)
-        files = [x for x in files_o if not re.search('bank',x) and not re.search('tarif',x) ]
-        files.extend([x for x in files_o if re.search('bank',x) or re.search('tarif',x) ])
+        files = [x for x in files_o if not re.search(
+            'bank', x) and not re.search('tarif', x)]
+        files.extend([x for x in files_o if re.search(
+            'bank', x) or re.search('tarif', x)])
         if files:
             data = dict()
             del_files = list()
-            period_current : list = [datetime.now().strftime('%m%Y')]
-            period_common : list = period_current
+            period_current: list = [datetime.now().strftime('%m%Y')]
+            period_common: list = period_current
+            inn_common: str = ['0000000000']
             for file in files:
                 period_file = re.findall(
                     r'(?<=[0-9]{1}_)[0-9]{2}[0-9]{4}(?=_)', file, re.IGNORECASE)
-                period_common = self.__get_min_period(period_a=period_common, period_b=period_file)
+                period_common = self.__get_min_period(
+                    period_a=period_common, period_b=period_file)
+                inn_file: list = re.findall(
+                    r'^[0-9]{8,10}(?=_)', file, re.IGNORECASE)
+                if inn_file and inn_file[0] != '0000000000':
+                    inn_common = inn_file
             period = period_common
             for file in files:
                 for fn in DOCUMENTS.split():
@@ -45,7 +55,9 @@ class UnionData:
                     if name:
                         inn: list = re.findall(
                             r'^[0-9]{8,10}(?=_)', file, re.IGNORECASE)
-                        if not re.search('bank',fn) and not re.search('tarif',fn):
+                        if inn and inn[0] == '0000000000':
+                            inn = inn_common
+                        if not re.search('bank', fn) and not re.search('tarif', fn):
                             period = re.findall(
                                 r'(?<=[0-9]{1}_)[0-9]{2}[0-9]{4}(?=_)', file, re.IGNORECASE)
                             if period and period[0] == period_current[0]:
@@ -53,7 +65,8 @@ class UnionData:
                         if inn and name and period:
                             del_files.append(file)
                             data.setdefault(inn[0], dict())
-                            data[inn[0]].setdefault(f'{name[0]}@{period[0]}', [])
+                            data[inn[0]].setdefault(
+                                f'{name[0]}@{period[0]}', [])
                             data[inn[0]][f'{name[0]}@{period[0]}'].append(
                                 self.__get_data(path_input, file))
             for inn, item in data.items():
@@ -63,15 +76,17 @@ class UnionData:
                     for file in files:
                         for key_record, record in file.items():
                             if file_data.get(key_record):
-                                record = self.__merge(
-                                    record, file_data.get(key_record), key_record)
-                            file_data[key_record] = record
-                    key_record = self.__write(
+                                self.__merge(
+                                    file_data[key_record], record, key_record
+                                )
+                            else:
+                                file_data[key_record] = record
+                    key = self.__write(
                         path_input, inn, id_period, file_data)
-                    save_directories[key_record] = path_input
-        self.__make_archive(path_output, file_output, save_directories)        
-        if os.path.isdir(path_input):
-            shutil.rmtree(path_input)
+                    save_directories[key] = path_input
+        self.__make_archive(path_output, file_output, save_directories)
+        # if os.path.isdir(path_input):
+        #     shutil.rmtree(path_input)
         return file_output
 
     def __check_unique(self, file_name: str, arr: list) -> None:
@@ -109,10 +124,10 @@ class UnionData:
         return files
 
     @warning_error
-    def __merge(self, a: dict, b: dict, key_record:str) -> dict:
+    def __merge(self, a: dict, b: dict, key_record: str) -> dict:
         for key, valA in a.items():
-            valB = b.get(key, None)
-            if (len(valB.strip()) != 0) and ((len(valA.strip()) == 0) or valA != valB):
+            valB = b.get(key)
+            if valB is not None and (len(valB.strip()) != 0) and ((len(valA.strip()) == 0) or valA != valB):
                 if (len(valA.strip()) == 0) or (len(valA.replace(' ', '')) < len(valB.replace(' ', ''))):
                     if a[key]:
                         logger.debug(f"{key_record} {key}:{a[key]} = {valB}")
@@ -146,15 +161,17 @@ class UnionData:
         arch_zip = zipfile.ZipFile(
             pathlib.Path(path_output, filename_arch), 'w')
         if len(dirs) == 0 and self.file_log:
-            arch_zip.write(self.file_log, os.path.basename(self.file_log), compress_type=zipfile.ZIP_DEFLATED)
+            arch_zip.write(self.file_log, os.path.basename(
+                self.file_log), compress_type=zipfile.ZIP_DEFLATED)
         for key, val in dirs.items():
             path = pathlib.Path(val, key)
             if self.file_log and os.path.exists(self.file_log):
-                file_log = os.path.join(path,os.path.basename(self.file_log))
+                file_log = os.path.join(path, os.path.basename(self.file_log))
                 shutil.copy(self.file_log, file_log)
             for folder, subfolders, files in os.walk(path):
                 for file in files:
-                    name = re.findall(f'(?<=\{os.path.sep})[0-9a-z_]+$', folder)
+                    name = re.findall(
+                        f'(?<=\{os.path.sep})[0-9a-z_]+$', folder)
                     if name:
                         if file.endswith('.csv') or file.endswith('.log'):
                             arch_zip.write(os.path.join(
@@ -173,8 +190,8 @@ class UnionData:
         with open(f'{file_output}.log', 'w', encoding=ENCONING) as file:
             for log in self.logs:
                 file.write(f'{log}\n')
-    
-    def __get_min_period(self, period_a: list, period_b : list) -> list:
+
+    def __get_min_period(self, period_a: list, period_b: list) -> list:
         if not period_a:
             return period_b
         elif not period_b:
@@ -190,5 +207,3 @@ class UnionData:
                 return period_b
             else:
                 return period_a
-
-

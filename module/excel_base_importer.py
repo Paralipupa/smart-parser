@@ -43,6 +43,7 @@ class ExcelBaseImporter:
         inn: str,
         index: int = 0,
         output: str = "output",
+        period: datetime.date = None
     ):
         self.num_file = index
         self.index_config: int = 0
@@ -52,6 +53,7 @@ class ExcelBaseImporter:
         self.is_hash = True
         self.is_check_mode = False
         self.is_condition_check = False
+        self._period = period
         # список данных, сгруппированных по идентификатору - internal_id
         self.colontitul = {
             "status": 0,
@@ -576,14 +578,15 @@ class ExcelBaseImporter:
             if item:
                 for p in patts:
                     try:
-                        d = datetime.datetime.strptime(item, p)
+                        d = datetime.datetime.strptime(item, p).date()
                         break
                     except:
                         pass
         ls = list()
         if d:
-            ls.append(d.date().replace(day=1).strftime("%d.%m.%Y"))
-            ls.append(d.date().strftime("%d.%m.%Y"))
+            d = self.__get_period_default(d)
+            ls.append(d.replace(day=1).strftime("%d.%m.%Y"))
+            ls.append(d.strftime("%d.%m.%Y"))
         else:
             result = regular_calc("19[89][0-9]|20[0-3][0-9]", item)
             if result != None:
@@ -597,9 +600,11 @@ class ExcelBaseImporter:
                     None,
                 )
                 if month:
-                    ls.append(f"01.{month}.{year}")
+                    d = datetime.datetime.strptime(f"01.{month}.{year}","%d.%m.%Y").date()
+                    d = self.__get_period_default(d)
+                    ls.append(d.replace(day=1).strftime("%d.%m.%Y"))
                 else:
-                    ls.append(datetime.date.today().strftime("%d.%m.%Y"))
+                    ls.append(self._period.strftime("%d.%m.%Y"))
         self._parameters["period"]["value"] = list()
         if ls:
             for item in ls:
@@ -1462,7 +1467,7 @@ class ExcelBaseImporter:
             "period", {"fixed": False, "value": list()})
 
         if not self._parameters["period"]["value"]:
-            period = self.__get_period_default()
+            period = self.__get_period_from_file_name()
             self._parameters["period"]["value"].append(period)
         self.__check_period_value()
 
@@ -1545,14 +1550,19 @@ class ExcelBaseImporter:
                                         break
 
         return self._parameters[name]
-    
-    def __get_period_default(self):
+
+    def __get_period_from_file_name(self):
         comp = re.compile("(?:01|02|03|04|05|06|07|08|09|10|11|12)[.,_]?(?:202[0-9]|[2,3][0-9])")
         period = comp.findall(self._parameters['filename']['value'][0])
         if period:
             return period[0]
         period = datetime.date.today().strftime("%d.%m.%Y")
         return period
+
+    def __get_period_default(self, d: datetime.date):
+        if d > self._period and d.replace(day=1) != datetime.datetime.today().date().replace(day=1):
+            return self._period
+        return d
 
     def __init_config(self) -> bool:
         if self.index_config < len(self.config_files):

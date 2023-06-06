@@ -2,6 +2,7 @@ import os
 import re
 import logging
 import shutil
+import datetime
 from .excel_base_importer import ExcelBaseImporter
 from .helpers import get_config_files, write_list
 from .union import UnionData
@@ -26,6 +27,7 @@ class Parser:
         self.logs = list()
         self._dictionary = dict()
         self.name = file_name
+        self._period = datetime.date.today().replace(day=1)
         self.inn = inn
         self.config = file_config
         self.union = union
@@ -68,6 +70,7 @@ class Parser:
                                 config_files=file_name["config"],
                                 index=index,
                                 output=self.output_path,
+                                period=self._period
                             )
                             rep.is_hash = self.is_hash
                             rep._dictionary = self._dictionary.copy()
@@ -78,6 +81,8 @@ class Parser:
                                 logger.info(f"Обработка завершена")
                                 isParser = True
                                 self._dictionary = rep._dictionary.copy()
+                                self._period =  datetime.datetime.strptime(rep._parameters["period"]["value"][0], "%d.%m.%Y").date()
+                                
                             else:
                                 logger.info(f"Неудачное завершение обработки")
                     file_log = write_list(
