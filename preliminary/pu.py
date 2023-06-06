@@ -6,7 +6,7 @@ def pu(lines: list, path: str) -> str:
     with open(file_name, 'w') as file:
         write_section_caption(file, doc_type)
         write_section_doc(
-            file, "doc", 4, "Приборы учета (ПУ)", doc_type, required_fields="internal_id")
+            file, "doc", 4, "Приборы учета (ПУ)", doc_type, required_fields="serial_number,manufacturer,model")
         write_section_org_ppa_guid(file, lines, doc_type, 0,
                                    "ИНН, ОГРН или OrgID", "org_ppa_guid")
         write_section_internal_id(file, lines, doc_type, 1,

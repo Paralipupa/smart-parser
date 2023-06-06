@@ -76,17 +76,15 @@ class UnionData:
                     for file in files:
                         for key_record, record in file.items():
                             if file_data.get(key_record):
-                                self.__merge(
-                                    file_data[key_record], record, key_record
-                                )
-                            else:
-                                file_data[key_record] = record
+                                record = self.__merge(
+                                    record, file_data.get(key_record), key_record)
+                            file_data[key_record] = record
                     key = self.__write(
                         path_input, inn, id_period, file_data)
                     save_directories[key] = path_input
         self.__make_archive(path_output, file_output, save_directories)
-        # if os.path.isdir(path_input):
-        #     shutil.rmtree(path_input)
+        if os.path.isdir(path_input):
+            shutil.rmtree(path_input)
         return file_output
 
     def __check_unique(self, file_name: str, arr: list) -> None:

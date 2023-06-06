@@ -1560,7 +1560,8 @@ class ExcelBaseImporter:
         return period
 
     def __get_period_default(self, d: datetime.date):
-        if d > self._period and d.replace(day=1) != datetime.datetime.today().date().replace(day=1):
+        if d > self._period and d.replace(day=1) == datetime.datetime.today().date().replace(day=1):
+        # Меняем, если дата соответствует текущему месяцу 
             return self._period
         return d
 
