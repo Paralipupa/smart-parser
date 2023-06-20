@@ -39,4 +39,6 @@ def pu(lines: list, path: str) -> str:
                       "Интервал проверки (кол-во месяцев)", "checking_interval")
         write_section_service_internal_id(file, lines, doc_type, 17,
                                           "Идентификатор услуги", "service_internal_id")
+        write_section(file, lines, doc_type, 18,
+                      "Тип лицевого счета (uo|cr)", "account_type")
     return file_name

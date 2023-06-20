@@ -45,5 +45,7 @@ def accounts(lines: list, path: str) -> str:
         write_section(file, lines, doc_type, 17,
                       "Альтернативный идентификатор ЛС, используется в некоторых конфигурациях.", "account_identifier", sec_func="spacerepl")
         write_section(file, lines, doc_type, 18,
-                      "Признак нежилого помещения (0 1)", "not_residential")
+                      "Признак нежилого помещения (0 1)", "not_residential")        
+        write_section(file, lines, doc_type, 19,
+                      "Тип лицевого счета (uo|cr)", "account_type")
     return file_name

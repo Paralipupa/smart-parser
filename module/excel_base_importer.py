@@ -1664,7 +1664,7 @@ class ExcelBaseImporter:
                     return self.__check_function()
         self.is_check_mode = False
         # Причина, почему не распозданы данные по конфигурации
-        if not regular_calc("000_11", self._config._config_name):
+        if not regular_calc("000_00", self._config._config_name):
         # if not regular_calc("000_00", self._config._config_name):
             mess = f"\n\t{self._config._config_name} :\n"
             x = [
@@ -1765,6 +1765,7 @@ class ExcelBaseImporter:
             "dictionary": self.func_dictionary,
             "to_date": self.func_to_date,
             "id": self.func_id,
+            "account_type": self.func_account_type,
             "check_bank_accounts": self.func_bank_accounts,
         }
         self._current_value = list()
@@ -2109,6 +2110,18 @@ class ExcelBaseImporter:
             return dictionary[self._current_index]
         elif len(dictionary) > 0:
             return dictionary[-1]
+        else:
+            return ""
+
+    def func_account_type(self):
+        is_cap = False
+        comp : re.compile = re.compile("кап(?:.+)?рем")
+        for key in self._column_names.keys():
+            if comp.search(key):
+                is_cap = True
+                break 
+        if is_cap or comp.search(self._parameters["filename"]["value"][0].lower()):
+            return "cr"
         else:
             return ""
 

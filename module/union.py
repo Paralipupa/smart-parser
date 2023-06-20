@@ -27,9 +27,10 @@ class UnionData:
 
     def start(self, path_input: str, path_output: str, file_output: str) -> list:
         save_directories = dict()
+        is_separate_account_type = True
         files_o: list[str] = self.__get_files(path_input)
-        files = [x for x in files_o if not re.search(
-            'bank', x) and not re.search('tarif', x)]
+        files = sorted([x for x in files_o if not re.search(
+            'bank', x) and not re.search('tarif', x)])
         files.extend([x for x in files_o if re.search(
             'bank', x) or re.search('tarif', x)])
         if files:
@@ -72,20 +73,47 @@ class UnionData:
             for inn, item in data.items():
                 for id_period, files in item.items():
                     file_data = {}
-                    logger.debug(f"{inn} {id_period}:")
                     for file in files:
                         for key_record, record in file.items():
                             if file_data.get(key_record):
                                 record = self.__merge(
                                     record, file_data.get(key_record), key_record)
+                            if not record.get('account_type') is None:
+                                if is_separate_account_type is False:
+                                    record.pop('account_type', None)
+                                elif record.get('account_type') == '':
+                                    record['account_type'] = 'uo'
                             file_data[key_record] = record
-                    key = self.__write(
-                        path_input, inn, id_period, file_data)
-                    save_directories[key] = path_input
+                    if id_period.find("accounts") != -1:
+                        is_separate_account_type = self.__write_account(
+                            path_input, inn, id_period, file_data, save_directories)
+                    else:
+                        key = self.__write(
+                            path_input, inn, id_period, file_data)
+                        save_directories[key] = path_input
         self.__make_archive(path_output, file_output, save_directories)
-        if os.path.isdir(path_input):
-            shutil.rmtree(path_input)
+        # if os.path.isdir(path_input):
+        #     shutil.rmtree(path_input)
         return file_output
+
+    def __write_account(self, path_input: str, inn: str, id_period: str, file_data: dict, save_directories: dict) -> bool:
+        data_files = dict()
+        for key, value in file_data.items():
+            t = value.get('account_type') if value.get(
+                'account_type') else 'uo'
+            data_files.setdefault(t, {})
+            value.pop("account_type", None)
+            data_files[t].setdefault(key, value)
+        for key, data in data_files.items():
+            if len(data_files) > 1:
+                file_name, period = id_period.split('@')
+                file_name = f'{file_name}_{key}@{period}'
+            else:
+                file_name = id_period
+            key_save = self.__write(
+                path_input, inn, file_name, data)
+            save_directories[key_save] = path_input
+        return len(data_files) > 1
 
     def __check_unique(self, file_name: str, arr: list) -> None:
         setarr = set(arr)

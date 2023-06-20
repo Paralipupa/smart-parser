@@ -1,4 +1,7 @@
+from sections import *
+
 def pp(lines: list, path: str):
+    doc_type = "pp"
     file_name = f"{path}/ini/3_pp.ini"
     with open(file_name, "w") as file:
         file.write(
@@ -182,5 +185,8 @@ def pp(lines: list, path: str):
             file.write("func_is_no_return=true\n")
         file.write("\n")
         file.write("\n")
+
+        write_section(file, lines, doc_type, 12,
+                        "Тип лицевого счета (uo|cr)", "account_type")
 
     return file_name
