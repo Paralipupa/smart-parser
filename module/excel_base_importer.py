@@ -600,7 +600,8 @@ class ExcelBaseImporter:
                     None,
                 )
                 if month:
-                    d = datetime.datetime.strptime(f"01.{month}.{year}","%d.%m.%Y").date()
+                    d = datetime.datetime.strptime(
+                        f"01.{month}.{year}", "%d.%m.%Y").date()
                     d = self.__get_period_default(d)
                     ls.append(d.replace(day=1).strftime("%d.%m.%Y"))
                 else:
@@ -1134,7 +1135,7 @@ class ExcelBaseImporter:
             # Формируем данные для записи в выходном файле
             # одно поле (ключ в doc) соответствует одной записи
             doc.setdefault(fld_item["name"], list())
-            main_rows_exclude =dict()  # набор записей для исключение по основному значению
+            main_rows_exclude = dict()  # набор записей для исключение по основному значению
             offset_rows_exclude = set()  # набор записей для исключение по смещению
             for table_row in doc_param["rows_exclude"]:
                 main_rows_exclude[(table_row[0], -1)] = ""
@@ -1215,11 +1216,13 @@ class ExcelBaseImporter:
                                         )
                                 elif main_rows_exclude.get((table_row[0], col[POS_VALUE])) is None:
                                     # запоминаем, чтобы не было повтора
-                                    main_rows_exclude[(table_row[0], col[POS_VALUE])] = x
+                                    main_rows_exclude[(
+                                        table_row[0], col[POS_VALUE])] = x
                                 break  # пропускаем проверку по остальным шаблонам
                     elif main_rows_exclude.get((table_row[POS_VALUE], col[POS_VALUE])) is not None and not fld_record["value"]:
                         # если значение пустое, берем то что запомнили
-                        fld_record["value"] = main_rows_exclude.get((table_row[POS_VALUE], col[POS_VALUE]))
+                        fld_record["value"] = main_rows_exclude.get(
+                            (table_row[POS_VALUE], col[POS_VALUE]))
 
                 if fld_record["func"]:
                     # если есть, запускаем функцию
@@ -1552,7 +1555,8 @@ class ExcelBaseImporter:
         return self._parameters[name]
 
     def __get_period_from_file_name(self):
-        comp = re.compile("(?:01|02|03|04|05|06|07|08|09|10|11|12)[.,_]?(?:202[0-9]|[2,3][0-9])")
+        comp = re.compile(
+            "(?:01|02|03|04|05|06|07|08|09|10|11|12)[.,_]?(?:202[0-9]|[2,3][0-9])")
         period = comp.findall(self._parameters['filename']['value'][0])
         if period:
             return period[0]
@@ -1561,7 +1565,7 @@ class ExcelBaseImporter:
 
     def __get_period_default(self, d: datetime.date):
         if d > self._period and d.replace(day=1) == datetime.datetime.today().date().replace(day=1):
-        # Меняем, если дата соответствует текущему месяцу 
+            # Меняем, если дата соответствует текущему месяцу
             return self._period
         return d
 
@@ -1665,7 +1669,7 @@ class ExcelBaseImporter:
         self.is_check_mode = False
         # Причина, почему не распозданы данные по конфигурации
         if not regular_calc("000_00", self._config._config_name):
-        # if not regular_calc("000_00", self._config._config_name):
+            # if not regular_calc("000_00", self._config._config_name):
             mess = f"\n\t{self._config._config_name} :\n"
             x = [
                 x["pattern"]
@@ -1766,6 +1770,7 @@ class ExcelBaseImporter:
             "to_date": self.func_to_date,
             "id": self.func_id,
             "account_type": self.func_account_type,
+            "fillzero9": self.func_fillzero9,
             "check_bank_accounts": self.func_bank_accounts,
         }
         self._current_value = list()
@@ -1974,7 +1979,10 @@ class ExcelBaseImporter:
 
     def func_id(self):
         d = self._parameters["period"]["value"][0]
-        return f"{str(self._current_id).strip()}_{d[3:5]}{d[6:]}"  # _mmyyyy
+        id = str(self._current_id).strip()
+        if self._parameters.get("id_length") is not None:
+            id = id.rjust(int(self._parameters["id_length"]["value"][0]),'0')
+        return f"{id}_{d[3:5]}{d[6:]}"  # _mmyyyy
 
     def func_column_name(self):
         if self._current_value_col != -1:
@@ -2105,7 +2113,8 @@ class ExcelBaseImporter:
             return ""
 
     def func_dictionary(self):
-        dictionary = self._dictionary.get(get_index_key(self._current_value[-1]), [])
+        dictionary = self._dictionary.get(
+            get_index_key(self._current_value[-1]), [])
         if len(dictionary) > self._current_index:
             return dictionary[self._current_index]
         elif len(dictionary) > 0:
@@ -2115,15 +2124,18 @@ class ExcelBaseImporter:
 
     def func_account_type(self):
         is_cap = False
-        comp : re.compile = re.compile("кап(?:.+)?рем")
+        comp: re.compile = re.compile("кап(?:.+)?рем")
         for key in self._column_names.keys():
             if comp.search(key):
                 is_cap = True
-                break 
+                break
         if is_cap or comp.search(self._parameters["filename"]["value"][0].lower()):
             return "cr"
         else:
             return ""
+
+    def func_fillzero9(self):
+        return str(self._current_value[-1]).strip().rjust(9, '0')+' '
 
     def func_bank_accounts(self):
         if not self._current_value_team:

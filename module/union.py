@@ -58,11 +58,11 @@ class UnionData:
                             r'^[0-9]{8,10}(?=_)', file, re.IGNORECASE)
                         if inn and inn[0] == '0000000000':
                             inn = inn_common
-                        if not re.search('bank', fn) and not re.search('tarif', fn):
-                            period = re.findall(
-                                r'(?<=[0-9]{1}_)[0-9]{2}[0-9]{4}(?=_)', file, re.IGNORECASE)
-                            if period and period[0] == period_current[0]:
-                                period = period_common
+                        # if not re.search('bank', fn) and not re.search('tarif', fn):
+                        #     period = re.findall(
+                        #         r'(?<=[0-9]{1}_)[0-9]{2}[0-9]{4}(?=_)', file, re.IGNORECASE)
+                        #     if period and period[0] == period_current[0]:
+                        #         period = period_common
                         if inn and name and period:
                             del_files.append(file)
                             data.setdefault(inn[0], dict())
@@ -92,8 +92,8 @@ class UnionData:
                             path_input, inn, id_period, file_data)
                         save_directories[key] = path_input
         self.__make_archive(path_output, file_output, save_directories)
-        # if os.path.isdir(path_input):
-        #     shutil.rmtree(path_input)
+        if os.path.isdir(path_input):
+            shutil.rmtree(path_input)
         return file_output
 
     def __write_account(self, path_input: str, inn: str, id_period: str, file_data: dict, save_directories: dict) -> bool:
