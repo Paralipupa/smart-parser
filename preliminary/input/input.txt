@@ -16,9 +16,9 @@ pattern_id_length:@9
 
 0:Л.счет;Лицевой счет
 0:Дебет Н.;+(1)@credit
-0:Начислено;+1;+4@bill_value
+0:Начислено;Разово;Нач. пеня@bill_value
 0:Поступило@payment_value
-0:Дебет К.;+(1)@saldo{{+0;-1;пеня}}
+0:Дебет К.;+(1)@saldo
 0:Итого	Всего
 0:Кв.@room_number	Проп@living_person_number
 0:Л.счет;Лицевой счет@account_number_accounts@account_identifier

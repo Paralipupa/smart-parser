@@ -4,9 +4,9 @@ import logging
 import shutil
 import datetime
 from .excel_base_importer import ExcelBaseImporter
-from .helpers import get_config_files, write_list
+from .helpers import get_config_files, write_list, check_tarif
 from .union import UnionData
-from .exceptions import InnMismatchException, FatalException, ConfigNotFoundException
+from .exceptions import InnMismatchException, FatalException, ConfigNotFoundException, CheckTarifException
 from .search_config_tasks import SearchConfig
 from .settings import *
 
@@ -35,6 +35,7 @@ class Parser:
         self.output_path = re.findall(".+(?=[.])", file_down)[0]
         self.download_file = file_down
         self.is_hash = False if hash == "no" else True
+        self.check_tarif = False
         self.config_files = get_config_files()
 
     def start(self) -> list:
@@ -74,6 +75,11 @@ class Parser:
                             )
                             rep.is_hash = self.is_hash
                             rep._dictionary = self._dictionary.copy()
+                            if self.check_tarif is False and not rep._dictionary.get("tarif") is None:
+                                self.check_tarif = True
+                                mess = check_tarif( rep._dictionary.get("tarif"))
+                                if mess:
+                                    raise CheckTarifException(mess)
                             logger.info(
                                 f"Начало обработки файла '{os.path.basename(file_name['name'])}'"
                             )
@@ -104,6 +110,8 @@ class Parser:
         except FatalException as ex:
             return f"{ex._message}"
         except ConfigNotFoundException as ex:
+            return f"{ex._message}"
+        except CheckTarifException as ex:
             return f"{ex._message}"
         except Exception as ex:
             logger.exception("Error start")

@@ -354,3 +354,16 @@ def get_data_file(item: dict = None) -> dict:
 
 def hashit(s):
     return hashlib.sha1(s).hexdigest()
+
+def check_tarif(data:list)->str:
+    comp = re.compile("\d{1,9}(?:[\.,]\d{1,3})?")
+    mess = ""
+    for index, item in enumerate(data):
+        res = comp.findall(item)
+        if len(res) != 1:
+            mess += f"{index+1}: {item}\n"
+    return mess
+
+
+
+
