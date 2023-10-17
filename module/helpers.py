@@ -82,7 +82,7 @@ def regular_calc(pattern: str, value: str) -> str:
 
 
 def get_index_key(line: str) -> str:
-    return re.sub(r"[-.,() ]", "", line).lower()
+    return re.sub(r"[-.,()+ ]", "", line).lower()
 
 
 def get_index_find_any(text: str, delimeters: str) -> int:
