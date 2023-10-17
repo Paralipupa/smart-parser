@@ -88,11 +88,11 @@ def parsing_lines(file, lines: list, ldict: dict, lparam: dict, names: list, pat
                 else:
                     is_duplicate = True
         if not ldict.get("service"):
-            if col_begin > 0 and lparam.get("main_border_column_left"):
+            if idx_col == len(lines)-1 and  col_begin > 0 and lparam.get("main_border_column_left"):
                 file.write(
                     f'border_column_left={lparam.get("main_border_column_left", ["2"])[0]}\n'
                 )
-            if col_begin > 0 and lparam.get("main_border_column_right"):
+            if idx_col == len(lines)-1 and col_begin > 0 and lparam.get("main_border_column_right"):
                 file.write(
                     f'border_column_right={lparam.get("main_border_column_right", ["4"])[0]}\n'
                 )
