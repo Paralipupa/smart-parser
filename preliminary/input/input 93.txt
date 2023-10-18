@@ -24,7 +24,7 @@ pattern_id_length:@9
 0:Л.счет;Лицевой счет@account_number_accounts@account_identifier
 0:>Площ@total_square
 0:ТипЛС:@account_type{func{account_type}}
-1:Услуги
+1:Нач. пеня
 0:Дата@date_puv{func{period_last}}
 0:ХОЛОДНАЯ ВОДА@internal_id_pu@internal_id_puv@metering_device_internal_id_puv
 0:Вид@device_type{func{ХОЛОДНАЯ ВОДА}}{{-1;0;ХОЛОДНАЯ ВОДА}}

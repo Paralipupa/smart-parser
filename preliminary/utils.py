@@ -134,3 +134,6 @@ def get_pattern(x: str, default: str = '') -> Tuple[str, str]:
         pattern = "@" + pattern[1:]
     x = x.replace('::'+pattern, '').strip()
     return x, pattern
+
+def get_func_name(x: str) -> str:
+    return re.sub("[\^\$\+]","",x.replace(","," ").rstrip())

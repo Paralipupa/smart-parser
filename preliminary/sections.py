@@ -1,4 +1,4 @@
-from utils import get_ident, get_name, get_lines
+from utils import get_ident, get_name, get_lines, get_func_name
 from settings import *
 
 
@@ -70,13 +70,13 @@ def __write_section_service(file, lines: dict, sec_type: str, sec_number: int, s
             if is_ident:
                 if sec_suffix:
                     file.write(
-                        f'func=id+{l[0]["name"].split(";")[0].replace(","," ").replace("+","")}+{sec_suffix},spacerepl,hash\n')
+                        f'func=id+{get_func_name(l[0]["name"].split(";")[0])}+{sec_suffix},spacerepl,hash\n')
                 else:
                     file.write(
-                        f'func={l[0]["name"].split(";")[0].replace(","," ").replace("+","")}{",hash" if sec_is_hash else ""}\n')
+                        f'func={get_func_name(l[0]["name"].split(";")[0])}{",hash" if sec_is_hash else ""}\n')
             else:
                 file.write(
-                    f'func={l[0]["name"].split(";")[0].replace(","," ").replace("+","")},hash\n')
+                    f'func={get_func_name(l[0]["name"].split(";")[0])},hash\n')
         if lines["dic"].get(f"{sec_name}_{sec_type}"):
             for i, line in enumerate(lines["dic"][f"{sec_name}_{sec_type}"][1:]):
                 file.write(f'[{sec_type}_{sec_number}_{i}]\n')
@@ -102,13 +102,13 @@ def __write_section_service(file, lines: dict, sec_type: str, sec_number: int, s
                 if is_ident:
                     if sec_suffix:
                         file.write(
-                            f'func=id+{line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()}+{sec_suffix},spacerepl,hash\n')
+                            f'func=id+{get_func_name(line["name"].split(";")[0])}+{sec_suffix},spacerepl,hash\n')
                     else:
                         file.write(
-                            f'func={line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()}{",hash" if sec_is_hash else ""}\n')
+                            f'func={get_func_name(line["name"].split(";")[0])}{",hash" if sec_is_hash else ""}\n')
                 else:
                     file.write(
-                        f'func={line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()},hash\n')
+                        f'func={get_func_name(line["name"].split(";")[0])},hash\n')
         file.write('\n')
     return
 

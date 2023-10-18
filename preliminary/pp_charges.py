@@ -1,4 +1,4 @@
-from utils import get_ident, get_name, get_lines
+from utils import get_ident, get_name, get_lines, get_func_name
 from settings import *
 
 
@@ -47,7 +47,7 @@ def pp_charges(lines: list, path: str) -> str:
             file.write(f"offset_pattern=@{name}\n")
             if len(l) > 2:
                 file.write(
-                    f'func=id+{l[0]["name"].split(";")[0].replace(","," ").replace("+","")}+НЧ,spacerepl,hash\n\n'
+                    f'func=id+{get_func_name(l[0]["name"].split(";")[0])}+НЧ,spacerepl,hash\n\n'
                 )
             else:
                 file.write(f"func=id+НЧ,spacerepl,hash\n\n")
@@ -55,7 +55,7 @@ def pp_charges(lines: list, path: str) -> str:
             file.write(f"offset_col_config=0\n")
             file.write(f"offset_pattern=.+\n")
             file.write(
-                f'func=id+{l[0]["name"].split(";")[0].replace(","," ").replace("+","")}+НЧ,spacerepl,hash\n\n'
+                f'func=id+{get_func_name(l[0]["name"].split(";")[0])}+НЧ,spacerepl,hash\n\n'
             )
         if not lines["dic"].get("service") or len(l) > 2:
             for i, line in enumerate(l[1:]):
@@ -63,7 +63,7 @@ def pp_charges(lines: list, path: str) -> str:
                 name = get_name(get_ident(line["name"].split(";")[0]), names)
                 file.write(f"offset_pattern=@{name}\n")
                 file.write(
-                    f'func=id+{line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()}+НЧ,spacerepl,hash\n'
+                    f'func=id+{get_func_name(line["name"].split(";")[0])}+НЧ,spacerepl,hash\n'
                 )
                 file.write("\n")
 
@@ -151,14 +151,14 @@ def pp_charges(lines: list, path: str) -> str:
             file.write("col_config=0\n")
             file.write("row_data=0\n")
             file.write(
-                f'func=key+fias+{l[0]["name"].split(";")[0].replace(","," ").replace("+","")},hash,dictionary\n\n'
+                f'func=key+fias+{get_func_name(l[0]["name"].split(";")[0])},hash,dictionary\n\n'
             )
             for i, line in enumerate(l[1:]):
                 file.write(f"[pp_charges_4_{i}]\n")
                 file.write("; тариф при однотарифном начислении\n")
                 file.write(f'; {line["name"].rstrip()}\n')
                 file.write(
-                    f'func=key+fias+{line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()},hash,dictionary\n'
+                    f'func=key+fias+{get_func_name(line["name"].split(";")[0])},hash,dictionary\n'
                 )
                 file.write("\n")
 
@@ -173,14 +173,14 @@ def pp_charges(lines: list, path: str) -> str:
             file.write(f'col_config={lines["dic"]["service"][0]["col"]}\n')
             if len(l) > 2:
                 file.write(
-                    f'func={l[0]["name"].split(";")[0].replace(","," ").replace("+","")},hash\n'
+                    f'func={get_func_name(l[0]["name"].split(";")[0])},hash\n'
                 )
             else:
                 file.write(f"func=hash\n")
         else:
             file.write("col_config=0\n")
             file.write(
-                f'func={l[0]["name"].split(";")[0].replace(","," ").replace("+","")},hash\n'
+                f'func={get_func_name(l[0]["name"].split(";")[0])},hash\n'
             )
         file.write("\n")
 
@@ -190,7 +190,7 @@ def pp_charges(lines: list, path: str) -> str:
                 file.write("; Идентификатор услуги\n")
                 file.write(f'; {line["name"].rstrip()}\n')
                 file.write(
-                    f'func={line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()},hash\n'
+                    f'func={get_func_name(line["name"].split(";")[0])},hash\n'
                 )
                 file.write("\n")
 
