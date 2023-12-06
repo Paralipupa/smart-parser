@@ -1304,6 +1304,9 @@ class ExcelBaseImporter:
                 and (not doc_param["required_fields"] or i in rows_required)
             ):
                 self.__append_to_collection(name, elem)
+            else:
+                pass
+                # logger.warning("{} - {}".format(doc_param["name"], doc.get("internal_id","")))
         return
 
     ################################################################################################################################################
