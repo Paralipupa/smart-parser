@@ -84,7 +84,7 @@ class ExcelBaseImporter:
         if self.__check_incorrect_inn():
             mess = f"\tНе прошла проверка по ИНН "
             self.__add_warning(mess)
-            logger.warning(mess)
+            # logger.warning(mess)
             return False
         self._headers = self.__get_headers()
         for index, headers in enumerate(self._headers):
@@ -169,7 +169,7 @@ class ExcelBaseImporter:
                         num_file=self.num_file + 1,
                         path_output=self._output,
                         collections=self._collections.copy(),
-                        output_format="json",
+                        # output_format="json",
                     )
                 )
 
@@ -1306,7 +1306,6 @@ class ExcelBaseImporter:
                 self.__append_to_collection(name, elem)
             else:
                 pass
-                # logger.warning("{} - {}".format(doc_param["name"], doc.get("internal_id","")))
         return
 
     ################################################################################################################################################

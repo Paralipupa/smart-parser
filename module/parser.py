@@ -6,7 +6,12 @@ import datetime
 from .excel_base_importer import ExcelBaseImporter
 from .helpers import get_config_files, write_list, check_tarif
 from .union import UnionData
-from .exceptions import InnMismatchException, FatalException, ConfigNotFoundException, CheckTarifException
+from .exceptions import (
+    InnMismatchException,
+    FatalException,
+    ConfigNotFoundException,
+    CheckTarifException,
+)
 from .search_config_tasks import SearchConfig
 from .settings import *
 
@@ -46,12 +51,12 @@ class Parser:
                         "run with parameters:  [--name|-n]=<file.lst>|<file.xsl>|<file.zip> [[--inn|-i]=<inn>] [[--config|-c]=<config.ini>] [[--union|-u]=<path>"
                     )
                 else:
-                    u = UnionData()
-                    return u.start(
+                    u = UnionData(
                         path_input=os.path.join(PATH_OUTPUT, self.output_path),
                         path_output=self.download_path,
                         file_output=self.download_file,
                     )
+                    return u.start()
 
             else:
                 logger.info(
@@ -71,13 +76,16 @@ class Parser:
                                 config_files=file_name["config"],
                                 index=index,
                                 output=self.output_path,
-                                period=self._period
+                                period=self._period,
                             )
                             rep.is_hash = self.is_hash
                             rep._dictionary = self._dictionary.copy()
-                            if self.check_tarif is False and not rep._dictionary.get("tarif") is None:
+                            if (
+                                self.check_tarif is False
+                                and not rep._dictionary.get("tarif") is None
+                            ):
                                 self.check_tarif = True
-                                mess = check_tarif( rep._dictionary.get("tarif"))
+                                mess = check_tarif(rep._dictionary.get("tarif"))
                                 if mess:
                                     raise CheckTarifException(mess)
                             logger.info(
@@ -87,8 +95,10 @@ class Parser:
                                 logger.info(f"Обработка завершена")
                                 isParser = True
                                 self._dictionary = rep._dictionary.copy()
-                                self._period =  datetime.datetime.strptime(rep._parameters["period"]["value"][0], "%d.%m.%Y").date()
-                                
+                                self._period = datetime.datetime.strptime(
+                                    rep._parameters["period"]["value"][0], "%d.%m.%Y"
+                                ).date()
+
                             else:
                                 logger.info(f"Неудачное завершение обработки")
                     file_log = write_list(
@@ -96,13 +106,14 @@ class Parser:
                         files=list_files,
                     )
                     if self.union:
-                        u = UnionData(isParser, file_log)
-                        return u.start(
-                            path_input=os.path.join(
-                                PATH_OUTPUT, self.output_path),
+                        u = UnionData(
+                            isParser=isParser,
+                            file_log=file_log,
+                            path_input=os.path.join(PATH_OUTPUT, self.output_path),
                             path_output=self.download_path,
                             file_output=self.download_file,
                         )
+                        return u.start()
                 else:
                     logger.info(f"Данные в архиве не распознаны")
         except InnMismatchException as ex:
@@ -116,7 +127,10 @@ class Parser:
         except Exception as ex:
             logger.exception("Error start")
             return f"{ex}"
-        shutil.copy(os.path.join(BASE_DIR, "doc", "error.txt"), os.path.join(self.download_path,"error.txt"))
+        shutil.copy(
+            os.path.join(BASE_DIR, "doc", "error.txt"),
+            os.path.join(self.download_path, "error.txt"),
+        )
         return "error.txt"
 
     @staticmethod
