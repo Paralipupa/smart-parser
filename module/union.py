@@ -46,7 +46,7 @@ class UnionData:
         files = self.__files_sorted(files_o)
         if files:
             data = self.__get_data_files(files)
-            data = self.__sort_data_files(data)
+            # data = self.__sort_data_files(data)
             for inn, item in data.items():
                 for id_period, files in item.items():
                     file_data = {}
@@ -70,8 +70,8 @@ class UnionData:
                         key = self.__write(inn, id_period, file_data)
                         save_directories[key] = self.path_input
         self.__make_archive(save_directories)
-        # if os.path.isdir(self.path_input):
-        #     shutil.rmtree(self.path_input)
+        if os.path.isdir(self.path_input):
+            shutil.rmtree(self.path_input)
         return self.file_output
 
     def __get_data_files(self, files: list) -> dict:
@@ -144,7 +144,7 @@ class UnionData:
         try:
             for inn in data.keys():
                 for name, value in data[inn].items():
-                    value = sorted(value,key=lambda x: -len(x))
+                    value = sorted(value, key=lambda x: -len(x))
         except:
             pass
         finally:
@@ -159,7 +159,7 @@ class UnionData:
                 data = json.load(file)
                 if data:
                     # список в словарь
-                    keys = [x["internal_id"]+x.get("account_type","") for x in data]
+                    keys = [x["internal_id"] + x.get("account_type", "") for x in data]
                     self.__check_unique(file_name, keys)
                     data = dict(zip(keys, data))
             except Exception as ex:
@@ -176,13 +176,17 @@ class UnionData:
         return files
 
     def __files_sorted(self, files_o: list) -> list:
+        """ Сортировка файлов для обработки
+            первым  accounts 
+            последними banks, tarif
+        """
         files = sorted(
             [
                 x
                 for x in files_o
                 if not re.search("bank", x) and not re.search("tarif", x)
             ],
-            key=lambda x: (x[33:], x[11:16]),
+            key=lambda x: 0 if "accounts" in x else 1,
         )
         files.extend(
             [x for x in files_o if re.search("bank", x) or re.search("tarif", x)]
@@ -230,7 +234,9 @@ class UnionData:
     @fatal_error
     def __make_archive(self, dirs: list) -> str:
         os.makedirs(self.path_output, exist_ok=True)
-        arch_zip = zipfile.ZipFile(pathlib.Path(self.path_output, self.file_output), "w")
+        arch_zip = zipfile.ZipFile(
+            pathlib.Path(self.path_output, self.file_output), "w"
+        )
         if len(dirs) == 0 and self.file_log:
             arch_zip.write(
                 self.file_log,
@@ -242,9 +248,11 @@ class UnionData:
             if self.file_log and os.path.exists(self.file_log):
                 file_log = pathlib.Path(path, os.path.basename(self.file_log))
                 shutil.copy(self.file_log, file_log)
-            for folder, subfolders, files in os.walk(path):
+            for folder, _, files in os.walk(path):
                 for file in files:
-                    name = re.findall(f"(?<=\{os.path.sep})[0-9a-z_]+$", folder)
+                    name = re.findall(
+                        r"(?<=\{0})[0-9a-z_]+$".format(os.path.sep), folder
+                    )
                     if name:
                         if file.endswith(".csv") or file.endswith(".log"):
                             arch_zip.write(
