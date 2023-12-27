@@ -19,7 +19,7 @@ def pp(lines: list, path: str):
         if lines["required"].get("required_pp"):
             file.write(f'required_fields={",".join(lines["required"]["required_pp"])}\n\n')
         else:
-            file.write("required_fields=bill_value,payment_value\n\n")
+            file.write("required_fields=bill_value,payment_value,credit,saldo\n\n")
 
         file.write("[pp_0]\n")
         file.write(";ИНН, ОГРН или OrgID\n")
