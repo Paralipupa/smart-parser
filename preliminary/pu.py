@@ -1,142 +1,90 @@
-from utils import get_ident, get_name,get_lines
-from settings import *
+from sections import *
 
-def pu(lines:list, path: str)->str:
-    names = []
-    l = get_lines(lines)
-    file_name = f'{path}/ini/6_pu.ini'
-    with open(file_name, 'w') as file:
-        file.write(';########################################################################################################################\n')
-        file.write(';---------------------------------------------------------------- pu ----------------------------------------------------\n')
-        file.write(';########################################################################################################################\n')
-        file.write('[doc_4]\n')
-        file.write('; Приборы учета (ПУ) \n')
-        file.write('name=pu\n')
-        file.write('required_fields=internal_id\n')
-        file.write('\n')
 
-        file.write('[pu_0]\n')
-        file.write('; ИНН, ОГРН или OrgID\n')
-        file.write('name=org_ppa_guid\n')
-        file.write('pattern=@\n')
-        file.write('col_config=0\n')
-        file.write('row_data=0\n')
-        file.write('func=inn\n')
-        file.write('\n')
-
-        file.write('[pu_1]\n')
-        file.write('; Внутренний идентификатор ПУ\n')
-        file.write('name=internal_id\n')
-        if lines["dic"].get("rr1"):
-            file.write('pattern=@0\n')
-            file.write('col_config=0\n')
-            if not (len(lines['1a'])==0 and len(lines['2a'])==0):
-                file.write(f'offset_col_config={lines["dic"].get("service", {"col":20})["col"]}\n')
-                name = get_name(get_ident(l[0]["name"].split(";")[0]), names)
-                file.write(f'offset_pattern=@{name}\n')
-            else:
-                file.write('row_data=0\n')
-            file.write(f'func=id+{l[0]["name"].split(";")[0].replace(","," ").replace("+","")}+ПУ,spacerepl,hash\n')
-            file.write('\n')
-            for i, line in enumerate(l[1:]):
-                file.write(f'[pu_1_{i}]\n')
-                if not (len(lines['1a'])==0 and len(lines['2a'])==0):
-                    name = get_name(get_ident(line["name"].split(";")[0]), names)
-                    file.write(f'offset_pattern=@{name}\n')
-                file.write(f'func=id+{line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()}+ПУ,spacerepl,hash\n')
-        file.write('\n')
-
-        file.write('[pu_2]\n')
-        file.write('; Внутренний идентификатор ЛС\n')
-        file.write('name=account_internal_id\n')
-        file.write('pattern=@0\n')
-        file.write('col_config=0\n')
-        file.write('row_data=0\n')
-        file.write('func=spacerepl,hash\n')
-        file.write('\n')
-
-        file.write('[pu_3]\n')
-        file.write('; ГИС. Идентификатор ПУ GUID\n')
-        file.write('name=gis_id\n')
-        file.write('\n')
-
-        file.write('[pu_4]\n')
-        file.write('; Серийный номер\n')
-        file.write('name=serial_number\n')
-        file.write('\n')
-
-        file.write('[pu_5]\n')
-        file.write('; Тип устройства\n')
-        file.write('name=device_type\n')
-        file.write('\n')
-
-        file.write('[pu_6]\n')
-        file.write('; Производитель\n')
-        file.write('name=manufacturer\n')
-        file.write('\n')
-
-        file.write('[pu_7]\n')
-        file.write('; Модель\n')
-        file.write('name=model\n')
-        file.write('\n')
-
-        file.write('[pu_8]\n')
-        file.write('; Показания момент установки. Тариф 1\n')
-        file.write('name=rr1\n')
-        file.write('\n')
-
-        file.write('[pu_9]\n')
-        file.write('; Показания момент установки. Тариф 2\n')
-        file.write('name=rr2\n')
-        file.write('\n')
-
-        file.write('[pu_10]\n')
-        file.write('; Показания момент установки. Тариф 3\n')
-        file.write('name=rr3\n')
-        file.write('\n')
-
-        file.write('[pu_11]\n')
-        file.write('; Дата установки\n')
-        file.write('name=installation_date\n')
-        file.write('\n')
-
-        file.write('[pu_12]\n')
-        file.write('; Дата начала работы\n')
-        file.write('name=commissioning_date\n')
-        file.write('\n')
-
-        file.write('[pu_13]\n')
-        file.write('; Дата следующей поверки\n')
-        file.write('name=next_verification_date\n')
-        file.write('\n')
-
-        file.write('[pu_14]\n')
-        file.write('; Дата последней поверки\n')
-        file.write('name=first_verification_date\n\n')
-
-        file.write('[pu_15]\n')
-        file.write('; Дата опломбирования\n')
-        file.write('name=factory_seal_date\n\n')
-
-        file.write('[pu_16]\n')
-        file.write('; Интервал проверки (кол-во месяцев)\n')
-        file.write('name=checking_interval\n\n')
-
-        file.write('[pu_17]\n')
-        file.write('; Идентификатор услуги\n')
-        file.write(f'; {l[0]["name"]}\n')
-        file.write('name=service_internal_id\n')
-        if lines["dic"].get("rr1"):
-            file.write('pattern=.+\n')
-            file.write('col_config=0\n')
-            file.write('row_data=0\n')
-            file.write(f'func={l[0]["name"].split(";")[0].replace(","," ").replace("+","")},hash\n')
-            file.write('\n')
-            for i, line in enumerate(l[1:]):
-                file.write(f'[pu_17_{i}]\n')
-                file.write('; Идентификатор услуги\n')
-                file.write(f'; {line["name"].rstrip()}\n')
-                file.write(f'func={line["name"].split(";")[0].replace(","," ").replace("+","").rstrip()},hash\n')
-        file.write('\n')
-        
+def pu(lines: list, path: str) -> str:
+    doc_type = "pu"
+    file_name = f"{path}/ini/6_pu.ini"
+    with open(file_name, "w") as file:
+        write_section_caption(file, doc_type)
+        write_section_doc(
+            file,
+            "doc",
+            4,
+            "Приборы учета (ПУ)",
+            doc_type,
+            required_fields=",".join(lines["required"]["required_pu"])
+            if lines["required"].get("required_pu")
+            else "serial_number,manufacturer,model",
+        )
+        write_section_org_ppa_guid(
+            file, lines, doc_type, 0, "ИНН, ОГРН или OrgID", "org_ppa_guid"
+        )
+        write_section_internal_id(
+            file, lines, doc_type, 1, "Внутренний идентификатор ПУ", "internal_id", "ПУ"
+        )
+        write_section_account_internal_id(
+            file,
+            lines,
+            doc_type,
+            2,
+            "Внутренний идентификатор ЛС",
+            "account_internal_id",
+        )
+        write_section(file, lines, doc_type, 3, "ГИС. Идентификатор ПУ GUID", "gis_id")
+        write_section(file, lines, doc_type, 4, "Серийный номер", "serial_number")
+        write_section(file, lines, doc_type, 5, "Тип устройства", "device_type")
+        write_section(file, lines, doc_type, 6, "Производитель", "manufacturer")
+        write_section(file, lines, doc_type, 7, "Модель", "model")
+        write_section(
+            file,
+            lines,
+            doc_type,
+            8,
+            "Показания момент установки. Тариф 1",
+            "rr1",
+            "_pu",
+        )
+        write_section(
+            file, lines, doc_type, 9, "Показания момент установки. Тариф 2", "rr2"
+        )
+        write_section(
+            file, lines, doc_type, 10, "Показания момент установки. Тариф 3", "rr3"
+        )
+        write_section(file, lines, doc_type, 11, "Дата установки", "installation_date")
+        write_section(
+            file, lines, doc_type, 12, "Дата начала работы", "commissioning_date"
+        )
+        write_section(
+            file,
+            lines,
+            doc_type,
+            13,
+            "Дата следующей поверки",
+            "next_verification_date",
+        )
+        write_section(
+            file,
+            lines,
+            doc_type,
+            14,
+            "Дата последней поверки",
+            "first_verification_date",
+        )
+        write_section(
+            file, lines, doc_type, 15, "Дата опломбирования", "factory_seal_date"
+        )
+        write_section(
+            file,
+            lines,
+            doc_type,
+            16,
+            "Интервал проверки (кол-во месяцев)",
+            "checking_interval",
+        )
+        write_section_service_internal_id(
+            file, lines, doc_type, 17, "Идентификатор услуги", "service_internal_id"
+        )
+        write_section(
+            file, lines, doc_type, 18, "Тип лицевого счета (uo|cr)", "account_type"
+        )
     return file_name

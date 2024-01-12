@@ -7,5 +7,7 @@ test/log/*
 tmp/*
 logs/*
 documents/*
+ini/
+preliminary/ini/
 output.zip
 settings_local.py

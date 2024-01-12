@@ -1,5 +1,9 @@
 import sys
 import os
+
+path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(path)
+
 import argparse
 import configparser
 from pp_service import pp_service
@@ -11,13 +15,7 @@ from header import header
 from pu import pu
 from puv import puv
 from utils import write_config, sorted_lines, set_lines, set_parameters, get_ident
-
-
-def getArgs() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-n', '--name', nargs='?')
-    return parser
-
+from module.helpers import getArgs
 
 def read_from_config(file_name: str) -> list:
     lines = set_lines()
@@ -86,6 +84,12 @@ def read_from_text(file_name: str) -> list:
                         p = line[:k]
                         lines['param'].setdefault(p, [])
                         lines['param'][p].append(line[len(p)+1:].strip())
+                elif line[:9] == 'required_':
+                    k = line.find(':')
+                    if k > 9:
+                        p = line[:k]
+                        lines['required'].setdefault(p, [])
+                        lines['required'][p].append(line[len(p)+1:].strip())
                 elif line[:7] == 'header_':
                     k = line.find(':')
                     if k > 7:
@@ -104,9 +108,9 @@ def read_from_text(file_name: str) -> list:
                             lines['param'][p].append(line[len(p)+1:].strip())
     lines = sorted_lines(lines)
     if len(lines['1a']) == 0 and len(lines['2a']) == 0:
-        lines['1'].append({'name': 'Прочие'})
+        lines['1'].append({'name': 'Прочие', 'is_unique': False, 'is_optional': True})
     else:
-        lines['1a'].append({'name': 'Прочие'})
+        lines['1a'].append({'name': 'Прочие', 'is_unique': False, 'is_optional': True})
     return lines
 
 

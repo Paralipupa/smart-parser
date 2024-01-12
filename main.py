@@ -1,5 +1,5 @@
 import sys
-from module.utils import getArgs
+from module.helpers import getArgs
 from module.parser import Parser
 from datetime import datetime
 from module.settings import *

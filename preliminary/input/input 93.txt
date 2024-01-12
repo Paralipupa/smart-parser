@@ -1,0 +1,48 @@
+;Лицевой счет;
+;accounts: Адрес@address	Квартира@room_number	Проживает@living_person_number	Площадь@total_square	@account_identifier	@account_number_accounts
+;pp: Сальдо начальное@credit		Начисление@bill_value	Оплата@payment_value	@payment_date	Сальдо конечное@saldo
+;{{-1;-4; ХОЛОДНАЯ ВОДА}} = установка данных по смещению относительно текущей ячейки
+;{func{ХОЛОДНАЯ ВОДА}} = установка функции 
+name:ЖСК "93"
+check_pattern:^[0-9]{8,9}$|ХОЛОДНАЯ ВОДА
+main_page_index:-1
+
+pattern_period:(?<=за )[0-9]{1,2}\.[0-9]{4}
+pattern_ЛС:93[0-9]{5}$|^(?!0093)[0-9]{8,9}$
+pattern_address:@г. Санкт-Петербург, проспект Пискарёвский, д. 17 к. 3
+pattern_fias:
+;длина идентификатора
+pattern_id_length:@9
+
+0:Л.счет;Лицевой счет
+0:Дебет Н.;+(1)@credit
+0:Начислено;Разово;Нач. пеня@bill_value
+0:Поступило@payment_value
+0:Дебет К.;+(1)@saldo
+0:Итого	Всего
+0:Кв.@room_number	Проп@living_person_number
+0:Л.счет;Лицевой счет@account_number_accounts@account_identifier
+0:>Площ@total_square
+0:ТипЛС:@account_type{func{account_type}}
+1:Нач. пеня
+0:Дата@date_puv{func{period_last}}
+0:ХОЛОДНАЯ ВОДА@internal_id_pu@internal_id_puv@metering_device_internal_id_puv
+0:Вид@device_type{func{ХОЛОДНАЯ ВОДА}}{{-1;0;ХОЛОДНАЯ ВОДА}}
+0:Номер счетчика@serial_number{{-1;-1;ХОЛОДНАЯ ВОДА}}
+0:Марка@manufacturer{{-1;-2;ХОЛОДНАЯ ВОДА}}
+0:Модель@model{{-1;-3;ХОЛОДНАЯ ВОДА}}
+0:Дата заводской поверки@first_verification_date{{-1;-4;ХОЛОДНАЯ ВОДА}}
+0:Дата ввода в эксплуатацию@installation_date{{-1;-5;ХОЛОДНАЯ ВОДА}}
+0:Межпо- верочный интервал@checking_interval{{-1;-6;ХОЛОДНАЯ ВОДА}}
+0:Дата очередной поверки@next_verification_date{{-1;-7;ХОЛОДНАЯ ВОДА}}
+0:Конечные показания@rr1_puv{type{float}}{func{round6}} {{-1;-3;ХОЛОДНАЯ ВОДА}}
+0:ГОРЯЧАЯ ВОДА@internal_id_pu@internal_id_puv@metering_device_internal_id_puv
+0:Вид@device_type{func{ГОРЯЧАЯ ВОДА}}{{-1;0;ГОРЯЧАЯ ВОДА}}
+0:Номер счетчика@serial_number{{-1;-1;ГОРЯЧАЯ ВОДА}}
+0:Марка@manufacturer{{-1;-2;ГОРЯЧАЯ ВОДА}}
+0:Модель@model{{-1;-3;ГОРЯЧАЯ ВОДА}}
+0:Дата заводской поверки@first_verification_date{{-1;-4;ГОРЯЧАЯ ВОДА}}
+0:Дата ввода в эксплуатацию@installation_date{{-1;-5;ГОРЯЧАЯ ВОДА}}
+0:Межпо- верочный интервал@checking_interval{{-1;-6;ГОРЯЧАЯ ВОДА}}
+0:Дата очередной поверки@next_verification_date{{-1;-7;ГОРЯЧАЯ ВОДА}}
+0:Конечные показания@rr1_puv{type{float}}{func{round6}}{{-1;-3;ГОРЯЧАЯ ВОДА}}

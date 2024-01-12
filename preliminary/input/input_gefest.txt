@@ -1,6 +1,6 @@
-;Лицевой счет;Сальдо начальное;Начисление;Оплата;Сальдо конечное;Пени;Адрес;Квартира;Проживает;Площадь
-;accounts: @address	@room_number	@living_person_number	@total_square	@account_identifier	@account_number
-;pp: @credit	@saldo	@payment_value	@payment_date	@bill_value
+;Лицевой счет
+;accounts: Адрес@address	Квартира@room_number	Проживает@living_person_number	Площадь@total_square	@account_identifier	@account_number_accounts
+;pp: Сальдо начальное@credit		Начисление@bill_value	Оплата@payment_value	@payment_date	Сальдо конечное@saldo
 name:ТСЖ Гефест
 check_pattern:Гефест
 check_pattern:Оборотно-сальдовая ведомость по лицевым счетам|Ведомость начислений
@@ -23,7 +23,7 @@ header_fias:@fias_6+fias_11+fias_Кадетская+fias_Малый
 0:Начислено@bill_value	Оплачено@payment_value	Сальдо  исх.@saldo
 0:В т.ч.  пени	
 0:>Всего начислено
-0:Адрес@address	№ пом.@room_number	Проживает;Прож@living_person_number	Площадь;Общая площадь@total_square
-0:Лицевой счет@account_number@account_identifier	Всего начислено
+0:Адрес@address	№ пом.@room_number	Проживает;Прож@living_person_number	Площадь;Общая площадь@total_square{type{float}}{func{round2}}
+0:Лицевой счет@account_number_accounts@account_identifier	Всего начислено
 1:Услуги
 

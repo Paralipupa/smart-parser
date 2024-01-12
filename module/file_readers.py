@@ -1,21 +1,22 @@
 import abc
 import csv
 import os
-
-from openpyxl import load_workbook
+import logging
 import xlrd
+from openpyxl import load_workbook
+from typing import List
+
+logger = logging.getLogger(__name__)
+
 
 def rchop(s, sub):
-    return s[:-len(sub)] if s.endswith(sub) else s
+    return s[: -len(sub)] if s.endswith(sub) else s
 
 
 class DataFile(abc.ABC):
-
-    def __init__(self, fname, sheet_name, first_line, columns):
+    def __init__(self, fname):
         self._fname = fname
-        self._first_line = first_line
-        self._sheet_name = sheet_name
-        self._columns = columns
+        self._sheet = None
 
     def __iter__(self):
         return self
@@ -25,11 +26,10 @@ class DataFile(abc.ABC):
 
 
 class CsvFile(DataFile):
-    def __init__(self, fname, first_line, address_columns, page_index=None):
-        super(CsvFile, self).__init__(fname, "", first_line, address_columns)
-        self._freader = open(fname, 'r', encoding='cp1251')
-        self._first_line = first_line
-        self._reader = csv.reader(self._freader, delimiter=';', quotechar='|')
+    def __init__(self, fname):
+        super(CsvFile, self).__init__(fname)
+        self._freader = open(fname, "r", encoding="cp1251")
+        self._reader = csv.reader(self._freader, delimiter=";", quotechar="|")
         self._line_num = 0
 
     def get_row(self, row):
@@ -50,22 +50,40 @@ class CsvFile(DataFile):
     def __del__(self):
         self._freader.close()
 
+
 class XlsFile(DataFile):
-    def __init__(self, fname, sheet_name, first_line, address_columns, page_index=0):
-        super(XlsFile, self).__init__(fname, sheet_name, first_line, address_columns)
-        # with xlrd.open_workbook(fname, logfile=open(os.devnull, 'w')) as wb:
-        with xlrd.open_workbook(fname) as wb:
-            if self._sheet_name:
-                sheet = wb.sheet_by_name(self._sheet_name)
-            else:
-                sheet = wb.sheets()[page_index]
-            self._rows = (sheet.row(index) for index in range(first_line,
-                                                            sheet.nrows))
+    def __init__(self, fname):
+        super(XlsFile, self).__init__(fname)
+        self._wb = xlrd.open_workbook(fname)
+
+    def set_config(
+        self, page_indexes: List[int] = [], number_columns: int = 150
+    ) -> bool:
+        self._page_current = 0
+        self._columns = range(number_columns)
+        if page_indexes:
+            self._page_indexes = page_indexes
+        else:
+            self._page_indexes = range(len(self._wb.sheets()))
+        return self._page_current
+
+    def get_sheet(self) -> object:
+        try:
+            if self._page_current < len(self._page_indexes):
+                self._sheet = self._wb.sheets()[self._page_indexes[self._page_current]]
+                self._rows = (
+                    self._sheet.row(index) for index in range(self._sheet.nrows)
+                )
+                self._page_current += 1
+                return self._page_current-1
+            return None
+        except Exception as ex:
+            logger.exception("getSheet")
 
     @staticmethod
     def get_cell_text(cell):
         if cell.ctype == 2:
-            return rchop(str(cell.value), '.0')
+            return rchop(str(cell.value), ".0")
         return str(cell.value)
 
     def get_row(self, row):
@@ -83,40 +101,49 @@ class XlsFile(DataFile):
     def __del__(self):
         pass
 
-class XlsxFile(DataFile):
-    def __init__(self, fname, sheet_name, first_line, columns, page_index=-1):
-        super(XlsxFile, self).__init__(fname, sheet_name, first_line, columns)
-        try:
-            self._wb = load_workbook(filename=fname)
-        except:
-            self._wb = load_workbook(filename=fname, read_only=True)
 
-        if self._sheet_name:
-            self._ws = self._wb.get_sheet_by_name(self._sheet_name)
-        elif page_index != -1:
-            self._ws = self._wb.worksheets[page_index]
+class XlsxFile(DataFile):
+    def __init__(self, fname):
+        super(XlsxFile, self).__init__(fname)
+        try:
+            self._wb = load_workbook(filename=fname, data_only=True)
+        except:
+            self._wb = load_workbook(filename=fname, read_only=True, data_only=True)
+
+    def set_config(
+        self, page_indexes: List[int] = [], number_columns: int = 150
+    ) -> bool:
+        self._page_current = 0
+        self._columns = range(number_columns)
+        if page_indexes:
+            self._page_indexes = page_indexes
         else:
-            rows = -1
-            for sh in self._wb.worksheets:
-                if sh.max_row > rows:
-                    self._ws = sh
-                    rows = sh.max_row
-        self._cursor = self._ws.iter_rows()
-        row_num = 0
-        while row_num < self._first_line:
-            row_num += 1
-            next(self._cursor)
+            self._page_indexes = range(len(self._wb.worksheets))
+        return self._page_current
+
+    def get_sheet(self) -> object:
+        try:
+            if self._page_current < len(self._page_indexes):
+                self._sheet = self._wb.worksheets[
+                    self._page_indexes[self._page_current]
+                ]
+                self._cursor = self._sheet.iter_rows()
+                self._page_current += 1
+                return self._page_current-1
+            return None
+        except Exception as ex:
+            logger.exception("getSheet")
 
     @staticmethod
     def get_cell_text(cell):
         return str(cell.value) if cell.value != None else ""
 
     def get_row(self, row):
-        i=0
+        i = 0
         for cell in row:
             if i in self._columns:
                 yield XlsxFile.get_cell_text(cell)
-            i+=1
+            i += 1
 
     def __next__(self):
         return list(self.get_row(next(self._cursor)))
@@ -128,7 +155,7 @@ class XlsxFile(DataFile):
         try:
             return cell.column
         except AttributeError:
-            return  -1
+            return -1
 
 
 def get_file_reader(fname):
@@ -136,11 +163,11 @@ def get_file_reader(fname):
     _, file_extension = os.path.splitext(fname)
     # if file_extension == '.csv':
     #     return CsvFile
-    if file_extension == '.xls':
+    if file_extension == ".xls":
         return XlsFile
-    if file_extension == '.xlsx':
+    if file_extension == ".xlsx":
         # return XlsFile
         return XlsxFile
-    if file_extension == '.csv':
+    if file_extension == ".csv":
         return CsvFile
     raise Exception("Unknown file type")
