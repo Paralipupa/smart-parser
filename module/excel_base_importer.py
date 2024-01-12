@@ -2103,7 +2103,7 @@ class ExcelBaseImporter:
 
     def func_account_type(self):
         is_cap = False
-        comp: re.compile = re.compile("кап(?:.+)?рем")
+        comp: re.compile = re.compile("кап(?:.+)?рем|КАП[.]|\sКР\s",re.IGNORECASE)
         for key in self._column_names.keys():
             if comp.search(key):
                 is_cap = True

@@ -20,4 +20,6 @@ pattern_ЛС:^(?![0-9])[А-Яа-яЁё"«»-]+\s["«»А-Яа-яЁё-]+
 0:>Площадь;Площадь, м2@total_square{type{float}}{func{round2}}
 0:Прописано
 0:Лицевой счет@account_number_accounts::[0-9]+-?[A-Za-zА-Яа-я]?@account_identifier::[0-9]+-?[A-Za-zА-Яа-я]?
+0:ТипЛС:@account_type{func{account_type}}
+
 1:ПениКапремонт;Пени{{+0;-1;кап}}

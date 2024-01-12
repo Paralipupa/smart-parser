@@ -45,7 +45,7 @@ def write_section_contract(file, lines: dict, sec_type: str, sec_number: int, se
 def __write_section_service(file, lines: dict, sec_type: str, sec_number: int, sec_title: str,
                             sec_name: str, sec_suffix: str = "", is_ident: bool = True, sec_is_hash: bool = True):
     l: list = get_lines(lines)
-    if lines["dic"].get("rr1_puv"):
+    if True or lines["dic"].get("rr1_puv"):
         file.write('pattern=@0\n')
         file.write('col_config=0\n')
         if lines["dic"].get("service"):
@@ -92,6 +92,7 @@ def __write_section_service(file, lines: dict, sec_type: str, sec_number: int, s
                     file.write(
                         f'func={get_ident(line["name"])},hash\n')
         else:
+            file.write('\n')
             for i, line in enumerate(l[1:]):
                 file.write(f'[{sec_type}_{sec_number}_{i}]\n')
                 file.write(f'; {sec_title}\n')
