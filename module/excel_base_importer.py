@@ -2025,7 +2025,7 @@ class ExcelBaseImporter:
         )
 
     def func_account_number(self):
-        pattern = re.compile(REG_KP_XLS)
+        pattern: re.compile = re.compile(REG_KP_XLS, re.IGNORECASE)
         if self._dictionary.get("account_number"):
             if pattern.search(self._parameters["filename"]["value"][0].lower()):
                 return (
@@ -2103,7 +2103,7 @@ class ExcelBaseImporter:
 
     def func_account_type(self):
         is_cap = False
-        comp: re.compile = re.compile("кап(?:.+)?рем|КАП[.]|\sКР\s",re.IGNORECASE)
+        comp: re.compile = re.compile(REG_KP_XLS, re.IGNORECASE)
         for key in self._column_names.keys():
             if comp.search(key):
                 is_cap = True
