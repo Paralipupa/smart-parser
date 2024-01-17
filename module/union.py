@@ -176,9 +176,9 @@ class UnionData:
         return files
 
     def __files_sorted(self, files_o: list) -> list:
-        """ Сортировка файлов для обработки
-            первым  accounts 
-            последними banks, tarif
+        """Сортировка файлов для обработки
+        первым  accounts
+        последними banks, tarif
         """
         files = sorted(
             [
@@ -186,11 +186,16 @@ class UnionData:
                 for x in files_o
                 if not re.search("bank", x) and not re.search("tarif", x)
             ],
-            key=lambda x: 0 if "accounts" in x else 1,
+            key=lambda x: (
+                0 if "accounts" in x else 1,
+                re.findall("(?<=[0-9]_)[a-z]+", x)[0],
+                int(re.findall("(?<=[0-9]_)[0-9]+", x)[0]),
+            ),
         )
         files.extend(
             [x for x in files_o if re.search("bank", x) or re.search("tarif", x)]
         )
+
         return files
 
     @warning_error
