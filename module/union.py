@@ -180,6 +180,15 @@ class UnionData:
         первым  accounts
         последними banks, tarif
         """
+        list_tuple = [
+            (
+                re.findall("(?<=[0-9]_)[a-z_]+", x)[0],
+                int(re.findall("(?<=[0-9]_)[0-9]+", x)[0]),
+            )
+            for x in files_o
+        ]
+        list_sorted = sorted(list_tuple)
+
         files = sorted(
             [
                 x
@@ -187,8 +196,7 @@ class UnionData:
                 if not re.search("bank", x) and not re.search("tarif", x)
             ],
             key=lambda x: (
-                0 if "accounts" in x else 1,
-                re.findall("(?<=[0-9]_)[a-z]+", x)[0],
+                re.findall("(?<=[0-9]_)[a-z_]+", x)[0],
                 int(re.findall("(?<=[0-9]_)[0-9]+", x)[0]),
             ),
         )
