@@ -1,4 +1,4 @@
-import pathlib, logging, re
+import pathlib, logging, re, json
 from multiprocessing import Pool, Manager
 from typing import List
 from .excel_base_importer import ExcelBaseImporter
@@ -8,7 +8,6 @@ from .helpers import (
     get_list_files,
     get_extract_files,
     get_data_file,
-    timing,
     fatal_error,
     hashit,
 )
@@ -26,7 +25,7 @@ class SearchConfig:
         self.file_name = file_name
         self.inn = inn if inn else get_inn(file_name)
         self.file_conf = file_conf
-        self.config_files = config_files
+        self.config_files = config_files.copy()
         self.list_files = []
         self.zip_files = []
         self.headers: dict = dict()
@@ -35,8 +34,10 @@ class SearchConfig:
 
     @fatal_error
     def get_list_files(self) -> list:
+        data_alignment = self.checking_configuration()
         self.__extact_zip_files()
         self.__enumeration_config_files()
+        self.write_configuration(data_alignment)
         return self.list_files
 
     def __enumeration_config_files(self) -> None:
@@ -173,6 +174,35 @@ class SearchConfig:
         else:
             self.list_files = []
         return
+
+    def checking_configuration(self) -> dict:
+        """Проверка соответствия файлов конфигурации по ИНН"""
+        data = dict()
+        if pathlib.Path.exists(pathlib.Path(CONFIGURATION_FILE)):
+            with open(
+                pathlib.Path(CONFIGURATION_FILE), mode="r", encoding=ENCONING
+            ) as file:
+                data = json.load(file)
+            if self.inn != "000000000" and data.get(self.inn):
+                self.config_files = [
+                    x for x in self.config_files if x["name"] in data[self.inn]
+                ]
+        return data
+
+    def write_configuration(self, data: dict):
+        """Запись соответствия файлов конфигурации по ИНН"""
+        for item in self.list_files:
+            if item["inn"] and item["inn"] != "0000000000":
+                data.setdefault(item["inn"], [])
+                for conf in item["config"]:
+                    name = os.path.basename(conf["name"])
+                    if bool(data) is False or not name in data[item["inn"]]:
+                        data[item["inn"]].append(name)
+        with open(
+            pathlib.Path(CONFIGURATION_FILE), mode="w", encoding=ENCONING
+        ) as file:
+            jstr = json.dumps(data, indent=4, ensure_ascii=False)
+            file.write(jstr)
 
 
 def clear_manager():

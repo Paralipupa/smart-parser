@@ -1,4 +1,4 @@
-import os,re
+import os, re
 import shutil
 import sys
 from module.helpers import timing
@@ -131,7 +131,9 @@ class TestGisConfig(unittest.TestCase):
 
         # Теперь проверяем список common
         # на файлы, чтобы не попался каталог
-        common_files = [file_name for file_name in common if re.search("csv",file_name)]
+        common_files = [
+            file_name for file_name in common if re.search("csv", file_name)
+        ]
 
         # Сравниваем общие файлы каталогов
         mismatch = self.__diff(path_download, path_origin, common_files)
@@ -161,14 +163,16 @@ class TestGisConfig(unittest.TestCase):
     def test_gefest(self):
         self.parser.is_hash = True
         self.parser.name = os.path.join(BASE_DIR, "test", "input", "gefest.zip")
-        self.parser.download_file = f"gefest{'_no_hash' if self.parser.is_hash is False else ''}.zip" 
+        self.parser.download_file = (
+            f"gefest{'_no_hash' if self.parser.is_hash is False else ''}.zip"
+        )
         self.__remove_download()
         if os.path.exists(
             os.path.join(BASE_DIR, "test", "download", self.parser.download_file)
         ):
             os.remove(
                 os.path.join(BASE_DIR, "test", "download", self.parser.download_file)
-            )        
+            )
         self.parser.start()
         hash_origin, hash_download = self.__check()
         self.assertEqual(hash_origin, hash_download)
@@ -194,7 +198,9 @@ class TestGisConfig(unittest.TestCase):
     def test_t93(self):
         self.parser.is_hash = False
         self.parser.name = os.path.join(BASE_DIR, "test", "input", "93.zip")
-        self.parser.download_file = f"93{'_no_hash' if self.parser.is_hash is False else ''}.zip"
+        self.parser.download_file = (
+            f"93{'_no_hash' if self.parser.is_hash is False else ''}.zip"
+        )
         self.parser.inn = "7806034914"
         self.__remove_download()
         self.parser.start()
@@ -210,7 +216,7 @@ class TestGisConfig(unittest.TestCase):
         self.assertEqual(hash_origin, hash_download)
 
     def test_comfort(self):
-        self.parser.is_hash=False
+        self.parser.is_hash = False
         self.parser.name = os.path.join(BASE_DIR, "test", "input", "comfort.zip")
         self.parser.download_file = "comfort.zip"
         self.parser.inn = "7811334511"

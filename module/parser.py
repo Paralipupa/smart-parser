@@ -4,7 +4,11 @@ import logging
 import shutil
 import datetime
 from .excel_base_importer import ExcelBaseImporter
-from .helpers import get_config_files, write_list, check_tarif
+from .helpers import (
+    get_config_files,
+    write_list,
+    check_tarif,
+)
 from .union import UnionData
 from .exceptions import (
     InnMismatchException,
