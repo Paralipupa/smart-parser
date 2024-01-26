@@ -2027,7 +2027,7 @@ class ExcelBaseImporter:
     def func_account_number(self):
         pattern: re.compile = re.compile(REG_KP_XLS, re.IGNORECASE)
         if self._dictionary.get("account_number"):
-            if pattern.search(self._parameters["filename"]["value"][0].lower()):
+            if pattern.search(self._parameters["filename"]["value"][0].lower(), re.IGNORECASE):
                 return (
                     self._dictionary.get("account_number", [])[-1]
                     if len(self._dictionary.get("account_number", [])) != 0
@@ -2040,7 +2040,7 @@ class ExcelBaseImporter:
                     else ""
                 )
         elif self._parameters.get("account_number"):
-            if pattern.search(self._parameters["filename"]["value"][0].lower()):
+            if pattern.search(self._parameters["filename"]["value"][0].lower(), re.IGNORECASE):
                 return (
                     self._parameters.get("account_number", {"value": [""]})["value"][-1]
                     if len(
@@ -2062,7 +2062,7 @@ class ExcelBaseImporter:
             return ""
 
     def func_bik(self):
-        pattern = re.compile(REG_KP_XLS)
+        pattern = re.compile(REG_KP_XLS, re.IGNORECASE)
         if self._dictionary.get("bik"):
             if pattern.search(self._parameters["filename"]["value"][0].lower()):
                 return (

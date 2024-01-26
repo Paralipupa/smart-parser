@@ -19,6 +19,7 @@ ERROR_LOG_FILENAME = os.path.join(BASE_DIR, "logs", "error.log")
 WARNING_LOG_FILENAME = os.path.join(BASE_DIR, "logs", "warning.log")
 DEBUG_LOG_FILENAME = os.path.join(BASE_DIR, "logs", "debug.log")
 INFO_LOG_FILENAME = os.path.join(BASE_DIR, "logs", "info.log")
+CONFIGURATION_FILE= os.path.join(PATH_CONFIG, "configuration.json")
 
 POS_INDEX_VALUE = 0
 POS_INDEX_IS_NEGATIVE = 1
@@ -42,7 +43,7 @@ COLOR_CONSOLE = {
     "magenta": "\033[35m",
 }
 # регулярное выражение для определения капитального ремонта  по названию файлов и полей
-REG_KP_XLS = "\sкап|кап(?:.+)?рем|кап[.]|\sкр\s"
+REG_KP_XLS = "\sкап|кап(?:.+)?рем|кап[.]|\sкр\s|кр_"
 
 LOGGING = {
     "version": 1,

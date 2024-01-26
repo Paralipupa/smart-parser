@@ -1,4 +1,4 @@
-import datetime, re, os
+import datetime, re, os, json
 import pathlib
 import hashlib
 import zipfile
@@ -230,7 +230,6 @@ def get_config_files():
         files = []
     return files
 
-
 def get_list_files(name: str) -> list:
     l = list()
     with open(name, "r", encoding="utf-8") as f:
@@ -275,10 +274,10 @@ def write_list(path_output: str, files: list):
     with open(file_output, "w", encoding=ENCONING) as file:
         b = False
         for item in files:
-            for conf in item['config']: 
+            for conf in item["config"]:
                 if conf["name"] == "":
                     if b is False:
-                        mess += '\n\n------------------ Следующие файлы не распознаны ---------------------------------------\n\n'
+                        mess += "\n\n------------------ Следующие файлы не распознаны ---------------------------------------\n\n"
                         b = True
                     mess += f"{item['inn']} \t {os.path.basename(item['name'])}\n"
                 if conf["warning"]:
@@ -355,7 +354,8 @@ def get_data_file(item: dict = None) -> dict:
 def hashit(s):
     return hashlib.sha1(s).hexdigest()
 
-def check_tarif(data:list)->str:
+
+def check_tarif(data: list) -> str:
     comp = re.compile("\d{1,9}(?:[\.,]\d{1,3})?")
     mess = ""
     for index, item in enumerate(data):
@@ -363,7 +363,3 @@ def check_tarif(data:list)->str:
         if len(res) != 1:
             mess += f"{index+1}: {item}\n"
     return mess
-
-
-
-
