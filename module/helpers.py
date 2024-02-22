@@ -356,7 +356,7 @@ def hashit(s):
 
 
 def check_tarif(data: list) -> str:
-    comp = re.compile("\d{1,9}(?:[\.,]\d{1,3})?")
+    comp = re.compile(r"[0-9]{1,9}(?:[\.,][0-9]{1,3})?")
     mess = ""
     for index, item in enumerate(data):
         res = comp.findall(item)

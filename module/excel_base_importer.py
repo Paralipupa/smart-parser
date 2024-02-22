@@ -8,6 +8,7 @@ import aiofiles
 import asyncio
 import json
 import logging
+from collections import OrderedDict
 from aiocsv import AsyncWriter, AsyncDictWriter
 from typing import Union, List
 from itertools import product
@@ -151,6 +152,10 @@ class ExcelBaseImporter:
                     if self.colontitul["status"] == 2:
                         # Табличная область данных
                         self.__check_record_in_body(record, row)
+                        # если уже нашли более одной группы, то добавляем предпоследнюю в документ
+                        if len(self._teams) > 10:
+                            self.__process_record()
+
                     if row % 100 == 0:
                         print_message(
                             "         {} Обработано: {}                          \r".format(
@@ -204,11 +209,23 @@ class ExcelBaseImporter:
 
     # группируем записи по идентификатору
     def __append_to_team(self, mapped_record: list) -> bool:
+        team_id = self.__get_team_id(mapped_record)
+        if False and team_id:
+            if self._teams_ref.get(team_id):
+                self.__update_team(mapped_record, team_id)
+            else:
+                self._teams_ref[team_id] = mapped_record
+
         if self.__check_condition_team(mapped_record):
             # Новый идентификатор
             self._teams.append(mapped_record)
             return True
         elif len(self._teams) != 0:
+            self.__update_team(mapped_record)
+        return False
+
+    def __update_team(self, mapped_record: dict, team_id: str = ""):
+        if not team_id:
             for key in mapped_record.keys():
                 size = self._teams[-1][key][-1]["row"] + 1
                 for mr in mapped_record[key]:
@@ -221,10 +238,22 @@ class ExcelBaseImporter:
                             "negative": mr["negative"],
                         }
                     )
-        return False
+        if team_id:
+            for key in mapped_record.keys():
+                size = self._teams_ref[team_id][key][-1]["row"] + 1
+                for mr in mapped_record[key]:
+                    self._teams_ref[team_id][key].append(
+                        {
+                            "row": size,
+                            "col": mr["col"],
+                            "index": mr["index"],
+                            "value": mr["value"],
+                            "negative": mr["negative"],
+                        }
+                    )
 
     # Проверяем условие завершения группировки записей по текущему идентификатору
-    def __check_condition_team(self, mapped_record: list) -> bool:
+    def __check_condition_team(self, mapped_record: dict) -> bool:
         if not self.__get_condition_team():
             return True
         if not mapped_record:
@@ -247,6 +276,16 @@ class ExcelBaseImporter:
                             self.is_condition_check = True
                             return True
         return b
+
+    def __get_team_id(self, mapped_record: dict) -> str:
+        for p in self.__get_condition_team():
+            if mapped_record.get(p["col"]):
+                for patt in p["pattern"]:
+                    result = self.__get_condition_data(mapped_record[p["col"]], patt)
+                    b = False if not result or result.find("error") != -1 else True
+                    if b:
+                        return result
+        return ""
 
     # Область до или после таблицы
     def __check_bound_row(self, row: int) -> bool:
@@ -286,12 +325,16 @@ class ExcelBaseImporter:
                 \nневерен шаблон нахождения начала области данных(({3})condition_begin_team(\n{2}\n))\n{4}\n'.format(
                         self._config._config_name,
                         self._parameters["filename"]["value"][0],
-                        self.__get_condition_team()[0]["pattern"]
-                        if self.__get_condition_team()
-                        else "",
-                        self.__get_condition_team()[0]["col"]
-                        if self.__get_condition_team()
-                        else "",
+                        (
+                            self.__get_condition_team()[0]["pattern"]
+                            if self.__get_condition_team()
+                            else ""
+                        ),
+                        (
+                            self.__get_condition_team()[0]["col"]
+                            if self.__get_condition_team()
+                            else ""
+                        ),
                         s,
                     )
                 )
@@ -302,7 +345,7 @@ class ExcelBaseImporter:
         if self.colontitul["status"] == 0:
             if self.__check_headers_status(names):
                 if len(self._teams) != 0:
-                    self.__process_record(self._teams[-1])
+                    self.__done()
                     self.__init_data()
                     self.__set_row_start(row)
         if self.__check_columns(names, row):
@@ -350,10 +393,8 @@ class ExcelBaseImporter:
                     item["active"] = False
                 self.colontitul["foot"].append(record)
             # если добавлена новая группа
-            elif self.__append_to_team(mapped_record):
-                # если уже нашли более одной группы, то добавляем предпоследнюю в документ
-                if len(self._teams) > 1:
-                    self.__process_record(self._teams[-2])
+            else:
+                self.__append_to_team(mapped_record)
         if len(self._teams) < 2:
             # добавляем первые записи в таблице в область заголовка
             # (иногда там могут находиться некоторые параметры)
@@ -476,9 +517,9 @@ class ExcelBaseImporter:
                                 (column_name["col"], False)
                             )
                             if is_last:
-                                self._possible_columns[
-                                    column_name["col"]
-                                ] = column_name["name"]
+                                self._possible_columns[column_name["col"]] = (
+                                    column_name["name"]
+                                )
                     item_head_column["row"] = row
                     is_find = True
                     if not is_last:
@@ -954,10 +995,11 @@ class ExcelBaseImporter:
         return x
 
     def __done(self):
-        if len(self._teams) != 0:
-            self.__process_record(self._teams[-1])
+        while len(self._teams) != 0:
+            self.__process_record()
 
-    def __process_record(self, team: dict) -> None:
+    def __process_record(self) -> None:
+        team = self._teams[0]
         if not self.colontitul["is_parameters"]:
             self.__set_parameters()
         for doc_param in self.__get_config_documents():
@@ -1178,13 +1220,13 @@ class ExcelBaseImporter:
                                     ):
                                         # если есть смещение по таблице относительно текущего значения,
                                         # то берем данные от туда
-                                        fld_record[
-                                            "value_o"
-                                        ] = self.__get_value_from_offset(
-                                            team,
-                                            fld_record,
-                                            table_row[0],
-                                            col[POS_VALUE],
+                                        fld_record["value_o"] = (
+                                            self.__get_value_from_offset(
+                                                team,
+                                                fld_record,
+                                                table_row[0],
+                                                col[POS_VALUE],
+                                            )
                                         )
                                         # запоминаем, чтобы не было повтора
                                         offset_rows_exclude.add(
@@ -1236,20 +1278,22 @@ class ExcelBaseImporter:
                     {
                         "row": len(doc[fld_record["name"]]),
                         "col": col[0],
-                        "value": ""
-                        if (
-                            (
-                                isinstance(fld_record["value"], int)
-                                or isinstance(fld_record["value"], float)
+                        "value": (
+                            ""
+                            if (
+                                (
+                                    isinstance(fld_record["value"], int)
+                                    or isinstance(fld_record["value"], float)
+                                )
+                                and fld_record["value"] == 0
                             )
-                            and fld_record["value"] == 0
-                        )
-                        or (
-                            isinstance(fld_record["value"], str)
-                            and fld_record["offset_type"] == "float"
-                            and fld_record["value"] == "0.0"
-                        )
-                        else str(fld_record["value"]).strip(),
+                            or (
+                                isinstance(fld_record["value"], str)
+                                and fld_record["offset_type"] == "float"
+                                and fld_record["value"] == "0.0"
+                            )
+                            else str(fld_record["value"]).strip()
+                        ),
                     }
                 )
         return doc
@@ -1576,6 +1620,7 @@ class ExcelBaseImporter:
             False  # Наличие колонки, в которой указаны названия услуг ЖКУ
         )
         self._teams = list()
+        self._teams_ref = OrderedDict()
         self._collections = dict()  # коллекция выходных таблиц
         self._possible_columns = dict()
         self._headers = list()
@@ -1725,6 +1770,7 @@ class ExcelBaseImporter:
             col["active"] = False
         self._column_names = dict()
         self._teams = list()
+        self._teams_ref = OrderedDict()
 
     def __add_warning(self, text: str):
         self.config_files[self.index_config - 1]["warning"].append(text)
@@ -2027,7 +2073,9 @@ class ExcelBaseImporter:
     def func_account_number(self):
         pattern: re.compile = re.compile(REG_KP_XLS, re.IGNORECASE)
         if self._dictionary.get("account_number"):
-            if pattern.search(self._parameters["filename"]["value"][0].lower(), re.IGNORECASE):
+            if pattern.search(
+                self._parameters["filename"]["value"][0].lower(), re.IGNORECASE
+            ):
                 return (
                     self._dictionary.get("account_number", [])[-1]
                     if len(self._dictionary.get("account_number", [])) != 0
@@ -2040,7 +2088,9 @@ class ExcelBaseImporter:
                     else ""
                 )
         elif self._parameters.get("account_number"):
-            if pattern.search(self._parameters["filename"]["value"][0].lower(), re.IGNORECASE):
+            if pattern.search(
+                self._parameters["filename"]["value"][0].lower(), re.IGNORECASE
+            ):
                 return (
                     self._parameters.get("account_number", {"value": [""]})["value"][-1]
                     if len(
