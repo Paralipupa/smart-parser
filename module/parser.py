@@ -96,7 +96,7 @@ class Parser:
                                 f"Начало обработки файла '{os.path.basename(file_name['name'])}'"
                             )
                             if rep.extract():
-                                logger.info(f"Обработка завершена")
+                                logger.info(f"Обработка завершена      ")
                                 isParser = True
                                 self._dictionary = rep._dictionary.copy()
                                 self._period = datetime.datetime.strptime(

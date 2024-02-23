@@ -8,6 +8,8 @@ import aiofiles
 import asyncio
 import json
 import logging
+from threading import Thread, Event, Lock
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections import OrderedDict
 from aiocsv import AsyncWriter, AsyncDictWriter
 from typing import Union, List
@@ -69,6 +71,9 @@ class ExcelBaseImporter:
         }
         self._parameters["filename"] = {"fixed": True, "value": [file_name]}
         self._dictionary = dict()
+        self.ex = Event()
+        self.lock = Lock()
+        self.row = 0
         self.__set_functions()
         self.__init_page()
 
@@ -118,66 +123,97 @@ class ExcelBaseImporter:
             )
             return False
         while self.__init_config():
-            self.num_config = data_reader.set_config(self._page_index)
-            self.config_files[self.num_config]["warning"] = []
-            is_init = True
-            while True:
-                if not is_init:
-                    self.__read_config()
-                is_init = False
-                page = data_reader.get_sheet()
-                if page is None:
-                    break
-                self.num_page = page
-                self.__init_data()
-                self.__init_page()
-                self.__set_parameters_page()
-                if not self.__get_header("pattern"):
-                    self.colontitul["status"] = 1
-                for row, record in enumerate(data_reader):
-                    if row < 100 and row % 10 == 0:
-                        print_message(
-                            "         {} Обработано: {}                          \r".format(
-                                self.func_inn(), row
-                            ),
-                            end="",
-                            flush=True,
-                        )
-                    record = record[self._col_start :]
-                    if self.colontitul["status"] != 2:
-                        # Область до или после таблицы
-                        if not self.__check_bound_row(row):
-                            break
-                        self.__check_colontitul(self.__get_names(record), row, record)
-                    if self.colontitul["status"] == 2:
-                        # Табличная область данных
-                        self.__check_record_in_body(record, row)
-                        # если уже нашли более одной группы, то добавляем предпоследнюю в документ
-                        if len(self._teams) > 10:
-                            self.__process_record()
+            threads = []
+            # t = Thread(target=self.loop)
+            # t.daemon = True
+            # t.start()
+            # threads.append(t)
 
-                    if row % 100 == 0:
-                        print_message(
-                            "         {} Обработано: {}                          \r".format(
-                                self.func_inn(), row
-                            ),
-                            end="",
-                            flush=True,
+            try:
+                self.num_config = data_reader.set_config(self._page_index)
+                self.config_files[self.num_config]["warning"] = []
+                is_init = True
+                while True:
+                    if not is_init:
+                        self.__read_config()
+                    is_init = False
+                    page = data_reader.get_sheet()
+                    if page is None:
+                        break
+                    self.num_page = page
+                    self.__init_data()
+                    self.__init_page()
+                    self.__set_parameters_page()
+                    if not self.__get_header("pattern"):
+                        self.colontitul["status"] = 1
+                    for self.row, record in enumerate(data_reader):
+                        if self.row < 100 and self.row % 10 == 0:
+                            print_message(
+                                "         {} Обработано: {}                          \r".format(
+                                    self.func_inn(), self.row
+                                ),
+                                end="",
+                                flush=True,
+                            )
+                        record = record[self._col_start :]
+                        if self.colontitul["status"] != 2:
+                            # Область до или после таблицы
+                            if not self.__check_bound_row(self.row):
+                                break
+                            self.__check_colontitul(
+                                self.__get_names(record), self.row, record
+                            )
+                        if self.colontitul["status"] == 2:
+                            # Табличная область данных
+                            self.__check_record_in_body(record, self.row)
+                            # если уже нашли более одной группы, то добавляем предпоследнюю в документ
+                            if len(self._teams) > 10:
+                                self.__process_record()
+
+                        if self.row % 100 == 0:
+                            print_message(
+                                "         {} Обработано: {}                          \r".format(
+                                    self.func_inn(), self.row
+                                ),
+                                end="",
+                                flush=True,
+                            )
+                    self.__done()
+                    asyncio.run(
+                        self.write_results_async(
+                            num_config=self.num_config + 1,
+                            num_page=self.num_page + 1,
+                            num_file=self.num_file + 1,
+                            path_output=self._output,
+                            collections=self._collections.copy(),
+                            # output_format="json",
                         )
-                self.__done()
-                asyncio.run(
-                    self.write_results_async(
-                        num_config=self.num_config + 1,
-                        num_page=self.num_page + 1,
-                        num_file=self.num_file + 1,
-                        path_output=self._output,
-                        collections=self._collections.copy(),
-                        # output_format="json",
                     )
-                )
+            finally:
+                self.ex.set()
+                for t in threads:
+                    t.join()
+                # self.loop()
 
         self.__process_finish()
+
         return True
+
+    def loop(self):
+        # while not self.ex.is_set():
+        #     if len(self._teams) > 10:
+        #         self.__process_record()
+        self.__done()
+        asyncio.run(
+            self.write_results_async(
+                num_config=self.num_config + 1,
+                num_page=self.num_page + 1,
+                num_file=self.num_file + 1,
+                path_output=self._output,
+                collections=self._collections.copy(),
+                # output_format="json",
+            )
+        )
 
     # Формируем словарь колонок из записи исходной таблицы
     # key - имя колонки
@@ -208,7 +244,7 @@ class ExcelBaseImporter:
         return result_record if not is_empty else None
 
     # группируем записи по идентификатору
-    def __append_to_team(self, mapped_record: list) -> bool:
+    def __append_to_team(self, mapped_record: dict) -> bool:
         team_id = self.__get_team_id(mapped_record)
         if False and team_id:
             if self._teams_ref.get(team_id):
@@ -392,7 +428,6 @@ class ExcelBaseImporter:
                 for item in self.__get_columns_heading():
                     item["active"] = False
                 self.colontitul["foot"].append(record)
-            # если добавлена новая группа
             else:
                 self.__append_to_team(mapped_record)
         if len(self._teams) < 2:
@@ -999,13 +1034,42 @@ class ExcelBaseImporter:
             self.__process_record()
 
     def __process_record(self) -> None:
+        if len(self._teams) == 0:
+            return
         team = self._teams[0]
+        if len(self._teams) % 50 == 0:
+            print_message(
+                "         {} Осталось обработать: {}                          \r".format(
+                    self.func_inn(), len(self._teams)
+                ),
+                end="",
+                flush=True,
+            )
+
         if not self.colontitul["is_parameters"]:
             self.__set_parameters()
         for doc_param in self.__get_config_documents():
-            doc = self.__set_document(team, doc_param)
-            self.__document_split_one_line(doc, doc_param)
-        self._teams.remove(team)
+                self.__make_collections(team.copy(), doc_param)
+        # with ThreadPoolExecutor(max_workers=None) as executor:
+        #     futures = []
+        #     for doc_param in self.__get_config_documents():
+                #     future = executor.submit(self.__make_collections, team, doc_param)
+                #     futures.append(future)
+                # for future in as_completed(futures):
+                #     result = future.result()
+                #     self.__document_split_one_line(doc, doc_param)
+                # self.__make_collections(team.copy(), doc_param)
+
+                # doc, doc_param = self.__set_document(team, doc_param)
+                # self.__document_split_one_line(doc, doc_param)
+        try:
+            self._teams.remove(team)
+        except:
+            pass
+
+    def __make_collections(self, team, doc_param):
+        doc = self.__set_document(team, doc_param)
+        self.__document_split_one_line(doc, doc_param)
 
     def __process_finish(self) -> None:
         for doc_param in self.__get_config_documents():
@@ -1149,7 +1213,7 @@ class ExcelBaseImporter:
 
     # Формирование документа из части исходной таблицы - team (отдельной области или иерархии)
     # выбранной по идентификатору internal_id
-    def __set_document(self, team: dict, doc_param: dict):
+    def __set_document(self, team: dict, doc_param: dict)->dict:
         doc = dict()
         for fld_item in doc_param["fields"]:  # перебор полей выходной таблицы
             # Формируем данные для записи в выходном файле
@@ -1908,47 +1972,51 @@ class ExcelBaseImporter:
     def func(
         self, team: dict = {}, fld_param: dict = {}, row: int = 0, col: int = 0
     ) -> str:
-        self._current_id = fld_param.get("value", "")
-        self._current_index = 0
-        self._current_value = list()
-        if fld_param.get("is_offset"):
-            value = fld_param.get("value_o", "")
-            self._current_value_type = fld_param.get("offset_type", "str")
-        else:
-            value = fld_param.get("value", "")
-            self._current_value_type = fld_param.get("type", "str")
-        self._current_value_pattern = (
-            fld_param["func_pattern"][0] if fld_param.get("func_pattern") else ""
-        )
-        self._current_value_empty = 0 if self._current_value_type == "float" else ""
-        self._current_value_team = team
-        self._current_value_row = row
-        self._current_value_col = col
-        self._current_value_param = fld_param
-        self._current_value_func_is_no_return = fld_param.get(
-            "func_is_no_return", False
-        )
-        self._current_value_func = {}
-        part = "00000000"
-        m = fld_param.get("func", "")
-        m = self.__get_func_list(part, m)
-        self._current_value_func[part]["expression"] = m
-        self._current_value.append(value)
+        self.lock.acquire()
         try:
-            self.__recalc_expression(part)
-            value = self._current_value.pop()
-        except Exception as ex:
-            logger.exception("Func:")
-            value = ""
-        if self._current_value_func_is_no_return and str(value).strip():
-            for x in [
-                x
-                for x in re.split(r"[+-,]", fld_param.get("func", ""))
-                if regular_calc("^[a-z_0-9]+$", x)
-            ]:
-                if str(value).find(x) != -1:
-                    value = ""
-                    break
+            self._current_id = fld_param.get("value", "")
+            self._current_index = 0
+            self._current_value = list()
+            if fld_param.get("is_offset"):
+                value = fld_param.get("value_o", "")
+                self._current_value_type = fld_param.get("offset_type", "str")
+            else:
+                value = fld_param.get("value", "")
+                self._current_value_type = fld_param.get("type", "str")
+            self._current_value_pattern = (
+                fld_param["func_pattern"][0] if fld_param.get("func_pattern") else ""
+            )
+            self._current_value_empty = 0 if self._current_value_type == "float" else ""
+            self._current_value_team = team
+            self._current_value_row = row
+            self._current_value_col = col
+            self._current_value_param = fld_param
+            self._current_value_func_is_no_return = fld_param.get(
+                "func_is_no_return", False
+            )
+            self._current_value_func = {}
+            part = "00000000"
+            m = fld_param.get("func", "")
+            m = self.__get_func_list(part, m)
+            self._current_value_func[part]["expression"] = m
+            self._current_value.append(value)
+            try:
+                self.__recalc_expression(part)
+                value = self._current_value.pop()
+            except Exception as ex:
+                logger.exception("Func:")
+                value = ""
+            if self._current_value_func_is_no_return and str(value).strip():
+                for x in [
+                    x
+                    for x in re.split(r"[+-,]", fld_param.get("func", ""))
+                    if regular_calc("^[a-z_0-9]+$", x)
+                ]:
+                    if str(value).find(x) != -1:
+                        value = ""
+                        break
+        finally:
+            self.lock.release()
         return str(value).strip()
 
     def func_inn(self):
