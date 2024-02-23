@@ -167,8 +167,8 @@ class ExcelBaseImporter:
                             # Табличная область данных
                             self.__check_record_in_body(record, self.row)
                             # если уже нашли более одной группы, то добавляем предпоследнюю в документ
-                            if len(self._teams) > 10:
-                                self.__process_record()
+                            # if len(self._teams) > 10:
+                            #     self.__process_record()
 
                         if self.row % 100 == 0:
                             print_message(
@@ -246,18 +246,19 @@ class ExcelBaseImporter:
     # группируем записи по идентификатору
     def __append_to_team(self, mapped_record: dict) -> bool:
         team_id = self.__get_team_id(mapped_record)
-        if False and team_id:
-            if self._teams_ref.get(team_id):
+        if team_id:
+            if self._teams.get(team_id):
                 self.__update_team(mapped_record, team_id)
             else:
-                self._teams_ref[team_id] = mapped_record
-
-        if self.__check_condition_team(mapped_record):
-            # Новый идентификатор
-            self._teams.append(mapped_record)
-            return True
-        elif len(self._teams) != 0:
-            self.__update_team(mapped_record)
+                self._teams[team_id] = mapped_record
+        # if team_id:
+        #     if self.__check_condition_team(mapped_record):
+        #         # Новый идентификатор
+        #         self._teams.append(mapped_record)
+        #         # self._teams.append(mapped_record)
+        #         return True
+        #     elif len(self._teams) != 0:
+        #         self.__update_team(mapped_record)
         return False
 
     def __update_team(self, mapped_record: dict, team_id: str = ""):
@@ -276,9 +277,9 @@ class ExcelBaseImporter:
                     )
         if team_id:
             for key in mapped_record.keys():
-                size = self._teams_ref[team_id][key][-1]["row"] + 1
+                size = self._teams[team_id][key][-1]["row"] + 1
                 for mr in mapped_record[key]:
-                    self._teams_ref[team_id][key].append(
+                    self._teams[team_id][key].append(
                         {
                             "row": size,
                             "col": mr["col"],
@@ -1036,7 +1037,8 @@ class ExcelBaseImporter:
     def __process_record(self) -> None:
         if len(self._teams) == 0:
             return
-        team = self._teams[0]
+        team = self._teams.popitem(last=False)
+        team = team[1]
         if len(self._teams) % 50 == 0:
             print_message(
                 "         {} Осталось обработать: {}                          \r".format(
@@ -1048,24 +1050,25 @@ class ExcelBaseImporter:
 
         if not self.colontitul["is_parameters"]:
             self.__set_parameters()
-        for doc_param in self.__get_config_documents():
-                self.__make_collections(team.copy(), doc_param)
-        # with ThreadPoolExecutor(max_workers=None) as executor:
-        #     futures = []
-        #     for doc_param in self.__get_config_documents():
-                #     future = executor.submit(self.__make_collections, team, doc_param)
-                #     futures.append(future)
-                # for future in as_completed(futures):
-                #     result = future.result()
-                #     self.__document_split_one_line(doc, doc_param)
-                # self.__make_collections(team.copy(), doc_param)
+        # sync
+        # for doc_param in self.__get_config_documents():
+        #     self.__make_collections(team, doc_param)
+        with ThreadPoolExecutor(max_workers=None) as executor:
+            futures = []
+            for doc_param in self.__get_config_documents():
+                future = executor.submit(self.__make_collections, team, doc_param)
+                futures.append(future)
+            # for future in as_completed(futures):
+            #     result = future.result()
+        #     self.__document_split_one_line(doc, doc_param)
+        # self.__make_collections(team.copy(), doc_param)
 
-                # doc, doc_param = self.__set_document(team, doc_param)
-                # self.__document_split_one_line(doc, doc_param)
-        try:
-            self._teams.remove(team)
-        except:
-            pass
+        # doc, doc_param = self.__set_document(team, doc_param)
+        # self.__document_split_one_line(doc, doc_param)
+        # try:
+        #     self._teams.remove(team)
+        # except:
+        #     pass
 
     def __make_collections(self, team, doc_param):
         doc = self.__set_document(team, doc_param)
@@ -1213,7 +1216,7 @@ class ExcelBaseImporter:
 
     # Формирование документа из части исходной таблицы - team (отдельной области или иерархии)
     # выбранной по идентификатору internal_id
-    def __set_document(self, team: dict, doc_param: dict)->dict:
+    def __set_document(self, team: dict, doc_param: dict) -> dict:
         doc = dict()
         for fld_item in doc_param["fields"]:  # перебор полей выходной таблицы
             # Формируем данные для записи в выходном файле
@@ -1683,7 +1686,8 @@ class ExcelBaseImporter:
         self._is_column_service_exist = (
             False  # Наличие колонки, в которой указаны названия услуг ЖКУ
         )
-        self._teams = list()
+        self._teams = OrderedDict()
+        # self._teams = list()
         self._teams_ref = OrderedDict()
         self._collections = dict()  # коллекция выходных таблиц
         self._possible_columns = dict()
@@ -1833,7 +1837,8 @@ class ExcelBaseImporter:
         for col in self.__get_columns_heading():
             col["active"] = False
         self._column_names = dict()
-        self._teams = list()
+        self._teams = OrderedDict()
+        # self._teams = list()
         self._teams_ref = OrderedDict()
 
     def __add_warning(self, text: str):
