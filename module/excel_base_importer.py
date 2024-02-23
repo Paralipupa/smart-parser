@@ -8,8 +8,10 @@ import aiofiles
 import asyncio
 import json
 import logging
+from multiprocessing import Pool, Manager
+from multiprocessing.managers import DictProxy
 from threading import Thread, Event, Lock
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed, ProcessPoolExecutor
 from collections import OrderedDict
 from aiocsv import AsyncWriter, AsyncDictWriter
 from typing import Union, List
@@ -34,6 +36,9 @@ from .helpers import (
 )
 from .settings import *
 
+# manager = Manager()
+# man: DictProxy = manager.dict()
+# man.collections = dict()
 logger = logging.getLogger(__name__)
 
 
@@ -116,84 +121,103 @@ class ExcelBaseImporter:
     ####################  Точка входа, чтение и обработка файла #############################
     @fatal_error
     def extract(self) -> bool:
-        data_reader = self.__get_data_xls()
-        if not data_reader:
-            self.__add_warning(
-                f"\nОШИБКА чтения файла {self._parameters['filename']['value'][0]}"
-            )
-            return False
-        while self.__init_config():
-            threads = []
-            # t = Thread(target=self.loop)
-            # t.daemon = True
-            # t.start()
-            # threads.append(t)
+        try:
+            data_reader = self.__get_data_xls()
+            if not data_reader:
+                self.__add_warning(
+                    f"\nОШИБКА чтения файла {self._parameters['filename']['value'][0]}"
+                )
+                return False
+            while self.__init_config():
+                threads = []
+                # t = Thread(target=self.loop)
+                # t.daemon = True
+                # t.start()
+                # threads.append(t)
 
-            try:
-                self.num_config = data_reader.set_config(self._page_index)
-                self.config_files[self.num_config]["warning"] = []
-                is_init = True
-                while True:
-                    if not is_init:
-                        self.__read_config()
-                    is_init = False
-                    page = data_reader.get_sheet()
-                    if page is None:
-                        break
-                    self.num_page = page
-                    self.__init_data()
-                    self.__init_page()
-                    self.__set_parameters_page()
-                    if not self.__get_header("pattern"):
-                        self.colontitul["status"] = 1
-                    for self.row, record in enumerate(data_reader):
-                        if self.row < 100 and self.row % 10 == 0:
-                            print_message(
-                                "         {} Обработано: {}                          \r".format(
-                                    self.func_inn(), self.row
-                                ),
-                                end="",
-                                flush=True,
-                            )
-                        record = record[self._col_start :]
-                        if self.colontitul["status"] != 2:
-                            # Область до или после таблицы
-                            if not self.__check_bound_row(self.row):
-                                break
-                            self.__check_colontitul(
-                                self.__get_names(record), self.row, record
-                            )
-                        if self.colontitul["status"] == 2:
-                            # Табличная область данных
-                            self.__check_record_in_body(record, self.row)
-                            # если уже нашли более одной группы, то добавляем предпоследнюю в документ
-                            # if len(self._teams) > 10:
-                            #     self.__process_record()
+                try:
+                    self.num_config = data_reader.set_config(self._page_index)
+                    self.config_files[self.num_config]["warning"] = []
+                    is_init = True
+                    while True:
+                        if not is_init:
+                            self.__read_config()
+                        is_init = False
+                        page = data_reader.get_sheet()
+                        if page is None:
+                            break
+                        self.num_page = page
+                        self.__init_data()
+                        self.__init_page()
+                        self.__set_parameters_page()
+                        if not self.__get_header("pattern"):
+                            self.colontitul["status"] = 1
+                        for self.row, record in enumerate(data_reader):
+                            if self.row < 100 and self.row % 10 == 0:
+                                print_message(
+                                    "         {} Обработано: {}                          \r".format(
+                                        self.func_inn(), self.row
+                                    ),
+                                    end="",
+                                    flush=True,
+                                )
+                            record = record[self._col_start :]
+                            if self.colontitul["status"] != 2:
+                                # Область до или после таблицы
+                                if not self.__check_bound_row(self.row):
+                                    break
+                                self.__check_colontitul(
+                                    self.__get_names(record), self.row, record
+                                )
+                            if self.colontitul["status"] == 2:
+                                # Табличная область данных
+                                self.__check_record_in_body(record, self.row)
+                                if len(self._teams) > 10:
+                                # Оставляем в обработке несколько областей в случае,
+                                # если данные в MS Excel по одному идентификатору записаны в 
+                                # перемешку
+                                    self.__process_record()
+                                    # asyncio.run(
+                                    #     self.write_results_async(
+                                    #         num_config=self.num_config + 1,
+                                    #         num_page=self.num_page + 1,
+                                    #         num_file=self.num_file + 1,
+                                    #         path_output=self._output,
+                                    #         # collections=man.collections.copy(),
+                                    #         collections=self._collections.copy(),
+                                    #         # output_format="json",
+                                    #     )
+                                    # )
+                                    # self._collections = dict()
 
-                        if self.row % 100 == 0:
-                            print_message(
-                                "         {} Обработано: {}                          \r".format(
-                                    self.func_inn(), self.row
-                                ),
-                                end="",
-                                flush=True,
+                            if self.row % 100 == 0:
+                                print_message(
+                                    "         {} Обработано: {}                          \r".format(
+                                        self.func_inn(), self.row
+                                    ),
+                                    end="",
+                                    flush=True,
+                                )
+                        self.__done()
+                        asyncio.run(
+                            self.write_all_results_async(
+                                num_config=self.num_config + 1,
+                                num_page=self.num_page + 1,
+                                num_file=self.num_file + 1,
+                                path_output=self._output,
+                                # collections=man.collections.copy(),
+                                collections=self._collections.copy(),
+                                # output_format="json",
                             )
-                    self.__done()
-                    asyncio.run(
-                        self.write_results_async(
-                            num_config=self.num_config + 1,
-                            num_page=self.num_page + 1,
-                            num_file=self.num_file + 1,
-                            path_output=self._output,
-                            collections=self._collections.copy(),
-                            # output_format="json",
                         )
-                    )
-            finally:
-                self.ex.set()
-                for t in threads:
-                    t.join()
-                # self.loop()
+                        self._collections = dict()
+                finally:
+                    self.ex.set()
+                    for t in threads:
+                        t.join()
+                    # self.loop()
+        except Exception as ex:
+            logger.error(f"{ex}")
 
         self.__process_finish()
 
@@ -210,6 +234,7 @@ class ExcelBaseImporter:
                 num_page=self.num_page + 1,
                 num_file=self.num_file + 1,
                 path_output=self._output,
+                # collections=man.collections.copy(),
                 collections=self._collections.copy(),
                 # output_format="json",
             )
@@ -1051,13 +1076,13 @@ class ExcelBaseImporter:
         if not self.colontitul["is_parameters"]:
             self.__set_parameters()
         # sync
-        # for doc_param in self.__get_config_documents():
-        #     self.__make_collections(team, doc_param)
-        with ThreadPoolExecutor(max_workers=None) as executor:
-            futures = []
-            for doc_param in self.__get_config_documents():
-                future = executor.submit(self.__make_collections, team, doc_param)
-                futures.append(future)
+        for doc_param in self.__get_config_documents():
+            self.__make_collections(team, doc_param)
+        # with ProcessPoolExecutor(max_workers=None) as executor:
+        #     futures = []
+        #     for doc_param in self.__get_config_documents():
+        #         future = executor.submit(self.__make_collections, team, doc_param)
+        #         futures.append(future)
             # for future in as_completed(futures):
             #     result = future.result()
         #     self.__document_split_one_line(doc, doc_param)
@@ -1079,6 +1104,7 @@ class ExcelBaseImporter:
             if doc_param.get("func_after"):
                 param = {"value": "", "func": doc_param["func_after"]}
                 self.func(
+                    # fld_param=param, team=man.collections.get(doc_param["name"])
                     fld_param=param, team=self._collections.get(doc_param["name"])
                 )
 
@@ -1203,6 +1229,9 @@ class ExcelBaseImporter:
     ################################################################################################################################################
     def __append_to_collection(self, name: str, doc: dict) -> None:
         key = self._page_name if self._page_name else "noname"
+        # man.collections.setdefault(name, {key: list()})
+        # man.collections[name].setdefault(key, list())
+        # man.collections[name][key].append(doc)
         self._collections.setdefault(name, {key: list()})
         self._collections[name].setdefault(key, list())
         self._collections[name][key].append(doc)
@@ -1430,6 +1459,24 @@ class ExcelBaseImporter:
             collections=collections,
             output_format=output_format,
         )
+
+    async def write_all_results_async(
+        self,
+        num_config: int = 0,
+        num_page: int = 0,
+        num_file: int = 0,
+        path_output: str = "output",
+        collections: dict = None,
+        output_format: str = None,
+    ):
+        await self.write_collections_async(
+            num_config=num_config,
+            num_page=num_page,
+            num_file=num_file,
+            path_output=path_output,
+            collections=collections,
+            output_format=output_format,
+        )
         await self.write_logs_async(
             num_config=num_config,
             num_page=num_page,
@@ -1439,12 +1486,12 @@ class ExcelBaseImporter:
         )
 
     async def write_json_async(self, filename: str, text: str):
-        async with aiofiles.open(filename, mode="w", encoding=ENCONING) as f:
+        async with aiofiles.open(filename, mode="a", encoding=ENCONING) as f:
             await f.write(text)
 
     async def write_csv_async(self, filename: str, records: list):
         names = [x for x in records[0].keys()]
-        async with aiofiles.open(filename, mode="w", encoding=ENCONING) as f:
+        async with aiofiles.open(filename, mode="a", encoding=ENCONING) as f:
             writer_head = AsyncDictWriter(
                 f, delimiter=";", lineterminator="\r", fieldnames=names
             )
@@ -1462,6 +1509,7 @@ class ExcelBaseImporter:
         collections: dict = None,
         output_format: str = None,
     ) -> None:
+        # if not self.__is_init() or len(man.collections) == 0:
         if not self.__is_init() or len(self._collections) == 0:
             logger.warning(
                 'Не удалось прочитать данные из файла "{0} - {1}"\n'.format(
@@ -1683,6 +1731,7 @@ class ExcelBaseImporter:
         self._col_start = 0
 
     def __init_page(self):
+        # clear_manager()
         self._is_column_service_exist = (
             False  # Наличие колонки, в которой указаны названия услуг ЖКУ
         )
@@ -2259,3 +2308,8 @@ class ExcelBaseImporter:
             mess = "Конфликт в расчетном счете по капитальному ремонту"
             self.__add_warning(mess)
         return ""
+
+# def clear_manager():
+#     man.collections.clear()
+#     # for _ in range(len(man.collections)):
+#     #     man.collections.popitem()
