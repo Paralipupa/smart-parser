@@ -8,6 +8,7 @@ import aiofiles
 import asyncio
 import json
 import logging
+from functools import partial
 from multiprocessing import Pool, Manager
 from multiprocessing.managers import DictProxy
 from threading import Thread, Event, Lock
@@ -183,10 +184,10 @@ class ExcelBaseImporter:
                             if self.colontitul["status"] == 2:
                                 # Табличная область данных
                                 self.__check_record_in_body(record, self.row)
-                                if len(self._teams) > 500:
+                                if len(self._teams) > 50:
                                     # Оставляем в обработке несколько областей в случае,
-                                    # если данные в MS Excel по одному идентификатору записаны в
-                                    # перемешку
+                                    # если данные в MS Excel по одному идентификатору записаны
+                                    # вперемешку
                                     self.__process_record()
                                     # asyncio.run(
                                     #     self.write_results_async(
@@ -1036,12 +1037,12 @@ class ExcelBaseImporter:
         return x
 
     def __done(self):
-        with ThreadPoolExecutor(max_workers=None) as executor:
-            while len(self._teams) != 0:
-                executor.submit(self.__process_record())
+        # with ThreadPoolExecutor(max_workers=None) as executor:
+        #     while len(self._teams) != 0:
+        #         executor.submit(self.__process_record())
 
-        # while len(self._teams) != 0:
-        #     self.__process_record()
+        while len(self._teams) != 0:
+            self.__process_record()
 
     def __process_record(self) -> None:
         if len(self._teams) == 0:
@@ -1060,15 +1061,17 @@ class ExcelBaseImporter:
         if not self.colontitul["is_parameters"]:
             self.__set_parameters()
         # sync
-        for doc_param in self.__get_config_documents():
-            self.__make_collections(team, doc_param)
-        # with ProcessPoolExecutor(max_workers=None) as executor:
-        #     futures = []
-        #     for doc_param in self.__get_config_documents():
-        #         future = executor.submit(self.__make_collections, team, doc_param)
-        #         futures.append(future)
-        # for future in as_completed(futures):
-        #     result = future.result()
+        # for doc_param in self.__get_config_documents():
+        #     self.__make_collections(team, doc_param)
+        
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            # futures = []            
+            executor.map(partial(self.__make_collections,team=team),self.__get_config_documents())
+            # for doc_param in self.__get_config_documents():
+            #     executor.submit(self.__make_collections, doc_param, team)
+            #     futures.append(future)
+            # for future in as_completed(futures):
+            #     result = future.result()
         #     self.__document_split_one_line(doc, doc_param)
         # self.__make_collections(team.copy(), doc_param)
 
@@ -1079,8 +1082,9 @@ class ExcelBaseImporter:
         # except:
         #     pass
 
-    def __make_collections(self, team, doc_param):
-        doc = self.__set_document(team, doc_param)
+    def __make_collections(self, doc_param, team ):
+        _Func = Func(self._parameters, self._dictionary,self._column_names, self.is_hash)
+        doc = self.__set_document(team, doc_param, _Func.func)
         self.__document_split_one_line(doc, doc_param)
 
     def __process_finish(self) -> None:
@@ -1230,7 +1234,7 @@ class ExcelBaseImporter:
 
     # Формирование документа из части исходной таблицы - team (отдельной области или иерархии)
     # выбранной по идентификатору internal_id
-    def __set_document(self, team: dict, doc_param: dict) -> dict:
+    def __set_document(self, team: dict, doc_param: dict, func) -> dict:
         doc = dict()
         for fld_item in doc_param["fields"]:  # перебор полей выходной таблицы
             # Формируем данные для записи в выходном файле
@@ -1342,7 +1346,7 @@ class ExcelBaseImporter:
 
                 if fld_record["func"]:
                     # если есть, запускаем функцию
-                    fld_record["value"] = self.func(
+                    fld_record["value"] = func(
                         team=team, fld_param=fld_record, row=table_row[0], col=col[0]
                     )
                 elif fld_record["is_offset"]:

@@ -149,7 +149,7 @@ class Func:
     def func(
         self, team: dict = {}, fld_param: dict = {}, row: int = 0, col: int = 0
     ) -> str:
-        self.lock.acquire()
+        # self.lock.acquire()
         try:
             self._current_id = fld_param.get("value", "")
             self._current_index = 0
@@ -196,7 +196,8 @@ class Func:
         except Exception as ex:
             logger.error(f"{ex}")
         finally:
-            self.lock.release()
+            # self.lock.release()
+            pass
         return str(value).strip()
 
     def func_inn(self):
