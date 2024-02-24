@@ -363,3 +363,34 @@ def check_tarif(data: list) -> str:
         if len(res) != 1:
             mess += f"{index+1}: {item}\n"
     return mess
+
+def get_value(
+    value: str = "", pattern: str = "", type_value: str = ""
+) -> Union[str, int, float]:
+    try:
+        value = str(value)
+        if type_value == "int":
+            value = str(get_value_int(value))
+        elif type_value == "double" or type_value == "float":
+            value = str(get_value_float(value))
+    except:
+        pass
+    result = regular_calc(pattern, value)
+    if result != None:
+        try:
+            if type_value == "int":
+                result = get_value_int(value)
+            elif type_value == "double" or type_value == "float":
+                result = get_value_float(result)
+            else:
+                result = result.rstrip() + " "
+        except:
+            result = 0
+    else:
+        if type_value == "int":
+            result = 0
+        elif type_value == "double" or type_value == "float":
+            result = 0
+        else:
+            result = ""
+    return result

@@ -81,9 +81,9 @@ class Parser:
                                 index=index,
                                 output=self.output_path,
                                 period=self._period,
+                                is_hash=self.is_hash,
+                                dictionary=self._dictionary.copy(),
                             )
-                            rep.is_hash = self.is_hash
-                            rep._dictionary = self._dictionary.copy()
                             if (
                                 self.check_tarif is False
                                 and not rep._dictionary.get("tarif") is None
