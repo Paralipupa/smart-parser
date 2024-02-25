@@ -262,7 +262,9 @@ class GisConfig:
                 self.set_column_offset(i)
             i += 1
             if i < COLUMN_BEGIN:
-                if not self.is_section_exist(f"col_{i}") and self.is_section_exist(f"col_{COLUMN_BEGIN}"):
+                if not self.is_section_exist(f"col_{i}") and self.is_section_exist(
+                    f"col_{COLUMN_BEGIN}"
+                ):
                     self.column_difference = (i, COLUMN_BEGIN - i)
                     i = COLUMN_BEGIN
 
@@ -282,9 +284,11 @@ class GisConfig:
             self._condition_team.append(
                 {
                     "col": self._columns_heading[
-                        i - self.column_difference[1]
-                        if i > self.column_difference[0]
-                        else i
+                        (
+                            i - self.column_difference[1]
+                            if i > self.column_difference[0]
+                            else i
+                        )
                     ]["name"],
                     "pattern": ls,
                 }
@@ -410,9 +414,11 @@ class GisConfig:
         if x:
             fld["column"] = [
                 (
-                    y[POS_NUMERIC_VALUE] - self.column_difference[1]
-                    if y[POS_NUMERIC_VALUE] > self.column_difference[0]
-                    else y[POS_NUMERIC_VALUE],
+                    (
+                        y[POS_NUMERIC_VALUE] - self.column_difference[1]
+                        if y[POS_NUMERIC_VALUE] > self.column_difference[0]
+                        else y[POS_NUMERIC_VALUE]
+                    ),
                     y[POS_NUMERIC_IS_ABSOLUTE],
                     y[POS_NUMERIC_IS_NEGATIVE],
                 )
@@ -450,9 +456,11 @@ class GisConfig:
         if x:
             fld["offset_column"] = [
                 (
-                    y[POS_NUMERIC_VALUE] - self.column_difference[1]
-                    if y[POS_NUMERIC_VALUE] > self.column_difference[0]
-                    else y[POS_NUMERIC_VALUE],
+                    (
+                        y[POS_NUMERIC_VALUE] - self.column_difference[1]
+                        if y[POS_NUMERIC_VALUE] > self.column_difference[0]
+                        else y[POS_NUMERIC_VALUE]
+                    ),
                     y[POS_NUMERIC_IS_ABSOLUTE],
                     y[POS_NUMERIC_IS_NEGATIVE],
                 )
@@ -499,13 +507,21 @@ class GisConfig:
             fld["func_pattern"] = [x]
         else:
             fld.setdefault("func_pattern", [x])
-        # признак возврата значения функции
-        fld["func_is_no_return"] = (
-            True
-            if self.read_config(f"{name}", "func_is_no_return").lower()
-            in ("-1", "1", "true")
-            else False
-        )
+        # признак не возврата значения функции
+        x = self.read_config(f"{name}", "func_is_no_return").lower()
+        if x:
+            fld["func_is_no_return"] = (
+                True if x.lower() in ("-1", "1", "true") else False
+            )
+        else:
+            fld.setdefault("func_is_no_return", False)
+        # True = всегда применять функцию, False = не применять, если пустое значение
+        x = self.read_config(f"{name}", "func_is_empty")
+        if x:
+            fld["func_is_empty"] = False if x.lower() in ("0", "false") else True
+        else:
+            fld.setdefault("func_is_empty", True)
+
         return fld
 
     @warning_error

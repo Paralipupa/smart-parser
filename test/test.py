@@ -54,7 +54,7 @@ class TestGisConfig(unittest.TestCase):
                         ]
                         if l:
                             miss_lines[-1]["value"].append(
-                                f"{l[0]} = {lines_new[l[0]]}"
+                                f"Т({l[0]}) = {lines_new[l[0]]}"
                             )
                         else:
                             miss_lines[-1]["value"].append(

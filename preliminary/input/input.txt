@@ -51,7 +51,7 @@ required_pu:serial_number,device_type
 ;ВСЕГО объем с учетом перерасчетов
 ;ВСЕГО с учетом перерасчетов, руб.
 
-0:ХВС@internal_id_pu@metering_device_internal_id_puv
+;0:ХВС@internal_id_pu@metering_device_internal_id_puv
 ;0:ХВС_2@internal_id_pu@metering_device_internal_id_puv
 ;0:Л/c;Л/c;Услуга;ИдУслуги@internal_id_pu@metering_device_internal_id_puv
 

@@ -155,18 +155,20 @@ class Func:
             self._current_index = 0
             self._current_value = list()
             if fld_param.get("is_offset"):
-
                 value = fld_param.get("value_o", "")
                 self._current_value_type = fld_param.get("offset_type", "str")
             else:
                 value = fld_param.get("value", "")
                 self._current_value_type = fld_param.get("type", "str")
+            if bool(value) is False and not fld_param.get("func_is_empty", True):
+                return value
+
             self._current_value_pattern = (
                 fld_param["func_pattern"][0] if fld_param.get("func_pattern") else ""
             )
             self._current_value_empty = 0 if self._current_value_type == "float" else ""
             self._current_value_team = team
-            self._current_value_row = row
+            self._current_value_row = row if not fld_param["value_rows"] else fld_param["value_rows"][0]
             self._current_value_col = col
             self._current_value_param = fld_param
             self._current_value_func_is_no_return = fld_param.get(
