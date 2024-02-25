@@ -218,8 +218,8 @@ class UnionData:
                 if (len(valA.strip()) == 0) or (
                     len(valA.replace(" ", "")) < len(valB.replace(" ", ""))
                 ):
-                    if a[key]:
-                        logger.debug(f"{key_record} {key}:{a[key]} = {valB}")
+                    # if a[key]:
+                    #     logger.debug(f"{key_record} {key}:{a[key]} = {valB}")
                     a[key] = valB
         return a
 

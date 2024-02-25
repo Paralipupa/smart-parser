@@ -20,7 +20,12 @@ man_list: list = manager.list()
 
 class SearchConfig:
     def __init__(
-        self, file_name: str, config_files: list, inn: str = "", file_conf: str = ""
+        self,
+        file_name: str,
+        config_files: list,
+        inn: str = "",
+        file_conf: str = "",
+        is_daemon: bool = False,
     ):
         self.file_name = file_name
         self.inn = inn if inn else get_inn(file_name)
@@ -30,6 +35,7 @@ class SearchConfig:
         self.zip_files = []
         self.headers: dict = dict()
         self.counter: int = 0
+        self.is_daemon = is_daemon
         print_message("", flush=True)
 
     @fatal_error
@@ -44,14 +50,16 @@ class SearchConfig:
         if len(self.list_files) == 0:
             return
         clear_manager()
-        pool = Pool()
-        for item in self.list_files:
-            pool.apply_async(self.put_data_file, args=(item,))
-        pool.close()
-        pool.join()
+        if self.is_daemon:
         # sync
-        # for item in self.list_files:
-        #     self.put_data_file(item)
+            for item in self.list_files:
+                self.put_data_file(item)
+        else:
+            pool = Pool()
+            for item in self.list_files:
+                pool.apply_async(self.put_data_file, args=(item,))
+            pool.close()
+            pool.join()
         self.__to_collect_out_files()
         return
 
@@ -80,9 +88,9 @@ class SearchConfig:
 
     def __check_config(self, data_file: dict) -> bool:
         config_file: dict = data_file["config"]
-        logger.debug(
-            f"check: {os.path.basename(config_file[0]['name'])} \t {os.path.basename(data_file['name'])}"
-        )
+        # logger.debug(
+        #     f"check: {os.path.basename(config_file[0]['name'])} \t {os.path.basename(data_file['name'])}"
+        # )
         rep: ExcelBaseImporter = ExcelBaseImporter(
             file_name=data_file["name"],
             config_files=data_file["config"],
@@ -156,18 +164,22 @@ class SearchConfig:
                 data_file["config"] = sorted(
                     data_file["config"],
                     key=lambda x: (
-                        0
-                        if str(x["name"]).find("000") != -1
-                        else (1 if str(x["name"]).find("002") != -1 else 2),
+                        (
+                            0
+                            if str(x["name"]).find("000") != -1
+                            else (1 if str(x["name"]).find("002") != -1 else 2)
+                        ),
                         x["sheets"],
                     ),
                 )
             self.list_files = sorted(
                 list_data_file,
                 key=lambda x: (
-                    0
-                    if str(x["config"][0]["name"]).find("000") != -1
-                    else (1 if str(x["config"][0]["name"]).find("002") != -1 else 2),
+                    (
+                        0
+                        if str(x["config"][0]["name"]).find("000") != -1
+                        else (1 if str(x["config"][0]["name"]).find("002") != -1 else 2)
+                    ),
                     str(x["name"]),
                 ),
             )

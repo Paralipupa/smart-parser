@@ -32,6 +32,7 @@ class Parser:
         path_down: str = PATH_OUTPUT,
         file_down: str = "output",
         hash: str = "yes",
+        is_daemon: bool = False,
     ) -> None:
         self.logs = list()
         self._dictionary = dict()
@@ -45,6 +46,7 @@ class Parser:
         self.download_file = file_down
         self.is_hash = False if hash == "no" else True
         self.check_tarif = False
+        self.is_daemon = is_daemon
         self.config_files = get_config_files()
 
     def start(self) -> list:
@@ -67,7 +69,11 @@ class Parser:
                     f"Архив: {COLOR_CONSOLE['red']}'{os.path.basename(self.name) }'{COLOR_CONSOLE['end']}"
                 )
                 search_conf = SearchConfig(
-                    self.name, self.config_files, self.inn, self.config
+                    file_name=self.name,
+                    config_files=self.config_files,
+                    inn=self.inn,
+                    file_conf=self.config,
+                    is_daemon=self.is_daemon,
                 )
                 list_files = search_conf.get_list_files()
                 isParser = False
@@ -121,15 +127,19 @@ class Parser:
                 else:
                     logger.info(f"Данные в архиве не распознаны")
         except InnMismatchException as ex:
+            logger.exception(f"{ex}")
             return f"{ex}"
         except FatalException as ex:
+            logger.exception(f"{ex}")
             return f"{ex._message}"
         except ConfigNotFoundException as ex:
+            logger.exception(f"{ex}")
             return f"{ex._message}"
         except CheckTarifException as ex:
+            logger.exception(f"{ex}")
             return f"{ex._message}"
         except Exception as ex:
-            logger.exception("Error start")
+            logger.exception(f"{ex}")
             return f"{ex}"
         shutil.copy(
             os.path.join(BASE_DIR, "doc", "error.txt"),

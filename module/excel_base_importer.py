@@ -117,7 +117,7 @@ class ExcelBaseImporter:
                 self.config_files[self.index_config - 1]["sheets"].append(index)
                 is_find = True
         mess = f'\t{os.path.basename(self.config_files[self.index_config-1]["name"])}'
-        logger.debug(mess)
+        # logger.debug(mess)
         return is_find
 
     @fatal_error
@@ -1830,7 +1830,7 @@ class ExcelBaseImporter:
                         )
                     )
             if mess and not mess in self._config._debug:
-                logger.debug("\n" + mess.strip())
+                # logger.debug("\n" + mess.strip())
                 self._config._debug.append(mess)
                 if is_warning:
                     self.__add_warning(mess)
