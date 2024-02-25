@@ -168,7 +168,10 @@ class Func:
             )
             self._current_value_empty = 0 if self._current_value_type == "float" else ""
             self._current_value_team = team
-            self._current_value_row = row if not fld_param["value_rows"] else fld_param["value_rows"][0]
+            self._current_value_row = row 
+            if fld_param.get("value_rows"):
+                if len(fld_param["value_rows"]) != 0:
+                    self._current_value_row = fld_param["value_rows"][0]
             self._current_value_col = col
             self._current_value_param = fld_param
             self._current_value_func_is_no_return = fld_param.get(

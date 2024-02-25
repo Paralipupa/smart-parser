@@ -58,7 +58,7 @@ class TestGisConfig(unittest.TestCase):
                             )
                         else:
                             miss_lines[-1]["value"].append(
-                                "  = " + ";".join(["" for x in line.split(";")])
+                                "Т(0)  = " + ";".join(["" for x in line.split(";")])
                             )
                         miss_lines[-1]["value"].append(f"О({row}) = {line}")
         path_log = os.path.join(os.path.join(os.path.dirname(__file__), "log"))
@@ -151,8 +151,21 @@ class TestGisConfig(unittest.TestCase):
             union="output",
             path_down=os.path.join(BASE_DIR, "test", "download"),
         )
-# --------------------------------------------------------------------------------------
-    def test_druzhba(self):
+
+    # --------------------------------------------------------------------------------------
+    def test_01_comfort(self):
+        self.parser.name = os.path.join(BASE_DIR, "test", "input", "comfort.zip")
+        self.parser.is_hash = False
+        self.parser.download_file = (
+            f"comfort{'_no_hash' if self.parser.is_hash is False else ''}.zip"
+        )
+        self.parser.inn = "7811334511"
+        self.__remove_download()
+        self.parser.start()
+        hash_origin, hash_download = self.__check()
+        self.assertEqual(hash_origin, hash_download)
+
+    def test_02_druzhba(self):
         self.parser.name = os.path.join(BASE_DIR, "test", "input", "druzhba.zip")
         self.parser.is_hash = False
         self.parser.download_file = (
@@ -163,7 +176,43 @@ class TestGisConfig(unittest.TestCase):
         hash_origin, hash_download = self.__check()
         self.assertEqual(hash_origin, hash_download)
 
-    def test_gefest(self):
+    def test_03_molod(self):
+        self.parser.name = os.path.join(BASE_DIR, "test", "input", "molod.zip")
+        self.parser.is_hash = False
+        self.parser.download_file = (
+            f"molod{'_no_hash' if self.parser.is_hash is False else ''}.zip"
+        )
+        self.__remove_download()
+        self.parser.start()
+        hash_origin, hash_download = self.__check()
+        self.assertEqual(hash_origin, hash_download)
+
+    def test_04_t414(self):
+        self.parser.name = os.path.join(BASE_DIR, "test", "input", "414.zip")
+        self.parser.is_hash = False
+        self.parser.download_file = (
+            f"414{'_no_hash' if self.parser.is_hash is False else ''}.zip"
+        )
+        self.parser.inn = "7825455026"
+        self.parser.is_hash = False
+        self.__remove_download()
+        self.parser.start()
+        hash_origin, hash_download = self.__check()
+        self.assertEqual(hash_origin, hash_download)
+
+    def test_05_t93(self):
+        self.parser.is_hash = False
+        self.parser.name = os.path.join(BASE_DIR, "test", "input", "93.zip")
+        self.parser.download_file = (
+            f"93{'_no_hash' if self.parser.is_hash is False else ''}.zip"
+        )
+        self.parser.inn = "7806034914"
+        self.__remove_download()
+        self.parser.start()
+        hash_origin, hash_download = self.__check()
+        self.assertEqual(hash_origin, hash_download)
+
+    def test_10_gefest(self):
         self.parser.is_hash = False
         self.parser.name = os.path.join(BASE_DIR, "test", "input", "gefest.zip")
         self.parser.download_file = (
@@ -180,60 +229,12 @@ class TestGisConfig(unittest.TestCase):
         hash_origin, hash_download = self.__check()
         self.assertEqual(hash_origin, hash_download)
 
-    def test_molod(self):
-        self.parser.name = os.path.join(BASE_DIR, "test", "input", "molod.zip")
-        self.parser.is_hash = False
-        self.parser.download_file = (
-            f"molod{'_no_hash' if self.parser.is_hash is False else ''}.zip"
-        )
-        self.__remove_download()
-        self.parser.start()
-        hash_origin, hash_download = self.__check()
-        self.assertEqual(hash_origin, hash_download)
-
-    def test_t414(self):
-        self.parser.name = os.path.join(BASE_DIR, "test", "input", "414.zip")
-        self.parser.is_hash = False
-        self.parser.download_file = (
-            f"414{'_no_hash' if self.parser.is_hash is False else ''}.zip"
-        )
-        self.parser.inn = "7825455026"
-        self.parser.is_hash = False
-        self.__remove_download()
-        self.parser.start()
-        hash_origin, hash_download = self.__check()
-        self.assertEqual(hash_origin, hash_download)
-
-    def test_t93(self):
-        self.parser.is_hash = False
-        self.parser.name = os.path.join(BASE_DIR, "test", "input", "93.zip")
-        self.parser.download_file = (
-            f"93{'_no_hash' if self.parser.is_hash is False else ''}.zip"
-        )
-        self.parser.inn = "7806034914"
-        self.__remove_download()
-        self.parser.start()
-        hash_origin, hash_download = self.__check()
-        self.assertEqual(hash_origin, hash_download)
-
-    def test_shustoff(self):
+    def test_99_shustoff(self):
         self.parser.name = os.path.join(BASE_DIR, "test", "input", "shustoff.zip")
         self.parser.is_hash = False
         self.parser.download_file = (
             f"shustoff{'_no_hash' if self.parser.is_hash is False else ''}.zip"
         )
-        self.__remove_download()
-        self.parser.start()
-        hash_origin, hash_download = self.__check()
-        self.assertEqual(hash_origin, hash_download)
-
-    def test_comfort(self):
-        self.parser.name = os.path.join(BASE_DIR, "test", "input", "comfort.zip")
-        self.parser.is_hash = False
-        self.parser.download_file = (
-            f"comfort{'_no_hash' if self.parser.is_hash is False else ''}.zip"
-        )
-        self.parser.inn = "7811334511"
         self.__remove_download()
         self.parser.start()
         hash_origin, hash_download = self.__check()

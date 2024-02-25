@@ -184,7 +184,7 @@ class ExcelBaseImporter:
                             if self.colontitul["status"] == 2:
                                 # Табличная область данных
                                 self.__check_record_in_body(record, self.row)
-                                if len(self._teams) > 50:
+                                if len(self._teams) > 10:
                                     # Оставляем в обработке несколько областей в случае,
                                     # если данные в MS Excel по одному идентификатору записаны
                                     # вперемешку
@@ -972,11 +972,7 @@ class ExcelBaseImporter:
     ) -> Union[str, int, float]:
         rows: list = record["offset_row"]
         cols: list = record["offset_column"]
-        value = (
-            0
-            if record["offset_type"] == "float" or record["offset_type"] == "int"
-            else ""
-        )
+        value = record["value_o"]
         if not rows:
             rows = [(0, False)]
         if not cols:
@@ -1067,11 +1063,11 @@ class ExcelBaseImporter:
         if not self.colontitul["is_parameters"]:
             self.__set_parameters()
         # sync
-        for doc_param in self.__get_config_documents():
-            self.__make_collections(doc_param, team)
+        # for doc_param in self.__get_config_documents():
+        #     self.__make_collections(doc_param, team)
 
-        # with ThreadPoolExecutor(max_workers=8) as executor:
-        #     executor.map(partial(self.__make_collections,team=team),self.__get_config_documents())
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            executor.map(partial(self.__make_collections,team=team),self.__get_config_documents())
 
     def __make_collections(self, doc_param, team):
         _Func = Func(
@@ -1304,11 +1300,12 @@ class ExcelBaseImporter:
                                             table_row[0],
                                             col[POS_VALUE],
                                         )
-                                        if x_o:
-                                            fld_record["value_o"] += x_o
-                                            # fld_record["value_rows"].append(
-                                            #     table_row[POS_VALUE]
-                                            # )
+                                        if x_o and fld_record["value_o"] != x_o:
+                                            fld_record["value_o"] = x_o
+                                            if fld_record["func_is_empty"] is False:
+                                                fld_record["value_rows"].append(
+                                                    table_row[POS_VALUE]
+                                                )
                                             # запоминаем, чтобы не было повтора
                                             offset_rows_exclude.add(
                                                 (
