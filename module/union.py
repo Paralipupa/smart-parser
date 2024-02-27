@@ -72,6 +72,8 @@ class UnionData:
         self.__make_archive(save_directories)
         if os.path.isdir(self.path_input):
             shutil.rmtree(self.path_input)
+            if os.path.isfile(os.path.join(self.path_output, self.file_output+".log")):
+                os.remove(os.path.join(self.path_output, self.file_output+".log"))
         return self.file_output
 
     def __get_data_files(self, files: list) -> dict:

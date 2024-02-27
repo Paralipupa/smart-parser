@@ -230,6 +230,7 @@ def get_config_files():
         files = []
     return files
 
+
 def get_list_files(name: str) -> list:
     l = list()
     with open(name, "r", encoding="utf-8") as f:
@@ -364,6 +365,7 @@ def check_tarif(data: list) -> str:
             mess += f"{index+1}: {item}\n"
     return mess
 
+
 def get_value(
     value: str = "", pattern: str = "", type_value: str = ""
 ) -> Union[str, int, float]:
@@ -394,3 +396,8 @@ def get_value(
         else:
             result = ""
     return result
+
+
+def write_log_time(file_name: str):
+    with open(file_name+".log", "w") as f:
+        f.write(f"{file_name}\t" + datetime.now().strftime("%d-%m-%Y %H:%M:%S"))

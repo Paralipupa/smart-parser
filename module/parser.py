@@ -89,6 +89,13 @@ class Parser:
                                 period=self._period,
                                 is_hash=self.is_hash,
                                 dictionary=self._dictionary.copy(),
+                                download_file=(
+                                    os.path.join(
+                                        self.download_path, self.download_file
+                                    )
+                                    if self.is_daemon
+                                    else ""
+                                ),
                             )
                             if (
                                 self.check_tarif is False

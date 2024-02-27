@@ -23,19 +23,17 @@ from .file_readers import get_file_reader
 from preliminary.utils import get_ident, get_reg
 from module.func import Func
 from .helpers import (
-    hashit,
+    write_log_time,
     warning_error,
     fatal_error,
     print_message,
     regular_calc,
     get_value,
     get_value_int,
-    get_value_float,
     get_value_range,
     get_months,
     get_absolute_index,
     get_index_key,
-    get_index_find_any,
 )
 from .settings import *
 
@@ -57,6 +55,7 @@ class ExcelBaseImporter:
         period: datetime.date = None,
         is_hash: bool = True,
         dictionary: dict = dict(),
+        download_file: str = ""
     ):
         self.num_file = index
         self.index_config: int = 0
@@ -93,6 +92,8 @@ class ExcelBaseImporter:
         self.func_inn = self.Func.func_inn
         # self.__set_functions()
         self.__init_page()
+        self.download_file = download_file
+        
 
     ###################  Проверка совместимости файла конфигурации ######################
     def check(self, sheets_in: list, is_warning: bool = False) -> bool:
@@ -1065,6 +1066,8 @@ class ExcelBaseImporter:
                 end="",
                 flush=True,
             )
+        if self.download_file:
+            write_log_time(self.download_file)
 
         if not self.colontitul["is_parameters"]:
             self.__set_parameters()
