@@ -95,7 +95,7 @@ class ExcelBaseImporter:
         self.__init_page()
 
     ###################  Проверка совместимости файла конфигурации ######################
-    def check(self, headers: list, is_warning: bool = False) -> bool:
+    def check(self, sheets_in: list, is_warning: bool = False) -> bool:
         self.__init_config()
         self.__read_config()
         is_find = False
@@ -109,14 +109,20 @@ class ExcelBaseImporter:
             self.__add_warning(mess)
             # logger.warning(mess)
             return False
-        self._headers = self.__get_headers()
-        for index, headers in enumerate(self._headers):
+        if sheets_in:
+            sheets = sheets_in.copy()
+        else:
+            sheets = self.__get_headers()
+        for index, rows in enumerate(sheets):
             self.__init_data()
             self.__init_page()
-            if self.__check_controll(headers, True):
+            if self.__check_controll(rows, True):
                 self.config_files[self.index_config - 1]["sheets"].append(index)
                 is_find = True
         mess = f'\t{os.path.basename(self.config_files[self.index_config-1]["name"])}'
+        if not sheets_in:
+            for sheet in sheets:
+                sheets_in.append(sheet)
         # logger.debug(mess)
         return is_find
 
@@ -822,7 +828,7 @@ class ExcelBaseImporter:
                 for record in data_reader:
                     sheet_headers.append(record)
                     index += 1
-                    if index > self._config._max_rows_heading[0][0]:
+                    if index > 100: # self._config._max_rows_heading[0][0]:
                         break
                 headers.append(sheet_headers)
         except Exception as ex:

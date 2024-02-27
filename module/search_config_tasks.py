@@ -1,5 +1,6 @@
 import pathlib, logging, re, json
 from multiprocessing import Pool, Manager
+from multiprocessing.managers import ListProxy, DictProxy
 from typing import List
 from .excel_base_importer import ExcelBaseImporter
 from .helpers import (
@@ -15,7 +16,9 @@ from .settings import *
 
 logger = logging.getLogger(__name__)
 manager = Manager()
-man_list: list = manager.list()
+man_list: ListProxy = manager.list()
+man_dict: DictProxy = manager.dict()
+man_dict.headers = dict()
 
 
 class SearchConfig:
@@ -98,8 +101,8 @@ class SearchConfig:
         )
         if rep.is_file_exists:
             key = hashit(data_file["name"].encode("utf-8"))
-            self.headers.setdefault(key, [])
-            b = rep.check(self.headers[key])
+            man_dict.headers.setdefault(key, [])
+            b = rep.check(man_dict.headers[key])
             man_list.append(data_file)
             return b
         if not rep.is_file_exists:
@@ -218,6 +221,7 @@ class SearchConfig:
 
 
 def clear_manager():
+    man_dict.headers.clear()
     for _ in range(len(man_list)):
         man_list.pop()
 
