@@ -174,6 +174,7 @@ class ExcelBaseImporter:
                     if not self.__get_header("pattern"):
                         self.colontitul["status"] = 1
                     try:
+                        self.ex = Event()
                         threads = []
                         t = Thread(target=self.stage_build_documents)
                         t.daemon = True
@@ -183,8 +184,8 @@ class ExcelBaseImporter:
                         for self.row, record in enumerate(data_reader):
                             if self.row < 100 and self.row % 10 == 0:
                                 print_message(
-                                    "         {} Обработано: {}                          \r".format(
-                                        self.func_inn(), self.row
+                                    "         {} {} Обработано: {}                          \r".format(
+                                        self.num_page, self.func_inn(), self.row
                                     ),
                                     end="",
                                     flush=True,
@@ -200,16 +201,16 @@ class ExcelBaseImporter:
                             if self.colontitul["status"] == 2:
                                 # Табличная область данных
                                 self.__check_record_in_body(record, self.row)
-                                # if len(self._teams) > 10:
+                                # if len(self._teams) > 50:
                                 # Оставляем в обработке несколько областей в случае,
                                 # если данные в MS Excel по одному идентификатору записаны
-                                # вперемешку
+                                # не по-порядку
                                 # self.__process_record()
 
                             if self.row % 100 == 0:
                                 print_message(
-                                    "         {} Обработано: {}                          \r".format(
-                                        self.func_inn(), self.row
+                                    "         {} {} Обработано: {}                          \r".format(
+                                        self.num_page, self.func_inn(), self.row
                                     ),
                                     end="",
                                     flush=True,
@@ -218,6 +219,7 @@ class ExcelBaseImporter:
                         self.ex.set()
                         for t in threads:
                             t.join()
+                        self._collections.clear()
                     # self.__done()
                     # asyncio.run(
                     #     self.write_all_results_async(
@@ -240,9 +242,8 @@ class ExcelBaseImporter:
 
     def stage_build_documents(self):
         while not self.ex.is_set():
-            pass
-            # if len(self._teams) > 10:
-            #     self.__process_record()
+            if len(self._teams) > 10:
+                self.__process_record()
         self.__done()
         self.stage_print_documents()
 
@@ -1074,8 +1075,8 @@ class ExcelBaseImporter:
             team = team[1]
             if len(self._teams) % 10 == 0:
                 print_message(
-                    "         {} Осталось обработать: {}                          \r".format(
-                        self.func_inn(), len(self._teams)
+                    "         {} {} Осталось обработать: {}                          \r".format(
+                        self.num_page, self.func_inn(), len(self._teams)
                     ),
                     end="",
                     flush=True,
