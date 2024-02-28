@@ -180,6 +180,11 @@ class ExcelBaseImporter:
                         t.daemon = True
                         t.start()
                         threads.append(t)
+                        threads = []
+                        t = Thread(target=self.stage_print_documents)
+                        t.daemon = True
+                        t.start()
+                        threads.append(t)
 
                         for self.row, record in enumerate(data_reader):
                             if self.row < 100 and self.row % 10 == 0:
@@ -245,32 +250,24 @@ class ExcelBaseImporter:
             if len(self._teams) > 10:
                 self.__process_record()
         self.__done()
-        self.stage_print_documents()
+        # self.stage_print_documents()
 
     def stage_print_documents(self):
-        # while not self.ex.is_set():
-        #     if len(self._collections) > 10:
-        #         asyncio.run(
-        #             self.write_all_results_async(
-        #                 num_config=self.num_config + 1,
-        #                 num_page=self.num_page + 1,
-        #                 num_file=self.num_file + 1,
-        #                 path_output=self._output,
-        #                 collections=self._collections.copy(),
-        #                 # output_format="json",
-        #             )
-        #         )
-        #         self._collections.clear()
-        asyncio.run(
-            self.write_all_results_async(
-                num_config=self.num_config + 1,
-                num_page=self.num_page + 1,
-                num_file=self.num_file + 1,
-                path_output=self._output,
-                collections=self._collections.copy(),
-                # output_format="json",
+        while not self.ex.is_set():
+            pass
+        while len(self._teams) != 0:
+            pass
+        if self._collections.copy():
+            asyncio.run(
+                self.write_all_results_async(
+                    num_config=self.num_config + 1,
+                    num_page=self.num_page + 1,
+                    num_file=self.num_file + 1,
+                    path_output=self._output,
+                    collections=self._collections.copy(),
+                    # output_format="json",
+                )
             )
-        )
         # self._collections.clear()
 
     # Формируем словарь колонок из записи исходной таблицы
@@ -1071,8 +1068,8 @@ class ExcelBaseImporter:
         if len(self._teams) == 0:
             return
         try:
-            team = self._teams.popitem(last=False)
-            team = team[1]
+            key = next(iter(self._teams))
+            team = self._teams[key]
             if len(self._teams) % 10 == 0:
                 print_message(
                     "         {} {} Осталось обработать: {}                          \r".format(
@@ -1097,6 +1094,8 @@ class ExcelBaseImporter:
             #     )
         except Exception as ex:
             logger.error(f"{ex}")
+        finally:
+            self._teams.popitem(last=False)
 
     def __make_collections(self, doc_param, team):
         try:
