@@ -55,7 +55,7 @@ class ExcelBaseImporter:
         period: datetime.date = None,
         is_hash: bool = True,
         dictionary: dict = dict(),
-        download_file: str = ""
+        download_file: str = "",
     ):
         self.num_file = index
         self.index_config: int = 0
@@ -66,6 +66,8 @@ class ExcelBaseImporter:
         self.is_check_mode = False
         self.is_condition_check = False
         self._period = period
+        self._dictionary = dictionary
+        self.download_file = download_file
         # список данных, сгруппированных по идентификатору - internal_id
         self.colontitul = {
             "status": 0,
@@ -73,13 +75,20 @@ class ExcelBaseImporter:
             "head": list(),  # до таблицы
             "foot": list(),  # после таблицы
         }  # список  записей вне таблицы
+
+        self._teams = (
+            OrderedDict()
+        )  # блоки данных из таблицы сгруппированных по идентификатору (internal_id)
+        self._collections = dict()  # коллекция выходных документов
+        self._possible_columns = dict()
+        self._headers = list()
+        self._column_names = dict()
         self._parameters = dict()  # параметры отчета (период, имя_файла, инн и др.)
         self._parameters["inn"] = {
             "fixed": True,
             "value": [inn if inn else "0000000000"],
         }
         self._parameters["filename"] = {"fixed": True, "value": [file_name]}
-        self._dictionary = dictionary
         self._column_names = dict()  # колонки таблицы
         self.ex = Event()
         self.lock = Lock()
@@ -90,10 +99,7 @@ class ExcelBaseImporter:
         self.func = self.Func.func
         self.func_id = self.Func.func_id
         self.func_inn = self.Func.func_inn
-        # self.__set_functions()
         self.__init_page()
-        self.download_file = download_file
-        
 
     ###################  Проверка совместимости файла конфигурации ######################
     def check(self, sheets_in: list, is_warning: bool = False) -> bool:
@@ -148,29 +154,32 @@ class ExcelBaseImporter:
                 )
                 return False
             while self.__init_config():
-                threads = []
-                # t = Thread(target=self.loop)
-                # t.daemon = True
-                # t.start()
-                # threads.append(t)
+                # перебираем все файлы конфигурации
 
-                try:
-                    self.num_config = data_reader.set_config(self._page_index)
-                    self.config_files[self.num_config]["warning"] = []
-                    is_init = True
-                    while True:
-                        if not is_init:
-                            self.__read_config()
-                        is_init = False
-                        page = data_reader.get_sheet()
-                        if page is None:
-                            break
-                        self.num_page = page
-                        self.__init_data()
-                        self.__init_page()
-                        self.__set_parameters_page()
-                        if not self.__get_header("pattern"):
-                            self.colontitul["status"] = 1
+                self.num_config = data_reader.set_config(self._page_index)
+                self.config_files[self.num_config]["warning"] = []
+                is_init = True
+                while True:
+                    # перебираем все страницы исходного Excel файла
+                    if not is_init:
+                        self.__read_config()
+                    is_init = False
+                    page = data_reader.get_sheet()
+                    if page is None:
+                        break
+                    self.num_page = page
+                    self.__init_data()
+                    self.__init_page()
+                    self.__set_parameters_page()
+                    if not self.__get_header("pattern"):
+                        self.colontitul["status"] = 1
+                    try:
+                        threads = []
+                        t = Thread(target=self.stage_build_documents)
+                        t.daemon = True
+                        t.start()
+                        threads.append(t)
+
                         for self.row, record in enumerate(data_reader):
                             if self.row < 100 and self.row % 10 == 0:
                                 print_message(
@@ -191,23 +200,11 @@ class ExcelBaseImporter:
                             if self.colontitul["status"] == 2:
                                 # Табличная область данных
                                 self.__check_record_in_body(record, self.row)
-                                if len(self._teams) > 10:
-                                    # Оставляем в обработке несколько областей в случае,
-                                    # если данные в MS Excel по одному идентификатору записаны
-                                    # вперемешку
-                                    self.__process_record()
-                                    # asyncio.run(
-                                    #     self.write_results_async(
-                                    #         num_config=self.num_config + 1,
-                                    #         num_page=self.num_page + 1,
-                                    #         num_file=self.num_file + 1,
-                                    #         path_output=self._output,
-                                    #         # collections=man.collections.copy(),
-                                    #         collections=self._collections.copy(),
-                                    #         # output_format="json",
-                                    #     )
-                                    # )
-                                    # self._collections = dict()
+                                # if len(self._teams) > 10:
+                                # Оставляем в обработке несколько областей в случае,
+                                # если данные в MS Excel по одному идентификатору записаны
+                                # вперемешку
+                                # self.__process_record()
 
                             if self.row % 100 == 0:
                                 print_message(
@@ -217,24 +214,23 @@ class ExcelBaseImporter:
                                     end="",
                                     flush=True,
                                 )
-                        self.__done()
-                        asyncio.run(
-                            self.write_all_results_async(
-                                num_config=self.num_config + 1,
-                                num_page=self.num_page + 1,
-                                num_file=self.num_file + 1,
-                                path_output=self._output,
-                                # collections=man.collections.copy(),
-                                collections=self._collections.copy(),
-                                # output_format="json",
-                            )
-                        )
-                        self._collections = dict()
-                finally:
-                    self.ex.set()
-                    for t in threads:
-                        t.join()
-                    # self.loop()
+                    finally:
+                        self.ex.set()
+                        for t in threads:
+                            t.join()
+                    # self.__done()
+                    # asyncio.run(
+                    #     self.write_all_results_async(
+                    #         num_config=self.num_config + 1,
+                    #         num_page=self.num_page + 1,
+                    #         num_file=self.num_file + 1,
+                    #         path_output=self._output,
+                    #         # collections=man.collections.copy(),
+                    #         collections=self._collections.copy(),
+                    #         # output_format="json",
+                    #     )
+                    # )
+                    # self._collections = dict()
         except Exception as ex:
             logger.error(f"{ex}")
 
@@ -242,22 +238,39 @@ class ExcelBaseImporter:
 
         return True
 
-    def loop(self):
-        # while not self.ex.is_set():
-        #     if len(self._teams) > 10:
-        #         self.__process_record()
+    def stage_build_documents(self):
+        while not self.ex.is_set():
+            pass
+            # if len(self._teams) > 10:
+            #     self.__process_record()
         self.__done()
+        self.stage_print_documents()
+
+    def stage_print_documents(self):
+        # while not self.ex.is_set():
+        #     if len(self._collections) > 10:
+        #         asyncio.run(
+        #             self.write_all_results_async(
+        #                 num_config=self.num_config + 1,
+        #                 num_page=self.num_page + 1,
+        #                 num_file=self.num_file + 1,
+        #                 path_output=self._output,
+        #                 collections=self._collections.copy(),
+        #                 # output_format="json",
+        #             )
+        #         )
+        #         self._collections.clear()
         asyncio.run(
-            self.write_results_async(
+            self.write_all_results_async(
                 num_config=self.num_config + 1,
                 num_page=self.num_page + 1,
                 num_file=self.num_file + 1,
                 path_output=self._output,
-                # collections=man.collections.copy(),
                 collections=self._collections.copy(),
                 # output_format="json",
             )
         )
+        # self._collections.clear()
 
     # Формируем словарь колонок из записи исходной таблицы
     # key - имя колонки
@@ -829,7 +842,7 @@ class ExcelBaseImporter:
                 for record in data_reader:
                     sheet_headers.append(record)
                     index += 1
-                    if index > 100: # self._config._max_rows_heading[0][0]:
+                    if index > 100:  # self._config._max_rows_heading[0][0]:
                         break
                 headers.append(sheet_headers)
         except Exception as ex:
@@ -1056,34 +1069,43 @@ class ExcelBaseImporter:
     def __process_record(self) -> None:
         if len(self._teams) == 0:
             return
-        team = self._teams.popitem(last=False)
-        team = team[1]
-        if len(self._teams) % 50 == 0:
-            print_message(
-                "         {} Осталось обработать: {}                          \r".format(
-                    self.func_inn(), len(self._teams)
-                ),
-                end="",
-                flush=True,
-            )
-        if self.download_file:
-            write_log_time(self.download_file)
+        try:
+            team = self._teams.popitem(last=False)
+            team = team[1]
+            if len(self._teams) % 10 == 0:
+                print_message(
+                    "         {} Осталось обработать: {}                          \r".format(
+                        self.func_inn(), len(self._teams)
+                    ),
+                    end="",
+                    flush=True,
+                )
+            if self.download_file:
+                write_log_time(self.download_file)
 
-        if not self.colontitul["is_parameters"]:
-            self.__set_parameters()
-        # sync
-        # for doc_param in self.__get_config_documents():
-        #     self.__make_collections(doc_param, team)
+            if not self.colontitul["is_parameters"]:
+                self.__set_parameters()
+            # sync
+            for doc_param in self.__get_config_documents():
+                self.__make_collections(doc_param, team)
 
-        with ThreadPoolExecutor(max_workers=8) as executor:
-            executor.map(partial(self.__make_collections,team=team),self.__get_config_documents())
+            # with ThreadPoolExecutor(max_workers=8) as executor:
+            #     executor.map(
+            #         partial(self.__make_collections, team=team),
+            #         self.__get_config_documents(),
+            #     )
+        except Exception as ex:
+            logger.error(f"{ex}")
 
     def __make_collections(self, doc_param, team):
-        _Func = Func(
-            self._parameters, self._dictionary, self._column_names, self.is_hash
-        )
-        doc = self.__set_document(doc_param, team, _Func.func)
-        self.__document_split_one_line(doc, doc_param)
+        try:
+            _Func = Func(
+                self._parameters, self._dictionary, self._column_names, self.is_hash
+            )
+            doc = self.__set_document(doc_param, team, _Func.func)
+            self.__document_split_one_line(doc, doc_param)
+        except Exception as ex:
+            logger.error(f"{ex}")
 
     def __process_finish(self) -> None:
         for doc_param in self.__get_config_documents():
@@ -1234,202 +1256,221 @@ class ExcelBaseImporter:
     # выбранной по идентификатору internal_id
     def __set_document(self, doc_param: dict, team: dict, func) -> dict:
         doc = dict()
-        for fld_item in doc_param["fields"]:  # перебор полей выходной таблицы
-            # Формируем данные для записи в выходном файле
-            # одно поле (ключ в doc) соответствует одной записи
-            doc.setdefault(fld_item["name"], list())
-            main_rows_exclude = (
-                dict()
-            )  # набор записей для исключение по основному значению
-            offset_rows_exclude = set()  # набор записей для исключение по смещению
-            for table_row in doc_param["rows_exclude"]:
-                main_rows_exclude[(table_row[0], -1)] = ""
-            # собираем все поля (sub): name_attr, name_attr_0, ... , name_attr_N
-            fld_records = self.__get_fld_records(fld_item)
-            x = 0
-            for index, fld_record in enumerate(fld_records):
-                if (
-                    not fld_record["column"]
-                    or not fld_record["pattern"]
-                    or not fld_record["pattern"][0]
-                ):
-                    continue
-                col = fld_record["column"][0]
-                name_field = self.__get_key_from_input_names(col[POS_VALUE])
-                if not name_field:
-                    continue
-                for table_row in fld_record["rows_exclude"]:
+        try:
+            for fld_item in doc_param["fields"]:  # перебор полей выходной таблицы
+                # Формируем данные для записи в выходном файле
+                # одно поле (ключ в doc) соответствует одной записи
+                doc.setdefault(fld_item["name"], list())
+                main_rows_exclude = (
+                    dict()
+                )  # набор записей для исключение по основному значению
+                offset_rows_exclude = set()  # набор записей для исключение по смещению
+                for table_row in doc_param["rows_exclude"]:
                     main_rows_exclude[(table_row[0], -1)] = ""
-                table_rows = get_value_range(fld_record["row"], len(team[name_field]))
-                for table_row in table_rows:  # обрабатываем все строки области данных
+                # собираем все поля (sub): name_attr, name_attr_0, ... , name_attr_N
+                fld_records = self.__get_fld_records(fld_item)
+                x = 0
+                for index, fld_record in enumerate(fld_records):
                     if (
-                        len(team[name_field]) > table_row[0]
-                        and main_rows_exclude.get((table_row[0], -1)) is None
-                        and main_rows_exclude.get(
-                            (table_row[POS_VALUE], col[POS_VALUE])
-                        )
-                        is None
+                        not fld_record["column"]
+                        or not fld_record["pattern"]
+                        or not fld_record["pattern"][0]
                     ):
-                        for patt in fld_record["pattern"]:
-                            # Берем данные из исходной таблицы
-                            values = [
-                                (
-                                    x["value"],
-                                    col[POS_NUMERIC_IS_ABSOLUTE],
-                                    col[POS_NUMERIC_IS_NEGATIVE],
-                                )
-                                for x in team[name_field]
-                                if x["row"] == table_row[POS_VALUE]
-                            ]
-                            # И получаем из них одно значение (суммирование для чисел, конкатенация для строк)
-                            x = self.__get_total_value_from_values(
-                                values=values, type_fld=fld_record["type"], pattern=patt
+                        continue
+                    col = fld_record["column"][0]
+                    name_field = self.__get_key_from_input_names(col[POS_VALUE])
+                    if not name_field:
+                        continue
+                    for table_row in fld_record["rows_exclude"]:
+                        main_rows_exclude[(table_row[0], -1)] = ""
+                    table_rows = get_value_range(
+                        fld_record["row"], len(team[name_field])
+                    )
+                    for (
+                        table_row
+                    ) in table_rows:  # обрабатываем все строки области данных
+                        if (
+                            len(team[name_field]) > table_row[0]
+                            and main_rows_exclude.get((table_row[0], -1)) is None
+                            and main_rows_exclude.get(
+                                (table_row[POS_VALUE], col[POS_VALUE])
                             )
-                            if x:
-                                fld_record["value"] += (
-                                    x
-                                    if not isinstance(x, str)
-                                    or fld_record["value"].find(x) == -1
-                                    else ""
-                                )
-                                if fld_record["is_offset"]:
-                                    if (
-                                        not (
-                                            table_row[POS_VALUE],
-                                            col[POS_VALUE],
-                                            fld_record["offset_column"][0][POS_VALUE],
-                                        )
-                                        in offset_rows_exclude
-                                    ):
-                                        # если есть смещение по таблице относительно текущего значения,
-                                        # то берем данные от туда
-                                        x_o = self.__get_value_from_offset(
-                                            team,
-                                            fld_record,
-                                            table_row[0],
-                                            col[POS_VALUE],
-                                        )
-                                        if x_o and fld_record["value_o"] != x_o:
-                                            fld_record["value_o"] = x_o
-                                            if fld_record["func_is_empty"] is False:
-                                                fld_record["value_rows"].append(
-                                                    table_row[POS_VALUE]
-                                                )
-                                            # запоминаем, чтобы не было повтора
-                                            offset_rows_exclude.add(
-                                                (
-                                                    table_row[POS_VALUE],
-                                                    col[POS_VALUE],
-                                                    fld_record["offset_column"][0][
-                                                        POS_VALUE
-                                                    ],
-                                                )
-                                            )
-                                elif (
-                                    main_rows_exclude.get(
-                                        (table_row[0], col[POS_VALUE])
+                            is None
+                        ):
+                            for patt in fld_record["pattern"]:
+                                # Берем данные из исходной таблицы
+                                values = [
+                                    (
+                                        x["value"],
+                                        col[POS_NUMERIC_IS_ABSOLUTE],
+                                        col[POS_NUMERIC_IS_NEGATIVE],
                                     )
-                                    is None
-                                ):
-                                    # запоминаем, чтобы не было повтора
-                                    main_rows_exclude[
-                                        (table_row[0], col[POS_VALUE])
-                                    ] = x
-                                break  # пропускаем проверку по остальным шаблонам
-                    elif (
-                        main_rows_exclude.get((table_row[POS_VALUE], col[POS_VALUE]))
-                        is not None
-                        and not fld_record["value"]
-                    ):
-                        # если значение пустое, берем то что запомнили
-                        fld_record["value"] = main_rows_exclude.get(
-                            (table_row[POS_VALUE], col[POS_VALUE])
-                        )
+                                    for x in team[name_field]
+                                    if x["row"] == table_row[POS_VALUE]
+                                ]
+                                # И получаем из них одно значение (суммирование для чисел, конкатенация для строк)
+                                x = self.__get_total_value_from_values(
+                                    values=values,
+                                    type_fld=fld_record["type"],
+                                    pattern=patt,
+                                )
+                                if x:
+                                    fld_record["value"] += (
+                                        x
+                                        if not isinstance(x, str)
+                                        or fld_record["value"].find(x) == -1
+                                        else ""
+                                    )
+                                    if fld_record["is_offset"]:
+                                        if (
+                                            not (
+                                                table_row[POS_VALUE],
+                                                col[POS_VALUE],
+                                                fld_record["offset_column"][0][
+                                                    POS_VALUE
+                                                ],
+                                            )
+                                            in offset_rows_exclude
+                                        ):
+                                            # если есть смещение по таблице относительно текущего значения,
+                                            # то берем данные от туда
+                                            x_o = self.__get_value_from_offset(
+                                                team,
+                                                fld_record,
+                                                table_row[0],
+                                                col[POS_VALUE],
+                                            )
+                                            if x_o and fld_record["value_o"] != x_o:
+                                                fld_record["value_o"] = x_o
+                                                if fld_record["func_is_empty"] is False:
+                                                    fld_record["value_rows"].append(
+                                                        table_row[POS_VALUE]
+                                                    )
+                                                # запоминаем, чтобы не было повтора
+                                                offset_rows_exclude.add(
+                                                    (
+                                                        table_row[POS_VALUE],
+                                                        col[POS_VALUE],
+                                                        fld_record["offset_column"][0][
+                                                            POS_VALUE
+                                                        ],
+                                                    )
+                                                )
+                                    elif (
+                                        main_rows_exclude.get(
+                                            (table_row[0], col[POS_VALUE])
+                                        )
+                                        is None
+                                    ):
+                                        # запоминаем, чтобы не было повтора
+                                        main_rows_exclude[
+                                            (table_row[0], col[POS_VALUE])
+                                        ] = x
+                                    break  # пропускаем проверку по остальным шаблонам
+                        elif (
+                            main_rows_exclude.get(
+                                (table_row[POS_VALUE], col[POS_VALUE])
+                            )
+                            is not None
+                            and not fld_record["value"]
+                        ):
+                            # если значение пустое, берем то что запомнили
+                            fld_record["value"] = main_rows_exclude.get(
+                                (table_row[POS_VALUE], col[POS_VALUE])
+                            )
 
-                if fld_record["func"]:
-                    # если есть, запускаем функцию
-                    fld_record["value"] = func(
-                        team=team, fld_param=fld_record, row=table_row[0], col=col[0]
-                    )
-                elif fld_record["is_offset"]:
-                    fld_record["value"] = fld_record["value_o"]
-                    fld_record["type"] = fld_record["offset_type"]
-                if fld_record["value"] and not self.__is_data_depends(
-                    fld_record, doc, doc_param
-                ):
-                    # Если поле зависит от значения другого поля и это значение пусто,
-                    # то текущее значение тоже обнуляем (наприме, дату если соответствующая сумма = 0 )
-                    fld_record["value"] = ""
-                # формируем документ
-                value = (
-                    ""
-                    if (
-                        (
-                            isinstance(fld_record["value"], int)
-                            or isinstance(fld_record["value"], float)
+                    if fld_record["func"]:
+                        # если есть, запускаем функцию
+                        fld_record["value"] = func(
+                            team=team,
+                            fld_param=fld_record,
+                            row=table_row[0],
+                            col=col[0],
                         )
-                        and fld_record["value"] == 0
+                    elif fld_record["is_offset"]:
+                        fld_record["value"] = fld_record["value_o"]
+                        fld_record["type"] = fld_record["offset_type"]
+                    if fld_record["value"] and not self.__is_data_depends(
+                        fld_record, doc, doc_param
+                    ):
+                        # Если поле зависит от значения другого поля и это значение пусто,
+                        # то текущее значение тоже обнуляем (наприме, дату если соответствующая сумма = 0 )
+                        fld_record["value"] = ""
+                    # формируем документ
+                    value = (
+                        ""
+                        if (
+                            (
+                                isinstance(fld_record["value"], int)
+                                or isinstance(fld_record["value"], float)
+                            )
+                            and fld_record["value"] == 0
+                        )
+                        or (
+                            isinstance(fld_record["value"], str)
+                            and fld_record["offset_type"] == "float"
+                            and fld_record["value"] == "0.0"
+                        )
+                        else str(fld_record["value"]).strip()
                     )
-                    or (
-                        isinstance(fld_record["value"], str)
-                        and fld_record["offset_type"] == "float"
-                        and fld_record["value"] == "0.0"
+                    # if value:
+                    doc[fld_record["name"]].append(
+                        {
+                            "row": len(doc[fld_record["name"]]),
+                            "col": col[0],
+                            "value": value,
+                        }
                     )
-                    else str(fld_record["value"]).strip()
-                )
-                # if value:
-                doc[fld_record["name"]].append(
-                    {
-                        "row": len(doc[fld_record["name"]]),
-                        "col": col[0],
-                        "value": value,
-                    }
-                )
+        except Exception as ex:
+            logger.error(f"{ex}")
         return doc
 
     # Разбиваем данные документа по-строчно
     def __document_split_one_line(self, doc: dict, doc_param: dict) -> None:
-        name = doc_param["name"]
-        # для каждого поля свой индекс прохода
-        index = {x: 0 for x in doc.keys()}
-        rows = [x[-1]["row"] for x in doc.values() if x]
-        counts = [len(x) for x in doc.values() if x]
-        rows = rows + counts
-        rows_count = max(rows) if rows else 0
-        rows_required = self.__get_required_rows(name, doc)
-        rows_exclude = [
-            x[0] if x[0] >= 0 else rows_count + 1 + x[0]
-            for x in doc_param["rows_exclude"]
-        ]
-        i = -1
-        done = True
-        elem = dict()
-        while done:
-            i += 1
-            done = i < rows_count
+        try:
+            name = doc_param["name"]
+            # для каждого поля свой индекс прохода
+            index = {x: 0 for x in doc.keys()}
+            rows = [x[-1]["row"] for x in doc.values() if x]
+            counts = [len(x) for x in doc.values() if x]
+            rows = rows + counts
+            rows_count = max(rows) if rows else 0
+            rows_required = self.__get_required_rows(name, doc)
+            rows_exclude = [
+                x[0] if x[0] >= 0 else rows_count + 1 + x[0]
+                for x in doc_param["rows_exclude"]
+            ]
+            i = -1
+            done = True
             elem = dict()
-            is_empty = True
-            for key, values in doc.items():
-                elem[key] = ""
-                if index[key] < len(values):
-                    # проверяем соответствие номера строки (row) в данных с номером записи (i) в выходном файле
-                    if values[index[key]]["row"] == i:
-                        elem[key] = values[index[key]]["value"]
-                        is_empty = is_empty and (values[index[key]]["value"] == "")
-                        index[key] += 1
-                        done = True
-                    elif values[0]["row"] == 0:
+            while done:
+                i += 1
+                done = i < rows_count
+                elem = dict()
+                is_empty = True
+                for key, values in doc.items():
+                    elem[key] = ""
+                    if index[key] < len(values):
+                        # проверяем соответствие номера строки (row) в данных с номером записи (i) в выходном файле
+                        if values[index[key]]["row"] == i:
+                            elem[key] = values[index[key]]["value"]
+                            is_empty = is_empty and (values[index[key]]["value"] == "")
+                            index[key] += 1
+                            done = True
+                        elif values[0]["row"] == 0:
+                            elem[key] = values[0]["value"]
+                    elif len(values) == 1 and values[0]["row"] == 0:
                         elem[key] = values[0]["value"]
-                elif len(values) == 1 and values[0]["row"] == 0:
-                    elem[key] = values[0]["value"]
-            if (
-                not is_empty
-                and not (i in rows_exclude)
-                and (not doc_param["required_fields"] or i in rows_required)
-            ):
-                self.__append_to_collection(name, elem)
-            else:
-                pass
+                if (
+                    not is_empty
+                    and not (i in rows_exclude)
+                    and (not doc_param["required_fields"] or i in rows_required)
+                ):
+                    self.__append_to_collection(name, elem)
+                else:
+                    pass
+        except Exception as ex:
+            logger.error(f"{ex}")
         return
 
     ################################################################################################################################################
@@ -1726,12 +1767,10 @@ class ExcelBaseImporter:
         self._is_column_service_exist = (
             False  # Наличие колонки, в которой указаны названия услуг ЖКУ
         )
-        self._teams = OrderedDict()
-        # self._teams = list()
-        self._teams_ref = OrderedDict()
-        self._collections = dict()  # коллекция выходных таблиц
-        self._possible_columns = dict()
-        self._headers = list()
+        self._teams.clear()
+        self._collections.clear()  # коллекция выходных документов
+        self._possible_columns.clear()
+        self._headers.clear()
         self._column_names.clear()
 
     def __is_init(self) -> bool:
