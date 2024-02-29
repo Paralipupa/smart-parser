@@ -6,6 +6,7 @@ import aiofiles
 import asyncio
 import json
 import logging
+from time import sleep
 from threading import Thread, Event, Lock
 from concurrent.futures import ThreadPoolExecutor
 from collections import OrderedDict
@@ -209,6 +210,7 @@ class ExcelBaseImporter:
                                     end="",
                                     flush=True,
                                 )
+                            sleep(0)
                     except Exception as ex:
                         logger.error(f"{ex}")
                     finally:
@@ -226,6 +228,7 @@ class ExcelBaseImporter:
         while self.event.is_set():
             if len(self._teams) > 50:
                 self.__process_record()
+            sleep(0)
         self.__done()
 
     def stage_print_documents(self):
@@ -244,9 +247,9 @@ class ExcelBaseImporter:
                         output_format="csv",
                     )
                 )
-                pass
+                sleep(0)
             while len(self._teams) != 0:
-                pass
+                sleep(0)
         except Exception as ex:
             logger.error(f"{ex}")
         finally:
@@ -303,6 +306,7 @@ class ExcelBaseImporter:
             logger.error(f"{ex}")
         finally:
             self._teams.popitem(last=False)
+            sleep(0)
             if not self.event.is_set() and len(self._teams) % 10 == 0:
                 print_message(
                     "         {} {} Осталось обработать: {}                          \r".format(
