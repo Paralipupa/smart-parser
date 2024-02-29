@@ -1520,9 +1520,12 @@ class ExcelBaseImporter:
             await f.write(text)
 
     async def write_csv_async(self, filename: str, records: list):
-        names = []
+        
         if not os.path.exists(filename):
             names = [x for x in records[0].keys()]
+        else:
+            names = []
+        
         async with aiofiles.open(filename, mode="a+", encoding=ENCONING) as f:
             if names:
                 writer_head = AsyncDictWriter(
