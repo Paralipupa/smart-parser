@@ -4,11 +4,7 @@ import logging
 import shutil
 import datetime
 from .excel_base_importer import ExcelBaseImporter
-from .helpers import (
-    get_config_files,
-    write_list,
-    check_tarif,
-)
+from .helpers import get_config_files, write_list, check_tarif, write_log_time
 from .union import UnionData
 from .exceptions import (
     InnMismatchException,
@@ -90,9 +86,7 @@ class Parser:
                                 is_hash=self.is_hash,
                                 dictionary=self._dictionary.copy(),
                                 download_file=(
-                                    os.path.join(
-                                        self.download_path, self.download_file
-                                    )
+                                    os.path.join(self.download_path, self.download_file)
                                     if self.is_daemon
                                     else ""
                                 ),
@@ -133,6 +127,9 @@ class Parser:
                         return u.start()
                 else:
                     logger.info(f"Данные в архиве не распознаны")
+                    if self.is_daemon:
+                        file_name = os.path.join(self.download_path, self.download_file)
+                        write_log_time(file_name, True)
         except InnMismatchException as ex:
             logger.exception(f"{ex}")
             return f"{ex}"

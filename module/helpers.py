@@ -398,9 +398,12 @@ def get_value(
     return result
 
 
-def write_log_time(file_name: str):
+def write_log_time(file_name: str, is_error: bool=False):
     with open(file_name + ".log", "w") as f:
-        f.write(f"{file_name}\t" + datetime.now().strftime("%d-%m-%Y %H:%M:%S"))
+        if is_error:
+            f.write(f"{file_name}\t" + "01-01-1900 00:00:00")
+        else:
+            f.write(f"{file_name}\t" + datetime.now().strftime("%d-%m-%Y %H:%M:%S"))
 
 
 def get_list_dict_from_csv(file_name: str) -> list:

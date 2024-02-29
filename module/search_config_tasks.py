@@ -1,7 +1,9 @@
 import pathlib, logging, re, json
-from multiprocessing import Pool, Manager
+from multiprocessing import Manager
+from concurrent.futures import ThreadPoolExecutor
 from multiprocessing.managers import ListProxy, DictProxy
 from typing import List
+from time import sleep
 from .excel_base_importer import ExcelBaseImporter
 from .helpers import (
     print_message,
@@ -53,16 +55,8 @@ class SearchConfig:
         if len(self.list_files) == 0:
             return
         clear_manager()
-        if self.is_daemon:
-        # sync
-            for item in self.list_files:
-                self.put_data_file(item)
-        else:
-            pool = Pool()
-            for item in self.list_files:
-                pool.apply_async(self.put_data_file, args=(item,))
-            pool.close()
-            pool.join()
+        with ThreadPoolExecutor(max_workers=None) as executor:
+            executor.map(self.put_data_file, self.list_files)
         self.__to_collect_out_files()
         return
 
@@ -71,6 +65,7 @@ class SearchConfig:
             self.__config_find(data_file)
         else:
             self.__check_config(data_file)
+        sleep(0)
         return data_file
 
     def __config_find(self, data_file: dict) -> dict:
@@ -90,10 +85,6 @@ class SearchConfig:
             logger.exception("config_find")
 
     def __check_config(self, data_file: dict) -> bool:
-        config_file: dict = data_file["config"]
-        # logger.debug(
-        #     f"check: {os.path.basename(config_file[0]['name'])} \t {os.path.basename(data_file['name'])}"
-        # )
         rep: ExcelBaseImporter = ExcelBaseImporter(
             file_name=data_file["name"],
             config_files=data_file["config"],

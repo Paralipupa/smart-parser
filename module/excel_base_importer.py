@@ -85,7 +85,7 @@ class ExcelBaseImporter:
         self.event = Event()
         self.lock = Lock()
         self.row = 0
-        self.team_index = 0 
+        self.team_index = 0
         self.Func: Func = Func(
             self._parameters, self._dictionary, self._column_names, self.is_hash
         )
@@ -154,8 +154,8 @@ class ExcelBaseImporter:
             while self.__init_config():
                 # перебираем все файлы конфигурации
                 # для данного входного файла MS Excel
-                # как парвило это один файл, но может быть и несколько
-                # для разных листов
+                # как правило на один файл MS Excel приходится один файл конфигурации, 
+                # но может быть и несколько конф.файлов распределенные по листам MS Excel
 
                 self.num_config = data_reader.set_config(self._page_index)
                 self.config_files[self.num_config]["warning"] = []
@@ -185,7 +185,10 @@ class ExcelBaseImporter:
                             if self.row < 100 and self.row % 10 == 0:
                                 print_message(
                                     "         {} {} Обработано: {}({})                          \r".format(
-                                        self.num_page, self.func_inn(), self.row,self.team_index
+                                        self.num_page,
+                                        self.func_inn(),
+                                        self.row,
+                                        self.team_index,
                                     ),
                                     end="",
                                     flush=True,
@@ -205,12 +208,15 @@ class ExcelBaseImporter:
                             if self.row % 100 == 0:
                                 print_message(
                                     "         {} {} Обработано: {}({})                        \r".format(
-                                        self.num_page, self.func_inn(), self.row, self.team_index
+                                        self.num_page,
+                                        self.func_inn(),
+                                        self.row,
+                                        self.team_index,
                                     ),
                                     end="",
                                     flush=True,
                                 )
-                            sleep(0)
+                            sleep(0.00001)
                     except Exception as ex:
                         logger.error(f"{ex}")
                     finally:
@@ -234,51 +240,42 @@ class ExcelBaseImporter:
     def stage_print_documents(self):
         loop = asyncio.new_event_loop()
         try:
-            while self.event.is_set():
-                collections=self._collections.copy()
-                self._collections.clear()
-                loop.run_until_complete(
-                    self.write_results_async(
-                        num_config=self.num_config + 1,
-                        num_page=self.num_page + 1,
-                        num_file=self.num_file + 1,
-                        path_output=self._output,
-                        collections=collections,
-                        output_format="csv",
+            while self.event.is_set() or len(self._teams) != 0:
+                if self._collections:
+                    collections = self._collections.copy()
+                    self._collections.clear()
+                    loop.run_until_complete(
+                        self.write_results_async(
+                            num_config=self.num_config + 1,
+                            num_page=self.num_page + 1,
+                            num_file=self.num_file + 1,
+                            path_output=self._output,
+                            collections=collections,
+                            output_format="csv",
+                        )
                     )
+                sleep(0)
+            print_message(
+                "         {} {} Запись в файл                                                 \r".format(
+                    self.num_page, self.func_inn()
+                ),
+                end="",
+                flush=True,
+            )
+            loop.run_until_complete(
+                self.write_all_results_async(
+                    num_config=self.num_config + 1,
+                    num_page=self.num_page + 1,
+                    num_file=self.num_file + 1,
+                    path_output=self._output,
+                    collections=self._collections.copy(),
+                    output_format="csv",
                 )
-                sleep(0)
-            while len(self._teams) != 0:
-                sleep(0)
+            )
         except Exception as ex:
             logger.error(f"{ex}")
         finally:
             loop.close()
-        if self._collections:
-            loop = asyncio.new_event_loop()
-            try:
-                print_message(
-                    "         {} {} Запись в файл                                                 \r".format(
-                        self.num_page, self.func_inn()
-                    ),
-                    end="",
-                    flush=True,
-                )
-                loop.run_until_complete(
-                    self.write_all_results_async(
-                        num_config=self.num_config + 1,
-                        num_page=self.num_page + 1,
-                        num_file=self.num_file + 1,
-                        path_output=self._output,
-                        collections=self._collections.copy(),
-                        output_format="csv",
-                    )
-                )
-            except Exception as ex:
-                logger.error(f"{ex}")
-            finally:
-                loop.close()
-
         return
 
     def __done(self):
@@ -295,7 +292,7 @@ class ExcelBaseImporter:
             if self.download_file and len(self._teams) % 10 == 0:
                 # при фоновой обработке отслеживаем процесс выполнения
                 # записывая текущее время в файл
-                write_log_time(self.download_file)
+                write_log_time(self.download_file, False)
 
             if not self.colontitul["is_parameters"]:
                 self.__set_parameters()
@@ -306,7 +303,6 @@ class ExcelBaseImporter:
             logger.error(f"{ex}")
         finally:
             self._teams.popitem(last=False)
-            sleep(0)
             if not self.event.is_set() and len(self._teams) % 10 == 0:
                 print_message(
                     "         {} {} Осталось обработать: {}                          \r".format(
@@ -315,6 +311,7 @@ class ExcelBaseImporter:
                     end="",
                     flush=True,
                 )
+            sleep(0)
 
     def __make_collections(self, doc_param: dict, team: dict):
         try:
@@ -1524,12 +1521,12 @@ class ExcelBaseImporter:
             await f.write(text)
 
     async def write_csv_async(self, filename: str, records: list):
-        
+
         if not os.path.exists(filename):
             names = [x for x in records[0].keys()]
         else:
             names = []
-        
+
         async with aiofiles.open(filename, mode="a+", encoding=ENCONING) as f:
             if names:
                 writer_head = AsyncDictWriter(
