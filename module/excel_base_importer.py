@@ -232,6 +232,18 @@ class ExcelBaseImporter:
         loop = asyncio.new_event_loop()
         try:
             while self.event.is_set():
+                collections=self._collections.copy()
+                self._collections.clear()
+                loop.run_until_complete(
+                    self.write_results_async(
+                        num_config=self.num_config + 1,
+                        num_page=self.num_page + 1,
+                        num_file=self.num_file + 1,
+                        path_output=self._output,
+                        collections=collections,
+                        output_format="csv",
+                    )
+                )
                 pass
             while len(self._teams) != 0:
                 pass
