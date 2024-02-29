@@ -153,17 +153,17 @@ class TestGisConfig(unittest.TestCase):
         )
 
     # --------------------------------------------------------------------------------------
-    def test_01_comfort(self):
-        self.parser.name = os.path.join(BASE_DIR, "test", "input", "comfort.zip")
-        self.parser.is_hash = False
-        self.parser.download_file = (
-            f"comfort{'_no_hash' if self.parser.is_hash is False else ''}.zip"
-        )
-        self.parser.inn = "7811334511"
-        self.__remove_download()
-        self.parser.start()
-        hash_origin, hash_download = self.__check()
-        self.assertEqual(hash_origin, hash_download)
+    # def test_01_comfort(self):
+    #     self.parser.name = os.path.join(BASE_DIR, "test", "input", "comfort.zip")
+    #     self.parser.is_hash = False
+    #     self.parser.download_file = (
+    #         f"comfort{'_no_hash' if self.parser.is_hash is False else ''}.zip"
+    #     )
+    #     self.parser.inn = "7811334511"
+    #     self.__remove_download()
+    #     self.parser.start()
+    #     hash_origin, hash_download = self.__check()
+    #     self.assertEqual(hash_origin, hash_download)
 
     # def test_02_druzhba(self):
     #     self.parser.name = os.path.join(BASE_DIR, "test", "input", "druzhba.zip")
@@ -229,16 +229,16 @@ class TestGisConfig(unittest.TestCase):
     #     hash_origin, hash_download = self.__check()
     #     self.assertEqual(hash_origin, hash_download)
 
-    # def test_99_shustoff(self):
-    #     self.parser.name = os.path.join(BASE_DIR, "test", "input", "shustoff.zip")
-    #     self.parser.is_hash = False
-    #     self.parser.download_file = (
-    #         f"shustoff{'_no_hash' if self.parser.is_hash is False else ''}.zip"
-    #     )
-    #     self.__remove_download()
-    #     self.parser.start()
-    #     hash_origin, hash_download = self.__check()
-    #     self.assertEqual(hash_origin, hash_download)
+    def test_99_shustoff(self):
+        self.parser.name = os.path.join(BASE_DIR, "test", "input", "shustoff.zip")
+        self.parser.is_hash = False
+        self.parser.download_file = (
+            f"shustoff{'_no_hash' if self.parser.is_hash is False else ''}.zip"
+        )
+        self.__remove_download()
+        self.parser.start()
+        hash_origin, hash_download = self.__check()
+        self.assertEqual(hash_origin, hash_download)
 
 
 @timing(

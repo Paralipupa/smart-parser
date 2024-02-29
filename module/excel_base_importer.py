@@ -153,14 +153,23 @@ class ExcelBaseImporter:
                     f"\nОШИБКА чтения файла {self._parameters['filename']['value'][0]}"
                 )
                 return False
+            # создаются три потока (thread) для обработки данных
+            # в основном потоке разбиваются табличные данные на блоки
+            # (self.teams[team]) по идентификаторам (internal_id)
+            # во втором потоке из блоков формируются выходные документы (self._collections[document])
+            # в третьем потоке документы сохраняются в файлах csv и json
+            thread_modules = [self.stage_build_documents, self.stage_print_documents]
             while self.__init_config():
                 # перебираем все файлы конфигурации
+                # для данного входного файла MS Excel
+                # как парвило это один файл, но может быть и несколько
+                # для разных листов
 
                 self.num_config = data_reader.set_config(self._page_index)
                 self.config_files[self.num_config]["warning"] = []
                 is_init = True
                 while True:
-                    # перебираем все страницы исходного Excel файла
+                    # перебираем все листы исходного Excel файла
                     if not is_init:
                         self.__read_config()
                     is_init = False
@@ -175,16 +184,10 @@ class ExcelBaseImporter:
                         self.colontitul["status"] = 1
                     try:
                         self.ex = Event()
-                        threads = []
-                        t = Thread(target=self.stage_build_documents)
-                        t.daemon = True
-                        t.start()
-                        threads.append(t)
-                        threads = []
-                        t = Thread(target=self.stage_print_documents)
-                        t.daemon = True
-                        t.start()
-                        threads.append(t)
+                        threads = [Thread(target=x) for x in thread_modules]
+                        for t in threads:
+                            t.daemon = True
+                            t.start()
 
                         for self.row, record in enumerate(data_reader):
                             if self.row < 100 and self.row % 10 == 0:
@@ -206,11 +209,6 @@ class ExcelBaseImporter:
                             if self.colontitul["status"] == 2:
                                 # Табличная область данных
                                 self.__check_record_in_body(record, self.row)
-                                # if len(self._teams) > 50:
-                                # Оставляем в обработке несколько областей в случае,
-                                # если данные в MS Excel по одному идентификатору записаны
-                                # не по-порядку
-                                # self.__process_record()
 
                             if self.row % 100 == 0:
                                 print_message(
@@ -224,20 +222,6 @@ class ExcelBaseImporter:
                         self.ex.set()
                         for t in threads:
                             t.join()
-                        self._collections.clear()
-                    # self.__done()
-                    # asyncio.run(
-                    #     self.write_all_results_async(
-                    #         num_config=self.num_config + 1,
-                    #         num_page=self.num_page + 1,
-                    #         num_file=self.num_file + 1,
-                    #         path_output=self._output,
-                    #         # collections=man.collections.copy(),
-                    #         collections=self._collections.copy(),
-                    #         # output_format="json",
-                    #     )
-                    # )
-                    # self._collections = dict()
         except Exception as ex:
             logger.error(f"{ex}")
 
@@ -247,17 +231,16 @@ class ExcelBaseImporter:
 
     def stage_build_documents(self):
         while not self.ex.is_set():
-            if len(self._teams) > 10:
+            if len(self._teams) > 50:
                 self.__process_record()
         self.__done()
-        # self.stage_print_documents()
 
     def stage_print_documents(self):
         while not self.ex.is_set():
             pass
         while len(self._teams) != 0:
             pass
-        if self._collections.copy():
+        if self._collections:
             asyncio.run(
                 self.write_all_results_async(
                     num_config=self.num_config + 1,
@@ -269,6 +252,66 @@ class ExcelBaseImporter:
                 )
             )
         # self._collections.clear()
+
+    def __done(self):
+        with ThreadPoolExecutor(max_workers=None) as executor:
+            while len(self._teams) != 0:
+                executor.submit(self.__process_record())
+
+        # while len(self._teams) != 0:
+        #     self.__process_record()
+
+    def __process_record(self) -> None:
+        if len(self._teams) == 0:
+            return
+        try:
+            key = next(iter(self._teams))
+            team = self._teams[key]
+            if self.download_file:
+                write_log_time(self.download_file)
+
+            if not self.colontitul["is_parameters"]:
+                self.__set_parameters()
+            for doc_param in self.__get_config_documents():
+                self.__make_collections(doc_param, team)
+
+        except Exception as ex:
+            logger.error(f"{ex}")
+        finally:
+            self._teams.popitem(last=False)
+            if len(self._teams) % 10 == 0:
+                print_message(
+                    "         {} {} Осталось обработать: {}                          \r".format(
+                        self.num_page, self.func_inn(), len(self._teams)
+                    ),
+                    end="",
+                    flush=True,
+                )
+
+    def __make_collections(self, doc_param: dict, team: dict):
+        try:
+            # для каждого блока (team) определяем свой класс функций
+            # для многопотоковой обработки
+            _Func = Func(
+                self._parameters, self._dictionary, self._column_names, self.is_hash
+            )
+            doc = self.__set_document(doc_param, team, _Func.func)
+            self.__document_split_one_line(doc, doc_param)
+        except Exception as ex:
+            logger.error(f"{ex}")
+
+    def __process_finish(self) -> None:
+        for doc_param in self.__get_config_documents():
+            if doc_param.get("func_after"):
+                param = {"value": "", "func": doc_param["func_after"]}
+                self.func(
+                    # fld_param=param, team=man.collections.get(doc_param["name"])
+                    fld_param=param,
+                    team=self._collections.get(doc_param["name"]),
+                )
+
+
+
 
     # Формируем словарь колонок из записи исходной таблицы
     # key - имя колонки
@@ -1056,66 +1099,29 @@ class ExcelBaseImporter:
             x = ""
         return x
 
-    def __done(self):
-        # with ThreadPoolExecutor(max_workers=None) as executor:
-        #     while len(self._teams) != 0:
-        #         executor.submit(self.__process_record())
 
-        while len(self._teams) != 0:
-            self.__process_record()
-
-    def __process_record(self) -> None:
-        if len(self._teams) == 0:
-            return
-        try:
-            key = next(iter(self._teams))
-            team = self._teams[key]
-            if len(self._teams) % 10 == 0:
-                print_message(
-                    "         {} {} Осталось обработать: {}                          \r".format(
-                        self.num_page, self.func_inn(), len(self._teams)
-                    ),
-                    end="",
-                    flush=True,
-                )
-            if self.download_file:
-                write_log_time(self.download_file)
-
-            if not self.colontitul["is_parameters"]:
-                self.__set_parameters()
-            # sync
-            for doc_param in self.__get_config_documents():
-                self.__make_collections(doc_param, team)
-
-            # with ThreadPoolExecutor(max_workers=8) as executor:
-            #     executor.map(
-            #         partial(self.__make_collections, team=team),
-            #         self.__get_config_documents(),
-            #     )
-        except Exception as ex:
-            logger.error(f"{ex}")
-        finally:
-            self._teams.popitem(last=False)
-
-    def __make_collections(self, doc_param, team):
-        try:
-            _Func = Func(
-                self._parameters, self._dictionary, self._column_names, self.is_hash
-            )
-            doc = self.__set_document(doc_param, team, _Func.func)
-            self.__document_split_one_line(doc, doc_param)
-        except Exception as ex:
-            logger.error(f"{ex}")
-
-    def __process_finish(self) -> None:
-        for doc_param in self.__get_config_documents():
-            if doc_param.get("func_after"):
-                param = {"value": "", "func": doc_param["func_after"]}
-                self.func(
-                    # fld_param=param, team=man.collections.get(doc_param["name"])
-                    fld_param=param,
-                    team=self._collections.get(doc_param["name"]),
-                )
+    # если текущая таблица типа словарь (задается в gisconfig_000_00),
+    # то формируем глобальный словарь значений
+    # для последующих таблиц
+    def __build_global_dictionary(self, doc: dict):
+        param = {}
+        for fld, value in doc.items():
+            if fld == "key":
+                param = {"value": "key" + doc["key"], "func": "hash"}
+                param["key"] = self.func(fld_param=param)
+            elif regular_calc("^value", fld):
+                param["data"] = value
+            else:
+                index_key = get_index_key(fld)
+                self._dictionary.setdefault(index_key, [])
+                if not value in self._dictionary[index_key]:
+                    self._dictionary[index_key].append(value)
+            if param.get("key") and param.get("data"):
+                index_key = get_index_key(param["key"])
+                self._dictionary.setdefault(index_key, [])
+                if not param["data"] in self._dictionary[index_key]:
+                    self._dictionary[index_key].append(param["data"])
+        return
 
     ########################   Изменение конфигурации "на ходу" #################################
     def __dynamic_change_config(self):
@@ -1209,29 +1215,6 @@ class ExcelBaseImporter:
             fld_sub.extend(ls)
             fld_sub.append(last_rec)
             return
-
-    # если текущая таблица типа словарь (задается в gisconfig_000_00),
-    # то формируем глобальный словарь значений
-    # для последующих таблиц
-    def __build_global_dictionary(self, doc: dict):
-        param = {}
-        for fld, value in doc.items():
-            if fld == "key":
-                param = {"value": "key" + doc["key"], "func": "hash"}
-                param["key"] = self.func(fld_param=param)
-            elif regular_calc("^value", fld):
-                param["data"] = value
-            else:
-                index_key = get_index_key(fld)
-                self._dictionary.setdefault(index_key, [])
-                if not value in self._dictionary[index_key]:
-                    self._dictionary[index_key].append(value)
-            if param.get("key") and param.get("data"):
-                index_key = get_index_key(param["key"])
-                self._dictionary.setdefault(index_key, [])
-                if not param["data"] in self._dictionary[index_key]:
-                    self._dictionary[index_key].append(param["data"])
-        return
 
     ###############################################################################################################################################
     # --------------------------------------------------- Документы --------------------------------------------------------------------------------
@@ -1524,12 +1507,15 @@ class ExcelBaseImporter:
             await f.write(text)
 
     async def write_csv_async(self, filename: str, records: list):
-        names = [x for x in records[0].keys()]
+        names = []
+        if not os.path.exists(filename):
+            names = [x for x in records[0].keys()]
         async with aiofiles.open(filename, mode="a+", encoding=ENCONING) as f:
-            writer_head = AsyncDictWriter(
-                f, delimiter=";", lineterminator="\r", fieldnames=names
-            )
-            await writer_head.writeheader()
+            if names:
+                writer_head = AsyncDictWriter(
+                    f, delimiter=";", lineterminator="\r", fieldnames=names
+                )
+                await writer_head.writeheader()
             writer_body = AsyncWriter(f)
             for rec in records:
                 await writer_body.writerow(rec.values())
