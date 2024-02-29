@@ -2,17 +2,12 @@ import re
 import os
 import datetime
 import pathlib
-import uuid
-import csv
 import aiofiles
 import asyncio
 import json
 import logging
-from functools import partial
-from multiprocessing import Pool, Manager
-from multiprocessing.managers import DictProxy
 from threading import Thread, Event, Lock
-from concurrent.futures import ThreadPoolExecutor, as_completed, ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 from collections import OrderedDict
 from aiocsv import AsyncWriter, AsyncDictWriter
 from typing import Union, List
@@ -37,9 +32,6 @@ from .helpers import (
 )
 from .settings import *
 
-# manager = Manager()
-# man: DictProxy = manager.dict()
-# man.collections = dict()
 logger = logging.getLogger(__name__)
 
 
@@ -68,7 +60,6 @@ class ExcelBaseImporter:
         self._period = period
         self._dictionary = dictionary
         self.download_file = download_file
-        # список данных, сгруппированных по идентификатору - internal_id
         self.colontitul = {
             "status": 0,
             "is_parameters": False,
@@ -76,9 +67,9 @@ class ExcelBaseImporter:
             "foot": list(),  # после таблицы
         }  # список  записей вне таблицы
 
-        self._teams = (
-            OrderedDict()
-        )  # блоки данных из таблицы сгруппированных по идентификатору (internal_id)
+        # список данных, сгруппированных по идентификатору - internal_id
+        # блоки данных из таблицы сгруппированных по идентификатору (internal_id)
+        self._teams = OrderedDict()
         self._collections = dict()  # коллекция выходных документов
         self._possible_columns = dict()
         self._headers = list()
@@ -90,7 +81,7 @@ class ExcelBaseImporter:
         }
         self._parameters["filename"] = {"fixed": True, "value": [file_name]}
         self._column_names = dict()  # колонки таблицы
-        self.ex = Event()
+        self.event = Event()
         self.lock = Lock()
         self.row = 0
         self.Func: Func = Func(
@@ -144,7 +135,6 @@ class ExcelBaseImporter:
         return True
 
     ####################  Точка входа, чтение и обработка файла #############################
-    @fatal_error
     def extract(self) -> bool:
         try:
             data_reader = self.__get_data_xls()
@@ -154,7 +144,7 @@ class ExcelBaseImporter:
                 )
                 return False
             # создаются три потока (thread) для обработки данных
-            # в основном потоке разбиваются табличные данные на блоки
+            # в основном потоке разбиваются табличные данные из MS Excel на блоки
             # (self.teams[team]) по идентификаторам (internal_id)
             # во втором потоке из блоков формируются выходные документы (self._collections[document])
             # в третьем потоке документы сохраняются в файлах csv и json
@@ -183,7 +173,7 @@ class ExcelBaseImporter:
                     if not self.__get_header("pattern"):
                         self.colontitul["status"] = 1
                     try:
-                        self.ex = Event()
+                        self.event.set()
                         threads = [Thread(target=x) for x in thread_modules]
                         for t in threads:
                             t.daemon = True
@@ -218,8 +208,10 @@ class ExcelBaseImporter:
                                     end="",
                                     flush=True,
                                 )
+                    except Exception as ex:
+                        logger.error(f"{ex}")
                     finally:
-                        self.ex.set()
+                        self.event.clear()
                         for t in threads:
                             t.join()
         except Exception as ex:
@@ -230,17 +222,24 @@ class ExcelBaseImporter:
         return True
 
     def stage_build_documents(self):
-        while not self.ex.is_set():
+        while self.event.is_set():
             if len(self._teams) > 50:
                 self.__process_record()
         self.__done()
 
     def stage_print_documents(self):
-        while not self.ex.is_set():
+        while self.event.is_set():
             pass
         while len(self._teams) != 0:
             pass
         if self._collections:
+            print_message(
+                "         {} {} Запись в файл                                                 \r".format(
+                    self.num_page, self.func_inn()
+                ),
+                end="",
+                flush=True,
+            )
             asyncio.run(
                 self.write_all_results_async(
                     num_config=self.num_config + 1,
@@ -248,18 +247,13 @@ class ExcelBaseImporter:
                     num_file=self.num_file + 1,
                     path_output=self._output,
                     collections=self._collections.copy(),
-                    # output_format="json",
                 )
             )
-        # self._collections.clear()
 
     def __done(self):
         with ThreadPoolExecutor(max_workers=None) as executor:
             while len(self._teams) != 0:
                 executor.submit(self.__process_record())
-
-        # while len(self._teams) != 0:
-        #     self.__process_record()
 
     def __process_record(self) -> None:
         if len(self._teams) == 0:
@@ -267,7 +261,9 @@ class ExcelBaseImporter:
         try:
             key = next(iter(self._teams))
             team = self._teams[key]
-            if self.download_file:
+            if self.download_file and len(self._teams) % 10 == 0:
+                # при фоновой обработке отслеживаем процесс выполнения
+                # записывая текущее время в файл
                 write_log_time(self.download_file)
 
             if not self.colontitul["is_parameters"]:
@@ -279,7 +275,7 @@ class ExcelBaseImporter:
             logger.error(f"{ex}")
         finally:
             self._teams.popitem(last=False)
-            if len(self._teams) % 10 == 0:
+            if not self.event.is_set() and len(self._teams) % 10 == 0:
                 print_message(
                     "         {} {} Осталось обработать: {}                          \r".format(
                         self.num_page, self.func_inn(), len(self._teams)
@@ -291,7 +287,7 @@ class ExcelBaseImporter:
     def __make_collections(self, doc_param: dict, team: dict):
         try:
             # для каждого блока (team) определяем свой класс функций
-            # для многопотоковой обработки
+            # при многопоточной обработке
             _Func = Func(
                 self._parameters, self._dictionary, self._column_names, self.is_hash
             )
@@ -305,15 +301,11 @@ class ExcelBaseImporter:
             if doc_param.get("func_after"):
                 param = {"value": "", "func": doc_param["func_after"]}
                 self.func(
-                    # fld_param=param, team=man.collections.get(doc_param["name"])
                     fld_param=param,
                     team=self._collections.get(doc_param["name"]),
                 )
 
-
-
-
-    # Формируем словарь колонок из записи исходной таблицы
+    # Формируем словарь колонок из записи исходной таблицы MS Excel
     # key - имя колонки
     # value - словарь
     #   row - порядковый номер строки в группе
@@ -349,14 +341,6 @@ class ExcelBaseImporter:
                 self.__update_team(mapped_record, team_id)
             else:
                 self._teams[team_id] = mapped_record
-        # if team_id:
-        #     if self.__check_condition_team(mapped_record):
-        #         # Новый идентификатор
-        #         self._teams.append(mapped_record)
-        #         # self._teams.append(mapped_record)
-        #         return True
-        #     elif len(self._teams) != 0:
-        #         self.__update_team(mapped_record)
         return False
 
     def __update_team(self, mapped_record: dict, team_id: str = ""):
@@ -1098,7 +1082,6 @@ class ExcelBaseImporter:
         else:
             x = ""
         return x
-
 
     # если текущая таблица типа словарь (задается в gisconfig_000_00),
     # то формируем глобальный словарь значений
