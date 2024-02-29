@@ -1,4 +1,4 @@
-import datetime, re, os, json
+import datetime, re, os, json, csv
 import pathlib
 import hashlib
 import zipfile
@@ -399,5 +399,35 @@ def get_value(
 
 
 def write_log_time(file_name: str):
-    with open(file_name+".log", "w") as f:
+    with open(file_name + ".log", "w") as f:
         f.write(f"{file_name}\t" + datetime.now().strftime("%d-%m-%Y %H:%M:%S"))
+
+
+def get_list_dict_from_csv(file_name: str) -> list:
+    file_list = read_file(file_name)
+    headers = file_list[0][0].split(";")
+    values = file_list[1:]
+    final_list = []
+    for lists in values:
+        final_list.append(lists_to_dict(headers, lists))
+    return final_list
+
+
+def lists_to_dict(headers, lists):
+    data = {}
+    for index in range(len(lists)):
+        data[headers[index].strip()] = lists[index].strip()
+    return data
+
+
+def read_file(file_name):
+    list_urls = list()
+    try:
+        with open(file_name, mode="r", encoding=ENCONING) as read_file:
+            reading = csv.reader(read_file)
+            for row in reading:
+                list_urls.append(row)
+        return list_urls
+    except FileNotFoundError:
+        logger.error(f"Файл не найден {file_name}")
+    return []

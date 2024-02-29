@@ -84,6 +84,7 @@ class ExcelBaseImporter:
         self.event = Event()
         self.lock = Lock()
         self.row = 0
+        self.team_index = 0 
         self.Func: Func = Func(
             self._parameters, self._dictionary, self._column_names, self.is_hash
         )
@@ -182,8 +183,8 @@ class ExcelBaseImporter:
                         for self.row, record in enumerate(data_reader):
                             if self.row < 100 and self.row % 10 == 0:
                                 print_message(
-                                    "         {} {} Обработано: {}                          \r".format(
-                                        self.num_page, self.func_inn(), self.row
+                                    "         {} {} Обработано: {}({})                          \r".format(
+                                        self.num_page, self.func_inn(), self.row,self.team_index
                                     ),
                                     end="",
                                     flush=True,
@@ -202,8 +203,8 @@ class ExcelBaseImporter:
 
                             if self.row % 100 == 0:
                                 print_message(
-                                    "         {} {} Обработано: {}                          \r".format(
-                                        self.num_page, self.func_inn(), self.row
+                                    "         {} {} Обработано: {}({})                        \r".format(
+                                        self.num_page, self.func_inn(), self.row, self.team_index
                                     ),
                                     end="",
                                     flush=True,
@@ -228,27 +229,42 @@ class ExcelBaseImporter:
         self.__done()
 
     def stage_print_documents(self):
-        while self.event.is_set():
-            pass
-        while len(self._teams) != 0:
-            pass
+        loop = asyncio.new_event_loop()
+        try:
+            while self.event.is_set():
+                pass
+            while len(self._teams) != 0:
+                pass
+        except Exception as ex:
+            logger.error(f"{ex}")
+        finally:
+            loop.close()
         if self._collections:
-            print_message(
-                "         {} {} Запись в файл                                                 \r".format(
-                    self.num_page, self.func_inn()
-                ),
-                end="",
-                flush=True,
-            )
-            asyncio.run(
-                self.write_all_results_async(
-                    num_config=self.num_config + 1,
-                    num_page=self.num_page + 1,
-                    num_file=self.num_file + 1,
-                    path_output=self._output,
-                    collections=self._collections.copy(),
+            loop = asyncio.new_event_loop()
+            try:
+                print_message(
+                    "         {} {} Запись в файл                                                 \r".format(
+                        self.num_page, self.func_inn()
+                    ),
+                    end="",
+                    flush=True,
                 )
-            )
+                loop.run_until_complete(
+                    self.write_all_results_async(
+                        num_config=self.num_config + 1,
+                        num_page=self.num_page + 1,
+                        num_file=self.num_file + 1,
+                        path_output=self._output,
+                        collections=self._collections.copy(),
+                        output_format="csv",
+                    )
+                )
+            except Exception as ex:
+                logger.error(f"{ex}")
+            finally:
+                loop.close()
+
+        return
 
     def __done(self):
         with ThreadPoolExecutor(max_workers=None) as executor:
@@ -341,6 +357,7 @@ class ExcelBaseImporter:
                 self.__update_team(mapped_record, team_id)
             else:
                 self._teams[team_id] = mapped_record
+                self.team_index += 1
         return False
 
     def __update_team(self, mapped_record: dict, team_id: str = ""):
@@ -1485,7 +1502,8 @@ class ExcelBaseImporter:
             collections=collections,
         )
 
-    async def write_json_async(self, filename: str, text: str):
+    async def write_json_async(self, filename: str, records: list):
+        text = json.dumps(records, indent=4, ensure_ascii=False)
         async with aiofiles.open(filename, mode="a+", encoding=ENCONING) as f:
             await f.write(text)
 
@@ -1512,7 +1530,6 @@ class ExcelBaseImporter:
         collections: dict = None,
         output_format: str = None,
     ) -> None:
-        # if not self.__is_init() or len(man.collections) == 0:
         if not self.__is_init() or len(collections) == 0:
             logger.warning(
                 'Не удалось прочитать данные из файла "{0} - {1}"\n'.format(
@@ -1523,25 +1540,27 @@ class ExcelBaseImporter:
 
         os.makedirs(pathlib.Path(PATH_OUTPUT, path_output), exist_ok=True)
 
-        id = self.func_id("")
-        inn = self.func_inn()
-        for name, pages in collections.items():
-            for key, records in pages.items():
-                file_output = pathlib.Path(
-                    PATH_OUTPUT,
-                    path_output,
-                    f'{inn}{"_"+str(num_file) if num_file != 0 else ""}'
-                    + f'{"_"+key.replace(" ","_") if key != "noname" else ""}'
-                    + f'{"_"+str(num_page) if num_page!=0 else ""}'
-                    + f'{"_"+str(num_config) if num_config!=0 else ""}'
-                    + f"{id}_{name}",
-                )
-                if output_format is None or output_format == "json":
-                    jstr = json.dumps(records, indent=4, ensure_ascii=False)
-                    await self.write_json_async(f"{file_output}.json", jstr)
+        try:
+            id = self.func_id("")
+            inn = self.func_inn()
+            for name, pages in collections.items():
+                for key, records in pages.items():
+                    file_output = pathlib.Path(
+                        PATH_OUTPUT,
+                        path_output,
+                        f'{inn}{"_"+str(num_file) if num_file != 0 else ""}'
+                        + f'{"_"+key.replace(" ","_") if key != "noname" else ""}'
+                        + f'{"_"+str(num_page) if num_page!=0 else ""}'
+                        + f'{"_"+str(num_config) if num_config!=0 else ""}'
+                        + f"{id}_{name}",
+                    )
+                    if output_format is None or output_format == "json":
+                        await self.write_json_async(f"{file_output}.json", records)
 
-                if output_format is None or output_format == "csv":
-                    await self.write_csv_async(f"{file_output}.csv", records)
+                    if output_format is None or output_format == "csv":
+                        await self.write_csv_async(f"{file_output}.csv", records)
+        except Exception as ex:
+            logger.error(f"{ex}")
 
     async def write_logs_async(
         self,
@@ -1741,6 +1760,7 @@ class ExcelBaseImporter:
         self._possible_columns.clear()
         self._headers.clear()
         self._column_names.clear()
+        self.team_index = 0
 
     def __is_init(self) -> bool:
         return self._config._is_init

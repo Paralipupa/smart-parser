@@ -8,7 +8,7 @@ import csv
 import zipfile
 import shutil
 from collections import Counter
-from .helpers import warning_error, fatal_error, print_message
+from .helpers import warning_error, fatal_error, print_message, get_list_dict_from_csv
 from .exceptions import ConfigNotFoundException
 from .settings import *
 
@@ -72,8 +72,10 @@ class UnionData:
         self.__make_archive(save_directories)
         if os.path.isdir(self.path_input):
             shutil.rmtree(self.path_input)
-            if os.path.isfile(os.path.join(self.path_output, self.file_output+".log")):
-                os.remove(os.path.join(self.path_output, self.file_output+".log"))
+            if os.path.isfile(
+                os.path.join(self.path_output, self.file_output + ".log")
+            ):
+                os.remove(os.path.join(self.path_output, self.file_output + ".log"))
         return self.file_output
 
     def __get_data_files(self, files: list) -> dict:
@@ -96,8 +98,11 @@ class UnionData:
         for file in files:
             for fn in DOCUMENTS.split():
                 name: list = re.findall(
-                    r"(?<=[0-9]{1}_)" + fn + r"(?=\.json)", file, re.IGNORECASE
+                    r"(?<=[0-9]{1}_)" + fn + r"(?=\.)", file, re.IGNORECASE
                 )
+                # name: list = re.findall(
+                #     r"(?<=[0-9]{1}_)" + fn + r"(?=\.json)", file, re.IGNORECASE
+                # )
                 if name:
                     inn: list = re.findall(r"^[0-9]{8,10}(?=_)", file, re.IGNORECASE)
                     if inn and inn[0] == "0000000000":
@@ -156,16 +161,13 @@ class UnionData:
     def __get_data(self, file_name: str) -> dict:
         data = dict()
         file_name = pathlib.Path(self.path_input, file_name)
-        with open(file_name, mode="r", encoding=ENCONING) as file:
-            try:
-                data = json.load(file)
-                if data:
-                    # список в словарь
-                    keys = [x["internal_id"] + x.get("account_type", "") for x in data]
-                    self.__check_unique(file_name, keys)
-                    data = dict(zip(keys, data))
-            except Exception as ex:
-                print_message(f"{ex}")
+        try:
+            data = get_list_dict_from_csv(file_name)
+            keys = [x["internal_id"] + x.get("account_type", "") for x in data]
+            self.__check_unique(file_name, keys)
+            data = dict(zip(keys, data))
+        except Exception as ex:
+            logger.error(f"ex")
         return data
 
     @fatal_error
@@ -173,7 +175,8 @@ class UnionData:
         files = list()
         if os.path.isdir(self.path_input):
             for file in os.listdir(self.path_input):
-                if file.endswith(".json"):
+                if file.endswith(".csv"):
+                    # if file.endswith(".json"):
                     files.append(file)
         return files
 
