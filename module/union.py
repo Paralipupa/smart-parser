@@ -46,7 +46,11 @@ class UnionData:
         files = self.__files_sorted(files_o)
         if files:
             data = self.__get_data_files(files)
-            # data = self.__sort_data_files(data)
+            print_message(
+                "               Финальная сборка                                                 \r",
+                end="",
+                flush=True,
+            )
             for inn, item in data.items():
                 for id_period, files in item.items():
                     file_data = {}

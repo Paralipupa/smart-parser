@@ -7,8 +7,7 @@ import asyncio
 import json
 import logging
 from time import sleep
-from threading import Thread, Event, Lock
-from concurrent.futures import ThreadPoolExecutor
+from threading import Thread
 from collections import OrderedDict
 from aiocsv import AsyncWriter, AsyncDictWriter
 from typing import Union, List
@@ -82,8 +81,7 @@ class ExcelBaseImporter:
         }
         self._parameters["filename"] = {"fixed": True, "value": [file_name]}
         self._column_names = dict()  # колонки таблицы
-        self.event = Event()
-        self.lock = Lock()
+        self.is_event = False
         self.row = 0
         self.team_index = 0
         self.Func: Func = Func(
@@ -175,10 +173,9 @@ class ExcelBaseImporter:
                     if not self.__get_header("pattern"):
                         self.colontitul["status"] = 1
                     try:
-                        self.event.set()
+                        self.is_event = True
                         threads = [Thread(target=x) for x in thread_modules]
                         for t in threads:
-                            t.daemon = True
                             t.start()
 
                         for self.row, record in enumerate(data_reader):
@@ -216,11 +213,10 @@ class ExcelBaseImporter:
                                     end="",
                                     flush=True,
                                 )
-                            sleep(0.00001)
                     except Exception as ex:
                         logger.error(f"{ex}")
                     finally:
-                        self.event.clear()
+                        self.is_event = False
                         for t in threads:
                             t.join()
         except Exception as ex:
@@ -231,16 +227,15 @@ class ExcelBaseImporter:
         return True
 
     def stage_build_documents(self):
-        while self.event.is_set():
+        while self.is_event:
             if len(self._teams) > 50:
                 self.__process_record()
-            sleep(0)
         self.__done()
 
     def stage_print_documents(self):
         loop = asyncio.new_event_loop()
         try:
-            while self.event.is_set() or len(self._teams) != 0:
+            while self.is_event or len(self._teams) != 0:
                 if self._collections:
                     collections = self._collections.copy()
                     self._collections.clear()
@@ -254,7 +249,6 @@ class ExcelBaseImporter:
                             output_format="csv",
                         )
                     )
-                sleep(0)
             print_message(
                 "         {} {} Запись в файл                                                 \r".format(
                     self.num_page, self.func_inn()
@@ -279,9 +273,8 @@ class ExcelBaseImporter:
         return
 
     def __done(self):
-        with ThreadPoolExecutor(max_workers=None) as executor:
-            while len(self._teams) != 0:
-                executor.submit(self.__process_record())
+        while len(self._teams) != 0:
+            self.__process_record()
 
     def __process_record(self) -> None:
         if len(self._teams) == 0:
@@ -289,10 +282,6 @@ class ExcelBaseImporter:
         try:
             key = next(iter(self._teams))
             team = self._teams[key]
-            if self.download_file and len(self._teams) % 10 == 0:
-                # при фоновой обработке отслеживаем процесс выполнения
-                # записывая текущее время в файл
-                write_log_time(self.download_file, False)
 
             if not self.colontitul["is_parameters"]:
                 self.__set_parameters()
@@ -303,7 +292,7 @@ class ExcelBaseImporter:
             logger.error(f"{ex}")
         finally:
             self._teams.popitem(last=False)
-            if not self.event.is_set() and len(self._teams) % 10 == 0:
+            if not self.is_event and len(self._teams) % 10 == 0:
                 print_message(
                     "         {} {} Осталось обработать: {}                          \r".format(
                         self.num_page, self.func_inn(), len(self._teams)
@@ -311,16 +300,15 @@ class ExcelBaseImporter:
                     end="",
                     flush=True,
                 )
-            sleep(0)
+                if self.download_file:
+                    # при фоновой обработке отслеживаем процесс выполнения
+                    # записывая текущее время в файл
+                    write_log_time(self.download_file, False)
+                sleep(0)
 
     def __make_collections(self, doc_param: dict, team: dict):
         try:
-            # для каждого блока (team) определяем свой класс функций
-            # при многопоточной обработке
-            _Func = Func(
-                self._parameters, self._dictionary, self._column_names, self.is_hash
-            )
-            doc = self.__set_document(doc_param, team, _Func.func)
+            doc = self.__set_document(doc_param, team)
             self.__document_split_one_line(doc, doc_param)
         except Exception as ex:
             logger.error(f"{ex}")
@@ -1250,7 +1238,7 @@ class ExcelBaseImporter:
 
     # Формирование документа из части исходной таблицы - team (отдельной области или иерархии)
     # выбранной по идентификатору internal_id
-    def __set_document(self, doc_param: dict, team: dict, func) -> dict:
+    def __set_document(self, doc_param: dict, team: dict) -> dict:
         doc = dict()
         try:
             for fld_item in doc_param["fields"]:  # перебор полей выходной таблицы
@@ -1377,7 +1365,7 @@ class ExcelBaseImporter:
 
                     if fld_record["func"]:
                         # если есть, запускаем функцию
-                        fld_record["value"] = func(
+                        fld_record["value"] = self.func(
                             team=team,
                             fld_param=fld_record,
                             row=table_row[0],
