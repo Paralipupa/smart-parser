@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 class Func:
 
-    def __init__(self, parameters, dictionary, column_names, is_hash):
+    def __init__(self, parameters, dictionary, column_names, is_hash, parent):
         self.funcs = {
             "inn": self.func_inn,
             "period_first": self.func_period_first,
@@ -48,6 +48,7 @@ class Func:
         self._dictionary = dictionary
         self._column_names = column_names
         self.is_hash = is_hash
+        self.parent = parent
         self.lock = Lock()
 
     def __get_func_list(self, part: str, names: str):
@@ -434,9 +435,11 @@ class Func:
             u.setdefault(item["account_number"], 0)
             u[item["account_number"]] += 1
         if exist_overhaul == False:
-            mess = 'В тарифах отсутствует колонка "Кап.ремонт"'
-            self.__add_warning(mess)
+            if self.parent:
+                mess = 'В тарифах отсутствует колонка "Кап.ремонт"'
+                self.parent.add_warning(mess)
         if [x for x in u.values() if x > 1]:
-            mess = "Конфликт в расчетном счете по капитальному ремонту"
-            self.__add_warning(mess)
+            if self.parent:
+                mess = "Конфликт в расчетном счете по капитальному ремонту"
+                self.parent.add_warning(mess)
         return ""

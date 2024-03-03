@@ -71,7 +71,7 @@ class ExcelBaseImporter:
         # блоки данных из таблицы сгруппированных по идентификатору (internal_id)
         self._teams = OrderedDict()
         self._collections = dict()  # коллекция выходных документов
-        self._possible_columns = dict()
+        self._possible_columns = list()
         self._headers = list()
         self._column_names = dict()
         self._parameters = dict()  # параметры отчета (период, имя_файла, инн и др.)
@@ -81,15 +81,16 @@ class ExcelBaseImporter:
         }
         self._parameters["filename"] = {"fixed": True, "value": [file_name]}
         self._column_names = dict()  # колонки таблицы
+        self._column_service = list()
         self.is_event = False
         self.row = 0
         self.team_index = 0
-        self.Func: Func = Func(
-            self._parameters, self._dictionary, self._column_names, self.is_hash
+        _Func: Func = Func(
+            self._parameters, self._dictionary, self._column_names, self.is_hash, self
         )
-        self.func = self.Func.func
-        self.func_id = self.Func.func_id
-        self.func_inn = self.Func.func_inn
+        self.func = _Func.func
+        self.func_id = _Func.func_id
+        self.func_inn = _Func.func_inn
         self.__init_page()
 
     ###################  Проверка совместимости файла конфигурации ######################
@@ -99,12 +100,12 @@ class ExcelBaseImporter:
         is_find = False
         if not self.is_verify(self._parameters["filename"]["value"][0]):
             mess = f'Файл не найден {self._parameters["filename"]["value"][0]}'
-            self.__add_warning(mess)
+            self.add_warning(mess)
             logger.warning(mess)
             return False
         if self.__check_incorrect_inn():
             mess = f"\tНе прошла проверка по ИНН "
-            self.__add_warning(mess)
+            self.add_warning(mess)
             # logger.warning(mess)
             return False
         if sheets_in:
@@ -129,7 +130,7 @@ class ExcelBaseImporter:
         if not self.__is_init():
             return False
         if not os.path.exists(self._parameters["filename"]["value"][0]):
-            self.__add_warning(f"ОШИБКА чтения файла {file_name}")
+            self.add_warning(f"ОШИБКА чтения файла {file_name}")
             self.is_file_exists = False
             return False
         return True
@@ -139,7 +140,7 @@ class ExcelBaseImporter:
         try:
             data_reader = self.__get_data_xls()
             if not data_reader:
-                self.__add_warning(
+                self.add_warning(
                     f"\nОШИБКА чтения файла {self._parameters['filename']['value'][0]}"
                 )
                 return False
@@ -152,7 +153,7 @@ class ExcelBaseImporter:
             while self.__init_config():
                 # перебираем все файлы конфигурации
                 # для данного входного файла MS Excel
-                # как правило на один файл MS Excel приходится один файл конфигурации, 
+                # как правило на один файл MS Excel приходится один файл конфигурации,
                 # но может быть и несколько конф.файлов распределенные по листам MS Excel
 
                 self.num_config = data_reader.set_config(self._page_index)
@@ -348,6 +349,14 @@ class ExcelBaseImporter:
                             "negative": index[POS_INDEX_IS_NEGATIVE],
                         }
                     )
+                if self._column_service and self._column_service[0][1] == key and v:
+                    if not (self._column_service[0][0], v) in self._possible_columns:
+                        self._possible_columns.append(
+                            (self._column_service[0][0], v)
+                        )
+                    
+                    
+            
         return result_record if not is_empty else None
 
     # группируем записи по идентификатору
@@ -443,21 +452,21 @@ class ExcelBaseImporter:
                     s2 += f"{item['name']} {c}\n"
 
             if is_active_find:
-                self.__add_warning(
+                self.add_warning(
                     '\n{}:\nВ загружаемом файле "{}"\nне все колонки найдены \n'.format(
                         self._config._config_name,
                         self._parameters["filename"]["value"][0],
                     )
                 )
                 if s2:
-                    self.__add_warning("\tНайдены колонки:\n{}\n".format(s2.strip()))
+                    self.add_warning("\tНайдены колонки:\n{}\n".format(s2.strip()))
                 if s1:
-                    self.__add_warning("\tНе найдены колонки:\n{}\n".format(s1.strip()))
+                    self.add_warning("\tНе найдены колонки:\n{}\n".format(s1.strip()))
             else:
                 s = "Найдены колонки:"
                 for key, value in self._column_names.items():
                     s += f"\n{key} - {value['indexes'][0][POS_INDEX_VALUE]}"
-                self.__add_warning(
+                self.add_warning(
                     '\n{0}:\nВ загружаемом файле "{1}" \
                 \nневерен шаблон нахождения начала области данных(({3})condition_begin_team(\n{2}\n))\n{4}\n'.format(
                         self._config._config_name,
@@ -494,7 +503,7 @@ class ExcelBaseImporter:
                 ) or self.__check_condition_team(self.__map_record(record)):
                     # переход в табличную область данных
                     self.colontitul["status"] = 2
-                    if not self._is_column_service_exist:
+                    if not self._column_service:
                         self.__dynamic_change_config()
                     self._config._parameters.setdefault(
                         "table_start",
@@ -612,7 +621,7 @@ class ExcelBaseImporter:
                     key = item_head_column["name"]
                     if key == "Услуга":
                         # В таблице присутствует колонка в которой указаны названия услуг ЖКУ
-                        self._is_column_service_exist = True
+                        self._column_service.append( (column_name["col"], key))
                     self._column_names.setdefault(
                         key,
                         {
@@ -653,8 +662,8 @@ class ExcelBaseImporter:
                                 (column_name["col"], False)
                             )
                             if is_last:
-                                self._possible_columns[column_name["col"]] = (
-                                    column_name["name"]
+                                self._possible_columns.append(
+                                    (column_name["col"], column_name["name"])
                                 )
                     item_head_column["row"] = row
                     is_find = True
@@ -667,7 +676,11 @@ class ExcelBaseImporter:
                             ):
                                 self._column_names[key]["indexes"].remove((x, False))
                                 item_head_column["indexes"].remove((x, False))
-                                self._possible_columns.pop(x)
+                                self._possible_columns = [
+                                    item
+                                    for item in self._possible_columns
+                                    if item[1] != x
+                                ]
                     if item_head_column["unique"]:
                         break
         return is_find
@@ -813,7 +826,7 @@ class ExcelBaseImporter:
         data_reader = ReaderClass(self._parameters["filename"]["value"][0])
         if not data_reader:
             self.is_file_exists = False
-            self.__add_warning(
+            self.add_warning(
                 f"\nОШИБКА чтения файла {self._parameters['filename']['value'][0]}"
             )
             return None
@@ -1132,7 +1145,9 @@ class ExcelBaseImporter:
     # Добавляем колонки (услуги), отсутствующие в конфигурации, но имеющиеся в заголовках таблицы
     def __change_heading(self) -> bool:
         bResult = False
-        for key, name in self._possible_columns.items():
+        for item in self._possible_columns:
+            key = item[0]
+            name = item[1]
             b = self.__heading_append(key, name)
             bResult |= b
         return bResult
@@ -1146,7 +1161,7 @@ class ExcelBaseImporter:
             flds = self.__get_list_fields_to_update(doc)
             for fld in flds:
                 self.__append_to_fld_sub(fld["sub"])
-        self._possible_columns = {}
+        # self._possible_columns.clear()
 
     def __heading_append(self, key: str, name: str) -> bool:
         name = get_ident(name)
@@ -1198,7 +1213,8 @@ class ExcelBaseImporter:
         if fld_sub:
             ls = []
             last_rec = fld_sub.pop()
-            for name in self._possible_columns.values():
+            for item in self._possible_columns:
+                name = item[1]
                 ls.append(last_rec.copy())
                 ls[-1]["func"] = ls[-1]["func"].replace(
                     "Прочие", name.replace(",", " ")
@@ -1755,10 +1771,8 @@ class ExcelBaseImporter:
         self._col_start = 0
 
     def __init_page(self):
-        # clear_manager()
-        self._is_column_service_exist = (
-            False  # Наличие колонки, в которой указаны названия услуг ЖКУ
-        )
+        # Наличие колонки, в которой указаны названия услуг ЖКУ
+        self._column_service.clear()
         self._teams.clear()
         self._collections.clear()  # коллекция выходных документов
         self._possible_columns.clear()
@@ -1874,7 +1888,7 @@ class ExcelBaseImporter:
                 # logger.debug("\n" + mess.strip())
                 self._config._debug.append(mess)
                 if is_warning:
-                    self.__add_warning(mess)
+                    self.add_warning(mess)
         return False
 
     def __check_incorrect_inn(self) -> bool:
@@ -1913,5 +1927,5 @@ class ExcelBaseImporter:
         # self._teams = list()
         self._teams_ref = OrderedDict()
 
-    def __add_warning(self, text: str):
+    def add_warning(self, text: str):
         self.config_files[self.index_config - 1]["warning"].append(text)
