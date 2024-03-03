@@ -6,6 +6,7 @@ import aiofiles
 import asyncio
 import json
 import logging
+from copy import deepcopy
 from time import sleep
 from threading import Thread
 from collections import OrderedDict
@@ -17,7 +18,7 @@ from module.exceptions import InnMismatchException
 from .file_readers import get_file_reader
 from preliminary.utils import get_ident, get_reg
 from module.func import Func
-from .helpers import (
+from module.helpers import (
     write_log_time,
     warning_error,
     fatal_error,
@@ -30,6 +31,7 @@ from .helpers import (
     get_absolute_index,
     get_index_key,
 )
+from preliminary.utils import get_reg
 from .settings import *
 
 logger = logging.getLogger(__name__)
@@ -215,7 +217,7 @@ class ExcelBaseImporter:
                                     flush=True,
                                 )
                     except Exception as ex:
-                        logger.error(f"{ex}")
+                        logger.error(f"{self.row}:{ex}")
                     finally:
                         self.is_event = False
                         for t in threads:
@@ -331,73 +333,79 @@ class ExcelBaseImporter:
     #   active - найдена колонка в исходной  таблице или нет
     #  indexes - список номеров колонок в виде кортежа (номер, признак отриц.значения) в исходной таблице откуда берутся данные
     def __map_record(self, record):
+        is_possible = False
         result_record = dict()
         is_empty = True
-        for key, value in self._column_names.items():
-            result_record.setdefault(key, [])
-            size = len(result_record[key])
-            for index in value["indexes"]:
-                if index[POS_INDEX_VALUE] in range(len(record)):
-                    v = record[index[POS_INDEX_VALUE]]
-                    is_empty = is_empty and (v == "" or v is None)
-                    result_record[key].append(
-                        {
-                            "row": size,
-                            "col": value["col"],
-                            "index": index[POS_INDEX_VALUE],
-                            "value": v,
-                            "negative": index[POS_INDEX_IS_NEGATIVE],
-                        }
-                    )
-                if self._column_service and self._column_service[0][1] == key and v:
-                    if not (self._column_service[0][0], v) in self._possible_columns:
-                        self._possible_columns.append(
-                            (self._column_service[0][0], v)
+        try:
+            for key, value in self._column_names.items():
+                result_record.setdefault(key, [])
+                size = len(result_record[key])
+                for index in value["indexes"]:
+                    if index[POS_INDEX_VALUE] in range(len(record)):
+                        v = record[index[POS_INDEX_VALUE]]
+                        is_empty = is_empty and (v == "" or v is None)
+                        result_record[key].append(
+                            {
+                                "row": size,
+                                "col": value["col"],
+                                "index": index[POS_INDEX_VALUE],
+                                "value": v,
+                                "negative": index[POS_INDEX_IS_NEGATIVE],
+                            }
                         )
-                    
-                    
-            
+                    if (
+                        self._column_service
+                        and self._column_service[0][1] == key
+                        and v
+                        and v != key
+                    ):
+                        if (
+                            not (self._column_service[0][0], v)
+                            in self._possible_columns
+                        ):
+                            self._possible_columns.append(
+                                (self._column_service[0][0], v)
+                            )
+                            # is_possible = True
+            if is_possible:
+                self.__dynamic_change_config()
+        except Exception as ex:
+            logger.error(f"{ex}")
+
         return result_record if not is_empty else None
 
     # группируем записи по идентификатору
     def __append_to_team(self, mapped_record: dict) -> bool:
-        team_id = self.__get_team_id(mapped_record)
-        if team_id:
-            if self._teams.get(team_id):
-                self.__update_team(mapped_record, team_id)
-            else:
-                self._teams[team_id] = mapped_record
-                self.team_index += 1
+        try:
+            team_id = self.__get_team_id(mapped_record)
+            if team_id:
+                if self._teams.get(team_id):
+                    self.__update_team(mapped_record, team_id)
+                else:
+                    self._teams[team_id] = mapped_record
+                    self.team_index += 1
+        except Exception as ex:
+            logger.error(f"{ex}")
         return False
 
     def __update_team(self, mapped_record: dict, team_id: str = ""):
-        if not team_id:
-            for key in mapped_record.keys():
-                size = self._teams[-1][key][-1]["row"] + 1
-                for mr in mapped_record[key]:
-                    self._teams[-1][key].append(
-                        {
-                            "row": size,
-                            "col": mr["col"],
-                            "index": mr["index"],
-                            "value": mr["value"],
-                            "negative": mr["negative"],
-                        }
-                    )
         if team_id:
-            for key in mapped_record.keys():
-                size = self._teams[team_id][key][-1]["row"] + 1
-                for mr in mapped_record[key]:
-                    self._teams[team_id][key].append(
-                        {
-                            "row": size,
-                            "col": mr["col"],
-                            "index": mr["index"],
-                            "value": mr["value"],
-                            "negative": mr["negative"],
-                        }
-                    )
-
+            try:
+                for key in mapped_record.keys():
+                    if self._teams[team_id].get(key):
+                        size = self._teams[team_id][key][-1]["row"] + 1
+                        for mr in mapped_record[key]:
+                            self._teams[team_id][key].append(
+                                {
+                                    "row": size,
+                                    "col": mr["col"],
+                                    "index": mr["index"],
+                                    "value": mr["value"],
+                                    "negative": mr["negative"],
+                                }
+                            )
+            except Exception as ex:
+                logger.error(f"{ex}")
     # Проверяем условие завершения группировки записей по текущему идентификатору
     def __check_condition_team(self, mapped_record: dict) -> bool:
         if not self.__get_condition_team():
@@ -621,7 +629,7 @@ class ExcelBaseImporter:
                     key = item_head_column["name"]
                     if key == "Услуга":
                         # В таблице присутствует колонка в которой указаны названия услуг ЖКУ
-                        self._column_service.append( (column_name["col"], key))
+                        self._column_service.append((column_name["col"], key))
                     self._column_names.setdefault(
                         key,
                         {
@@ -1055,7 +1063,7 @@ class ExcelBaseImporter:
             cols = [(col_curr, True)]
         for c in cols:
             fld_name = self.__get_key_from_input_names(c[POS_NUMERIC_VALUE])
-            if fld_name:
+            if fld_name and not team.get(fld_name) is None:
                 row = get_absolute_index(rows[0], row_curr)
                 values = [
                     (x["value"], None, x["negative"] | c[POS_NUMERIC_IS_NEGATIVE])
@@ -1139,8 +1147,12 @@ class ExcelBaseImporter:
 
     ########################   Изменение конфигурации "на ходу" #################################
     def __dynamic_change_config(self):
-        if self.__change_heading():
-            self.__change_pp_charges_and_pp_service()
+        try:
+            if self.__change_heading():
+                # if not self._column_service:
+                self.__change_pp_charges_and_pp_service()
+        except Exception as ex:
+            logger.error(f"{ex}")
 
     # Добавляем колонки (услуги), отсутствующие в конфигурации, но имеющиеся в заголовках таблицы
     def __change_heading(self) -> bool:
@@ -1215,20 +1227,45 @@ class ExcelBaseImporter:
             last_rec = fld_sub.pop()
             for item in self._possible_columns:
                 name = item[1]
-                ls.append(last_rec.copy())
-                ls[-1]["func"] = ls[-1]["func"].replace(
-                    "Прочие", name.replace(",", " ")
-                )
-                if len(last_rec["offset_column"]) > 0:
-                    l = [
+                pattern = get_reg(name)
+                if not (
+                    [x for x in fld_sub if name in x["func"]]
+                    or [
                         x
-                        for x in self._config._columns_heading
-                        if x["name"] == get_ident(name)
+                        for x in fld_sub
+                        if x["pattern"] and (pattern in x["pattern"][0] or name in x["pattern"][0])
                     ]
-                    if l:
-                        ls[-1]["offset_column"] = [(l[0]["col"], True, False)]
+                    or [
+                        x
+                        for x in fld_sub
+                        if x["offset_pattern"] and (pattern in x["offset_pattern"][0] or name in x["offset_pattern"][0])
+                    ]
+                ):
+                    ls.append(deepcopy(last_rec))
+                    ls[-1]["func"] = ls[-1]["func"].replace(
+                        "Прочие", name.replace(",", " ")
+                    )
+                    if not name.replace(",", " ") in ls[-1]["func"]:
+                        if ls[-1]["pattern"]:
+                            ls[-1]["pattern"][0] = ls[-1]["pattern"][0].replace(
+                                r".+", pattern
+                            )
+                        if ls[-1]["offset_pattern"]:
+                            ls[-1]["offset_pattern"][0] = ls[-1]["offset_pattern"][
+                                0
+                            ].replace(r".+", pattern)
+                    if len(last_rec["offset_column"]) > 0:
+                        l = [
+                            x
+                            for x in self._config._columns_heading
+                            if x["name"] == get_ident(name)
+                        ]
+                        if l:
+                            ls[-1]["offset_column"] = [(l[0]["col"], True, False)]
+                else:
+                    pass
             last_rec["offset_column"] = [(-1, True, False)]
-            fld_sub.clear()
+            # fld_sub.clear()
             fld_sub.extend(ls)
             fld_sub.append(last_rec)
             return
@@ -1793,7 +1830,9 @@ class ExcelBaseImporter:
             return self._config._columns_heading
 
     def __is_column_heading_exist(self, name: str) -> bool:
-        names = [x for x in self._config._columns_heading if x.get(name) is not None]
+        names = [
+            x for x in self._config._columns_heading if x["name"] == name is not None
+        ]
         return len(names) != 0
 
     def __get_condition_team(self) -> str:
