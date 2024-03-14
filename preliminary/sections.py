@@ -51,7 +51,7 @@ def write_section_contract(**kwargs):
 
 def __write_section_service_internal_id(**kwargs):
     l: list = get_lines(kwargs.get("lines"))
-    if len(l) > 2:
+    if not kwargs.get("lines")["dic"].get("service") or len(l) > 2:
         kwargs.get("file").write("pattern=@0\n")
         kwargs.get("file").write("col_config=0\n")
         if kwargs.get("lines")["dic"].get("service"):
@@ -135,18 +135,13 @@ def __write_section_service_internal_id(**kwargs):
     else:
         kwargs.get("file").write("pattern=@Прочие\n")
         kwargs.get("file").write("row_data=0\n")
-        col = kwargs.get("lines")["dic"]["service"][0]["col"]
-        kwargs.get("file").write(f"col_config={col}\n")
-        if kwargs.get("sec_is_hash"):
-            kwargs.get("file").write(
-                f"func=hash\n"
+        if kwargs.get("lines")["dic"].get("service"):
+            col = kwargs.get("lines")["dic"]["service"][0]["col"]
+            kwargs.get("file").write(f"col_config={col}\n")
+            if kwargs.get("sec_is_hash"):
+                kwargs.get("file").write(
+                    f"func=hash\n"
             )
-        
-# pattern=.+
-# row_data=0
-# col_config=100
-# func=hash
-        
     kwargs.get("file").write("\n")
     return
 

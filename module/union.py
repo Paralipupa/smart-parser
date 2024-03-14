@@ -277,11 +277,12 @@ class UnionData:
                     )
                     if name:
                         if file.endswith(".csv") or file.endswith(".log"):
-                            arch_zip.write(
-                                os.path.join(folder, file),
-                                os.path.join(name[0], file),
-                                compress_type=zipfile.ZIP_DEFLATED,
-                            )
+                            if not (file == "pu.csv") or ([x for x in files if x == "puv.csv"]):
+                                arch_zip.write(
+                                    os.path.join(folder, file),
+                                    os.path.join(name[0], file),
+                                    compress_type=zipfile.ZIP_DEFLATED,
+                                )
         arch_zip.close()
         return self.file_output
 

@@ -18,6 +18,8 @@ pattern_fias_Кадетская:Кадетская В[.]О[.] линия@f93f3cb
 pattern_fias_Малый:Малый В[.]О[.] пр-кт@dd0c6749-c088-4bd2-b23d-f8a2ffe005c2
 header_fias:@fias_6+fias_11+fias_Кадетская+fias_Малый
 
+required_pu:internal_id
+
 0:№ пом.;№ кв.;ФИО;Плательщик
 0:Сальдо  вход.@credit	
 0:Начислено@bill_value	Оплачено@payment_value	Сальдо  исх.@saldo
