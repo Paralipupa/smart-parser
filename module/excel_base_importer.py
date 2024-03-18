@@ -93,6 +93,7 @@ class ExcelBaseImporter:
         self.func = _Func.func
         self.func_id = _Func.func_id
         self.func_inn = _Func.func_inn
+
         self.__init_page()
 
     ###################  Проверка совместимости файла конфигурации ######################
@@ -336,6 +337,8 @@ class ExcelBaseImporter:
         is_possible = False
         result_record = dict()
         is_empty = True
+        # проверяем есть ли условия проверки записи на валидность
+        check_row = self.__get_checking_rows()
         try:
             for key, value in self._column_names.items():
                 result_record.setdefault(key, [])
@@ -343,6 +346,12 @@ class ExcelBaseImporter:
                 for index in value["indexes"]:
                     if index[POS_INDEX_VALUE] in range(len(record)):
                         v = record[index[POS_INDEX_VALUE]]
+                        if not check_row is None and check_row["name"] == key and v:
+                            if  not re.search(
+                                check_row["pattern"], v
+                            ):
+                                return None
+
                         is_empty = is_empty and (v == "" or v is None)
                         result_record[key].append(
                             {
@@ -406,6 +415,7 @@ class ExcelBaseImporter:
                             )
             except Exception as ex:
                 logger.error(f"{ex}")
+
     # Проверяем условие завершения группировки записей по текущему идентификатору
     def __check_condition_team(self, mapped_record: dict) -> bool:
         if not self.__get_condition_team():
@@ -1234,12 +1244,17 @@ class ExcelBaseImporter:
                     or [
                         x
                         for x in fld_sub
-                        if x["pattern"] and (pattern in x["pattern"][0] or name in x["pattern"][0])
+                        if x["pattern"]
+                        and (pattern in x["pattern"][0] or name in x["pattern"][0])
                     ]
                     or [
                         x
                         for x in fld_sub
-                        if x["offset_pattern"] and (pattern in x["offset_pattern"][0] or name in x["offset_pattern"][0])
+                        if x["offset_pattern"]
+                        and (
+                            pattern in x["offset_pattern"][0]
+                            or name in x["offset_pattern"][0]
+                        )
                     ]
                 ):
                     ls.append(deepcopy(last_rec))
@@ -1817,6 +1832,7 @@ class ExcelBaseImporter:
         self._headers.clear()
         self._column_names.clear()
         self.team_index = 0
+        self.checking_rows = None
 
     def __is_init(self) -> bool:
         return self._config._is_init
@@ -1860,6 +1876,17 @@ class ExcelBaseImporter:
 
     def __get_max_rows_heading(self) -> int:
         return get_value_int(self._config._max_rows_heading)[0]
+
+    def __get_checking_rows(self) -> dict:
+        if not self.checking_rows is None:
+            return self.checking_rows
+        if self._config._checking_rows:
+            self.checking_rows = {
+                "name": get_ident(self._config._checking_rows.split("::")[0]),
+                "pattern": self._config._checking_rows.split("::")[-1],
+            }
+            return self.checking_rows
+        return None
 
     def __get_header(self, name: str):
         return self._config._header[name]

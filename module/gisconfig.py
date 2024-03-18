@@ -37,6 +37,7 @@ class GisConfig:
         # регул.выражение начала новой области (иерархии)
         self._condition_team = list()
         self._condition_end_table = ""  # регул.выражение окончания табличных данных
+        self._checking_rows = {}  # Проверка записи таблицы на актуальность
         # регул.выражение колонки начала области (иерархии)
         self._condition_team_column = ""
         # колонка в которой просматривается условие окончания таблицы
@@ -76,6 +77,10 @@ class GisConfig:
         self._border_column_right = self.read_config(
             "main", "border_column_right", isNumeric=True
         )  #
+        self._checking_rows = self.read_config(
+            "main", "checking_rows", isNumeric=False
+        )  #
+        return
 
     def set_header(self):
         self._header = {"row": [0], "col": [0], "pattern": ""}

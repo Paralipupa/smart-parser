@@ -17,12 +17,18 @@ pattern_ЛС:^11[0-9]{8}$
 required_pu:serial_number,device_type
 
 0:Л/С;Л/c;Лицевой счет
-0:Адрес@address
+0:Адрес@address{func{_}}
 0:Общ. площадь л/с@total_square
 0:Кол-во проживающих@living_person_number
-;Префикс принципала
-;Принципал	Поставщик
-;Категория услуги
+0:Номер помещения@room_number
+
+
+0:Дата фактической поверки@first_verification_date
+0:Дата планируемой поверки (указанная на ПУ)@next_verification_date
+0:Межповерочный интервал, мес.@checking_interval
+0:Статус шкалы ПУ@checking_rows::Работоспособен
+
+
 
 ;Тип тарифа
 0:Тариф@tariff

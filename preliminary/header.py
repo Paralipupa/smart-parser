@@ -20,6 +20,7 @@ def header(lines: list, path: str) -> str:
                 _, pattern = get_pattern(p,p)
                 file.write(
                     f'pattern{"_" if i>0 else ""}{i-1 if i>0 else ""}={pattern}\n')
+
         file.write('\n')
 
         file.write('[main]\n')
@@ -41,6 +42,11 @@ def header(lines: list, path: str) -> str:
         if lines['param'].get('main_border_column_right'):
             file.write(
                 f'border_column_right={lines["param"]["main_border_column_right"][0]}\n')
+        if lines["dic"].get("checking_rows"):
+            file.write(
+                f'checking_rows={lines["dic"]["checking_rows"][0]["name"]}::{lines["dic"]["checking_rows"][0]["pattern"]}\n')
+            
+            
         file.write('\n')
 
         file.write(';---- шаблоны регулярных выражений ------------\n\n')

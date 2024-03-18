@@ -104,9 +104,9 @@ def get_value_int(value: Union[list, str]) -> int:
             if isinstance(value, list):
                 return value[0]
             elif isinstance(value, str):
-                return int(value.replace(",", ".").replace(" ", "")).replace(
+                return int(value.replace(",", ".").replace(" ", "").replace(
                     chr(160), ""
-                )
+                ))
         else:
             return 0
     except:

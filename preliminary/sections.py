@@ -173,7 +173,13 @@ def write_section_address(**kwargs):
         col = kwargs.get("lines")["dic"][f"{kwargs.get('sec_name')}"][0]["col"]
         kwargs.get("file").write(f"col_config={col}\n")
         kwargs.get("file").write("row_data=0\n")
-        if kwargs.get("lines")["dic"].get("room_number"):
+        if (
+            kwargs.get("lines")["dic"].get(f"{kwargs.get('sec_name')}")
+            and kwargs.get("lines")["dic"][f"{kwargs.get('sec_name')}"][0]["func"]
+        ):
+            func = kwargs.get("lines")["dic"][f"{kwargs.get('sec_name')}"][0]["func"][0]
+            kwargs.get("file").write(f"func={func}\n")
+        elif kwargs.get("lines")["dic"].get("room_number"):            
             kwargs.get("file").write(
                 f'func=_+кв.+column_value({kwargs.get("lines")["dic"]["room_number"][0]["col"]})\n'
             )
@@ -181,7 +187,13 @@ def write_section_address(**kwargs):
         kwargs.get("file").write(f"col_config=0\n")
         kwargs.get("file").write("row_data=0\n")
         kwargs.get("file").write("pattern=@0\n")
-        if kwargs.get("lines")["dic"].get("room_number"):
+        if (
+            kwargs.get("lines")["dic"].get(f"{kwargs.get('sec_name')}")
+            and kwargs.get("lines")["dic"][f"{kwargs.get('sec_name')}"][0]["func"]
+        ):
+            func = kwargs.get("lines")["dic"][f"{kwargs.get('sec_name')}"][0]["func"][0]
+            kwargs.get("file").write(f"func={func}\n")
+        elif kwargs.get("lines")["dic"].get("room_number"):            
             kwargs.get("file").write(
                 f'func=address+кв.+column_value({kwargs.get("lines")["dic"]["room_number"][0]["col"]})\n'
             )

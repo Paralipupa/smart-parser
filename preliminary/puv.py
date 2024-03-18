@@ -75,6 +75,9 @@ def puv(lines: list, path: str) -> str:
                 sec_number=4,
                 sec_title="Дата",
                 sec_name="date",
+                sec_is_service=True,
+                sec_is_hash=False,
+                is_ident=False,
             )
         )
         write_section_rr(
