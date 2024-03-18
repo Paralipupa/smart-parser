@@ -139,9 +139,7 @@ def __write_section_service_internal_id(**kwargs):
             col = kwargs.get("lines")["dic"]["service"][0]["col"]
             kwargs.get("file").write(f"col_config={col}\n")
             if kwargs.get("sec_is_hash"):
-                kwargs.get("file").write(
-                    f"func=hash\n"
-            )
+                kwargs.get("file").write(f"func=hash\n")
     kwargs.get("file").write("\n")
     return
 
@@ -179,7 +177,7 @@ def write_section_address(**kwargs):
         ):
             func = kwargs.get("lines")["dic"][f"{kwargs.get('sec_name')}"][0]["func"][0]
             kwargs.get("file").write(f"func={func}\n")
-        elif kwargs.get("lines")["dic"].get("room_number"):            
+        elif kwargs.get("lines")["dic"].get("room_number"):
             kwargs.get("file").write(
                 f'func=_+кв.+column_value({kwargs.get("lines")["dic"]["room_number"][0]["col"]})\n'
             )
@@ -193,7 +191,7 @@ def write_section_address(**kwargs):
         ):
             func = kwargs.get("lines")["dic"][f"{kwargs.get('sec_name')}"][0]["func"][0]
             kwargs.get("file").write(f"func={func}\n")
-        elif kwargs.get("lines")["dic"].get("room_number"):            
+        elif kwargs.get("lines")["dic"].get("room_number"):
             kwargs.get("file").write(
                 f'func=address+кв.+column_value({kwargs.get("lines")["dic"]["room_number"][0]["col"]})\n'
             )
@@ -295,23 +293,6 @@ def write_section_rr(**kwargs):
 def write_section(**kwargs):
     __write_section_head(**kwargs)
     l: list = get_lines(kwargs.get("lines"))
-    is_sub_fld = (
-        bool(kwargs.get("sec_is_service"))
-        and kwargs.get("lines")["dic"].get("service")
-        and (
-            not bool(kwargs.get("required_fields"))
-            or kwargs.get("sec_name") in kwargs.get("required_fields")
-        )
-        and bool(kwargs.get("lines")["dic"].get(
-            f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix','')}"
-        ))
-        and (len(
-            kwargs.get("lines")["dic"][
-                f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix','')}"
-            ]
-        )
-        == 1)
-    )
     if kwargs.get("sec_prefix") is None:
         kwargs["sec_prefix"] = f"_{kwargs.get('sec_type')}"
     if (
@@ -321,6 +302,23 @@ def write_section(**kwargs):
         is None
     ):
         kwargs["sec_prefix"] = ""
+    is_sub_fld = (
+        (kwargs.get("sec_is_service") is None or bool(kwargs.get("sec_is_service")))
+        and kwargs.get("lines")["dic"].get("service")
+        and bool(
+            kwargs.get("lines")["dic"].get(
+                f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix','')}"
+            )
+        )
+        and (
+            len(
+                kwargs.get("lines")["dic"][
+                    f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix','')}"
+                ]
+            )
+            == 1
+        )
+    )
     if kwargs.get("lines")["dic"].get(
         f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix','')}"
     ):
