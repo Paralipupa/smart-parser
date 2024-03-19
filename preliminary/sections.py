@@ -218,8 +218,7 @@ def write_section_rr(**kwargs):
 
 
 def write_section(**kwargs):
-    __write_section_head(**kwargs)
-    kwargs["line"] = dict(index=0, line=get_lines(kwargs.get("lines"))[0])
+    __write_section_head(**kwargs)    
     kwargs["sec_prefix"] = __get_sec_prefix(**kwargs)
     fld_param = kwargs.get("lines")["dic"].get(
         f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix')}"
@@ -231,6 +230,7 @@ def write_section(**kwargs):
         or kwargs.get("sec_is_func_name")
         or "internal_id" in kwargs.get("sec_name")
     ):
+        kwargs["line"] = __get_sub_fields(**kwargs)
         __write_sec_main(**kwargs)
         __write_sec_offset_row_col(**kwargs)
         __write_sec_offset_pattern(**kwargs)
@@ -271,28 +271,35 @@ def __get_sec_prefix(**kwargs):
 
 
 def __get_is_service_sub_flds(**kwargs) -> bool:
-    service_names: list = get_lines(kwargs.get("lines"))
-    return (
-        (kwargs.get("sec_is_service") is None or bool(kwargs.get("sec_is_service")))
-        and len(service_names) > 1
-    ) and (
-        (kwargs.get("sec_is_ident") or kwargs.get("sec_is_func_name"))
-        or (
-            bool(
-                kwargs.get("lines")["dic"].get(
+    fld_param = kwargs.get("lines")["dic"].get(
                     f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix','')}"
                 )
-            )
-            and (
-                len(
-                    kwargs.get("lines")["dic"][
-                        f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix','')}"
-                    ]
-                )
-                == 1
-            )
-        )
-    )
+    if fld_param and len(fld_param) > 1:
+        return False
+    if not kwargs.get("sec_is_service") is None and kwargs.get("sec_is_service") is False:
+        return False
+    return True
+    # return (
+    #     (kwargs.get("sec_is_service") is None or bool(kwargs.get("sec_is_service")))
+    #     and len(service_names) > 1
+    # ) and (
+    #     (kwargs.get("sec_is_ident") or kwargs.get("sec_is_func_name"))
+    #     or (
+    #         bool(
+    #             kwargs.get("lines")["dic"].get(
+    #                 f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix','')}"
+    #             )
+    #         )
+    #         and (
+    #             len(
+    #                 kwargs.get("lines")["dic"][
+    #                     f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix','')}"
+    #                 ]
+    #             )
+    #             == 1
+    #         )
+    #     )
+    # )
 
 
 def __write_sec_main(**kwargs):
@@ -301,34 +308,33 @@ def __write_sec_main(**kwargs):
 
 
 def __write_sec_offset_row_col(**kwargs):
+    fld_param = kwargs.get("lines")["dic"].get(
+            f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix','')}"
+        )
+    service_field = kwargs["line"]
     if __get_is_service_sub_flds(**kwargs) and kwargs.get("lines")["dic"].get(
         "service"
     ):
-        kwargs.get("file").write(
-            f'offset_col_config={kwargs.get("lines")["dic"]["service"][0]["col"]}\n'
-        )
+        if service_field is None or service_field["index"] == 0:
+            kwargs.get("file").write(
+                f'offset_col_config={kwargs.get("lines")["dic"]["service"][0]["col"]}\n'
+            )
     else:
-        if not kwargs.get("lines")["dic"].get("service"):
+        if not kwargs.get("lines")["dic"].get("service") and (service_field is None or service_field["index"] == 0):
             kwargs.get("file").write("row_data=0\n")
-        if kwargs.get("lines")["dic"].get(
-            f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix','')}"
-        ):
-            col = kwargs.get("lines")["dic"][
-                f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix','')}"
-            ][0]["col"]
+        if fld_param and not kwargs.get("sec_is_ident") and not kwargs.get("sec_is_func_name"):
+            col = service_field["line"].get("col", fld_param[0]["col"])
             kwargs.get("file").write(f"offset_col_config={col}\n")
 
 
 def __write_sec_offset_pattern(**kwargs):
-    if kwargs.get("lines")["dic"].get(
+    fld_param = kwargs.get("lines")["dic"].get(
         f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix','')}"
-    ):
-        if kwargs.get("lines")["dic"].get(
-            f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix','')}"
-        )[0]["pattern"]:
-            pattern = kwargs.get("lines")["dic"][
-                f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix','')}"
-            ][0]["pattern"].strip()
+    )
+    service_field = kwargs["line"]
+    if fld_param:
+        if fld_param[0]["pattern"] and service_field["index"] == 0:
+            pattern = fld_param[0]["pattern"].strip()
             kwargs.get("file").write(f"offset_pattern={pattern}\n")
         else:
             if __get_is_service_sub_flds(**kwargs):
@@ -337,17 +343,15 @@ def __write_sec_offset_pattern(**kwargs):
                     or kwargs.get("sec_is_ident")
                     or kwargs.get("sec_is_func_name")
                 ):
-                    service_names: list = get_lines(kwargs.get("lines"))
-                    name = get_name(get_ident(service_names[0]["name"].split(";")[0]))
+                    name = get_name(get_ident(service_field["line"]["name"].split(";")[0]))
                     kwargs.get("file").write(f"offset_pattern=@{name}\n")
-                else:
+                elif not kwargs.get("sec_is_ident")  and not kwargs.get("sec_is_func_name"):
                     kwargs.get("file").write("offset_pattern=.+\n")
-            else:
+            elif not kwargs.get("sec_is_ident")  and not kwargs.get("sec_is_func_name"):
                 kwargs.get("file").write("offset_pattern=.+\n")
     else:
         if __get_is_service_sub_flds(**kwargs) and kwargs.get("lines")["dic"].get("service"):
-            service_names: list = get_lines(kwargs.get("lines"))
-            name = get_name(get_ident(service_names[0]["name"].split(";")[0]))
+            name = get_name(get_ident(service_field["line"]["name"].split(";")[0]))
             kwargs.get("file").write(f"offset_pattern=@{name}\n")
 
 
@@ -365,32 +369,27 @@ def __write_sec_type(**kwargs):
 
 
 def __write_sec_func(**kwargs):
-    service_field = kwargs.get("line")
+    service_field = kwargs["line"]
     fld_param = kwargs.get("lines")["dic"].get(
         f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix','')}"
     )
     suffix = f'+{kwargs.get("sec_suffix")}' if kwargs.get("sec_suffix") else ""
     hash = ",hash" if kwargs.get("sec_is_hash") else ""
-    if fld_param and fld_param[0]["func"] and service_field["index"] == 0:
-        func = kwargs.get("lines")["dic"][
-            f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix','')}"
-        ][0]["func"][0]
+    if fld_param and fld_param[0]["func"] and (service_field is None or service_field["index"] == 0):
+        func = fld_param[0]["func"][0]
         kwargs.get("file").write(f"func={func}\n")
-    elif kwargs.get("sec_func") and service_field["index"] == 0:
+    elif kwargs.get("sec_func") and (service_field is None or service_field["index"] == 0):
         if kwargs.get("sec_func")[0] != "!":
             kwargs.get("file").write(f"func={kwargs.get('sec_func')}\n")
         else:
             kwargs.get("file").write(f"func={kwargs.get('sec_func')[1:]}\n")
             kwargs.get("file").write(f"func_is_no_return=true\n")
-    elif kwargs.get("sec_is_ident"):
-        if fld_param:
-            ident = get_ident(fld_param[0]["name"])
-        else:
-            ident = get_func_name(service_field["line"]["name"].split(";")[0])
+    elif kwargs.get("sec_is_ident") and not service_field is None:
+        ident = get_ident(get_func_name(service_field["line"]["name"].split(";")[0]))
         kwargs.get("file").write(f"func=id+{ident}{suffix},spacerepl{hash}\n")
-    elif kwargs.get("sec_is_func_name"):
+    elif kwargs.get("sec_is_func_name") and not service_field is None:
         if fld_param and not __get_is_service_sub_flds(**kwargs):
-            ident = get_ident(fld_param[0]["name"])
+            ident = get_ident(get_func_name(service_field["line"]["name"].split(";")[0]))
         else:
             ident = get_func_name(service_field["line"]["name"].split(";")[0])
         kwargs.get("file").write(f"func={ident}{hash}\n")
@@ -419,15 +418,19 @@ def __write_sec_sub_fields(**kwargs):
                 f"[{kwargs.get('sec_type')}_{kwargs.get('sec_number')}_{i}]\n"
             )
             kwargs.get("file").write(f"; {kwargs.get('sec_title')}\n")
-            kwargs.get("file").write(f'offset_col_config={line["col"]}\n')
-            if line["func"]:
-                kwargs.get("file").write(f'func={line["func"][0]}\n')
-            elif kwargs.get("sec_func"):
-                if kwargs.get("sec_func")[0] != "!":
-                    kwargs.get("file").write(f"func={kwargs.get('sec_func')}\n")
-                else:
-                    kwargs.get("file").write(f"func={kwargs.get('sec_func')[1:]}\n")
-                    kwargs.get("file").write(f"func_is_no_return=true\n")
+            
+            kwargs["line"] = dict(index=i+1, line=line)
+            __write_sec_offset_row_col(**kwargs)
+            __write_sec_func(**kwargs)
+            
+            # if line["func"]:
+            #     kwargs.get("file").write(f'func={line["func"][0]}\n')
+            # elif kwargs.get("sec_func"):
+            #     if kwargs.get("sec_func")[0] != "!":
+            #         kwargs.get("file").write(f"func={kwargs.get('sec_func')}\n")
+            #     else:
+            #         kwargs.get("file").write(f"func={kwargs.get('sec_func')[1:]}\n")
+            #         kwargs.get("file").write(f"func_is_no_return=true\n")
 
 
 def __write_service_fields(**kwargs):
@@ -439,25 +442,44 @@ def __write_service_fields(**kwargs):
                 or kwargs.get("sec_is_ident")
                 or kwargs.get("sec_is_func_name")
             ):
-                kwargs["line"] = dict(index=i, line=line)
                 kwargs.get("file").write(
                     f"\n[{kwargs.get('sec_type')}_{kwargs.get('sec_number')}_{i}]\n"
                 )
                 kwargs.get("file").write(f"; {kwargs.get('sec_title')}\n")
-                if kwargs.get("lines")["dic"].get("service"):
-                    name = get_name(get_ident(line["name"].split(";")[0]))
-                    kwargs.get("file").write(f"offset_pattern=@{name}\n")
-                if kwargs.get("sec_is_ident"):
-                    if kwargs.get("sec_suffix"):
-                        kwargs.get("file").write(
-                            f'func=id+{get_func_name(line["name"].split(";")[0])}+{kwargs.get("sec_suffix")},spacerepl{",hash" if kwargs.get("sec_is_hash") else ""}\n'
-                        )
-                    else:
-                        kwargs.get("file").write(
-                            f'func={get_func_name(line["name"].split(";")[0])}{",hash" if kwargs.get("sec_is_hash") else ""}\n'
-                        )
-                else:
-                    if kwargs.get("sec_is_func_name"):
-                        kwargs.get("file").write(
-                            f'func={get_func_name(line["name"].split(";")[0])}{",hash" if kwargs.get("sec_is_hash") else ""}\n'
-                        )
+
+                kwargs["line"] = dict(index=i+1, line=line)
+                __write_sec_offset_pattern(**kwargs)
+                __write_sec_func(**kwargs)
+                
+                
+                # if kwargs.get("lines")["dic"].get("service"):
+                #     name = get_name(get_ident(line["name"].split(";")[0]))
+                #     kwargs.get("file").write(f"offset_pattern=@{name}\n")
+                    
+                # if kwargs.get("sec_is_ident"):
+                #     if kwargs.get("sec_suffix"):
+                #         kwargs.get("file").write(
+                #             f'func=id+{get_func_name(line["name"].split(";")[0])}+{kwargs.get("sec_suffix")},spacerepl{",hash" if kwargs.get("sec_is_hash") else ""}\n'
+                #         )
+                #     else:
+                #         kwargs.get("file").write(
+                #             f'func={get_func_name(line["name"].split(";")[0])}{",hash" if kwargs.get("sec_is_hash") else ""}\n'
+                #         )
+                # else:
+                #     if kwargs.get("sec_is_func_name"):
+                #         kwargs.get("file").write(
+                #             f'func={get_func_name(line["name"].split(";")[0])}{",hash" if kwargs.get("sec_is_hash") else ""}\n'
+                #         )
+
+def __get_sub_fields(**kwargs):
+    fld_param = kwargs.get("lines")["dic"].get(
+        f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix','')}"
+    )
+    if __get_is_service_sub_flds(**kwargs):
+        kwargs["line"] = dict(index=0, line=get_lines(kwargs.get("lines"))[0])
+    else:
+        if fld_param:
+            kwargs["line"] = dict(index=0, line=fld_param[0])
+        else:
+            kwargs["line"] = None
+    return kwargs["line"]

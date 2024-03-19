@@ -31,7 +31,7 @@ def pu(lines: list, path: str) -> str:
                 sec_name="org_ppa_guid",
             )
         )
-        write_section_internal_id(
+        write_section(
             **dict(
                 file=file,
                 lines=lines,

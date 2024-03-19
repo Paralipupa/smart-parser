@@ -29,7 +29,7 @@ def puv(lines: list, path: str) -> str:
                 sec_name="org_ppa_guid",
             )
         )
-        write_section_internal_id(
+        write_section(
             **dict(
                 file=file,
                 lines=lines,
@@ -53,7 +53,7 @@ def puv(lines: list, path: str) -> str:
                 sec_name="gis_id",
             )
         )
-        write_section_internal_id(
+        write_section(
             **dict(
                 file=file,
                 lines=lines,
