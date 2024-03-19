@@ -182,6 +182,7 @@ def pp(lines: list, path: str):
                 sec_number=12,
                 sec_title="Тип лицевого счета (uo|cr)",
                 sec_name="account_type",
+                sec_is_service=False,
             )
         )
 

@@ -42,7 +42,7 @@ def pp_service(lines: list, path: str):
                 sec_is_func_name=True,
             )
         )
-        write_section(
+        write_section_internal_id(
             **dict(
                 file=file,
                 lines=lines,
@@ -78,6 +78,7 @@ def pp_service(lines: list, path: str):
                 sec_number=4,
                 sec_title="код услуги в ГИС",
                 sec_name="gis_code",
+                sec_is_service=False,
             )
         )
 
