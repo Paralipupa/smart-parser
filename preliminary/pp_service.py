@@ -38,10 +38,11 @@ def pp_service(lines: list, path: str):
                 sec_name="internal_id",
                 sec_is_service=True,
                 sec_is_hash=True,
-                is_ident=True,
+                sec_is_ident=False,
+                sec_is_func_name=True,
             )
         )
-        write_section_internal_id(
+        write_section(
             **dict(
                 file=file,
                 lines=lines,
@@ -51,7 +52,8 @@ def pp_service(lines: list, path: str):
                 sec_name="name",
                 sec_is_service=True,
                 sec_is_hash=False,
-                is_ident=True,
+                sec_is_ident=False,
+                sec_is_func_name=True,
             )
         )
         write_section_internal_id(
@@ -64,7 +66,8 @@ def pp_service(lines: list, path: str):
                 sec_name="kind",
                 sec_is_service=True,
                 sec_is_hash=False,
-                is_ident=True,
+                sec_is_ident=False,
+                sec_is_func_name=True,
             )
         )
         write_section(

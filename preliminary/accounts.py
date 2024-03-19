@@ -24,6 +24,7 @@ def accounts(lines: list, path: str) -> str:
                 sec_number=0,
                 sec_title="ИНН, ОГРН или OrgID",
                 sec_name="org_ppa_guid",
+                sec_is_service=False,
             )
         )
         write_section(

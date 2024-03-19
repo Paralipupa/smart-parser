@@ -40,7 +40,7 @@ def puv(lines: list, path: str) -> str:
                 sec_suffix="ПУП",
                 sec_is_service=True,
                 sec_is_hash=True,
-                is_ident=True,
+                sec_is_ident=True,
             )
         )
         write_section(
@@ -64,7 +64,7 @@ def puv(lines: list, path: str) -> str:
                 sec_suffix="ПУ",
                 sec_is_service=True,
                 sec_is_hash=True,
-                is_ident=True,
+                sec_is_ident=True,
             )
         )
         write_section(
@@ -77,7 +77,7 @@ def puv(lines: list, path: str) -> str:
                 sec_name="date",
                 sec_is_service=True,
                 sec_is_hash=False,
-                is_ident=False,
+                sec_is_ident=False,
             )
         )
         write_section_rr(

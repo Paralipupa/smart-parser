@@ -2,28 +2,29 @@ from sections import *
 
 
 def pp(lines: list, path: str):
-    doc_type = "pp"
+    
     file_name = f"{path}/ini/3_pp.ini"
     with open(file_name, "w") as file:
-        file.write(
-            ";########################################################################################################################\n"
-        )
-        file.write(
-            ";---------------------------------------------------------------- pp ----------------------------------------------------\n"
-        )
-        file.write(
-            ";########################################################################################################################\n"
-        )
-        file.write("[doc_1]\n")
-        file.write("; Платежный документ \n")
-        file.write("name=pp\n")
-        if lines["required"].get("required_pp"):
-            file.write(
-                f'required_fields={",".join(lines["required"]["required_pp"])}\n\n'
-            )
-        else:
-            file.write("required_fields=bill_value,payment_value,credit,saldo\n\n")
 
+        doc_type = "pp"
+        required_fields = (
+            ",".join(lines["required"]["required_pp"])
+            if lines["required"].get("required_pp")
+            else "bill_value,payment_value,credit,saldo"
+        )
+        write_section_caption(**dict(file=file, sec_type=doc_type))
+        write_section_doc(
+            **dict(
+                file=file,
+                sec_type="doc",
+                sec_number=1,
+                sec_title="Платежный документ",
+                sec_name=doc_type,
+                required_fields=required_fields,
+            )
+        )
+
+        file.write("\n")
         file.write("[pp_0]\n")
         file.write(";ИНН, ОГРН или OrgID\n")
         file.write("name=org_ppa_guid\n")
@@ -172,8 +173,6 @@ def pp(lines: list, path: str):
             file.write("offset_pattern=@0\n")
             file.write(f"func=bik,spacerepl\n")
             file.write("func_is_no_return=true\n")
-        file.write("\n")
-        file.write("\n")
 
         write_section(
             **dict(

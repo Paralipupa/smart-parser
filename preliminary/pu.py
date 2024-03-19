@@ -42,7 +42,7 @@ def pu(lines: list, path: str) -> str:
                 sec_suffix="ПУ",
                 sec_is_service=True,
                 sec_is_hash=True,
-                is_ident=True,
+                sec_is_ident=True,
             )
         )
         write_section_account_internal_id(
@@ -209,7 +209,7 @@ def pu(lines: list, path: str) -> str:
                 required_fields=required_fields,
             )
         )
-        write_section_service_internal_id(
+        write_section(
             **dict(
                 file=file,
                 lines=lines,
@@ -219,7 +219,8 @@ def pu(lines: list, path: str) -> str:
                 sec_name="service_internal_id",
                 sec_is_service=True,
                 sec_is_hash=True,
-                is_ident=True,
+                sec_is_ident=False,
+                sec_is_func_name=True,
                 required_fields=required_fields,
             )
         )

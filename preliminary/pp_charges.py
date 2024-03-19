@@ -1,4 +1,5 @@
 from utils import get_ident, get_name, get_lines, get_func_name
+from sections import *
 from settings import *
 
 
@@ -7,24 +8,24 @@ def pp_charges(lines: list, path: str) -> str:
     l = get_lines(lines)
     file_name = f"{path}/ini/4_pp_charges.ini"
     with open(file_name, "w") as file:
-        file.write(
-            ";########################################################################################################################\n"
+        doc_type = "pp_charges"
+        required_fields = (
+            ",".join(lines["required"]["required_pp_charges"])
+            if lines["required"].get("required_pp_charges")
+            else "calc_value,recalculation"
         )
-        file.write(
-            ";-------------------------------------------------------------- pp_charges ----------------------------------------------\n"
+        write_section_caption(**dict(file=file, sec_type=doc_type))
+        write_section_doc(
+            **dict(
+                file=file,
+                sec_type="doc",
+                sec_number=2,
+                sec_title="Документ Начисления платежей",
+                sec_name=doc_type,
+                required_fields=required_fields,
+            )
         )
-        file.write(
-            ";########################################################################################################################\n"
-        )
-        file.write("[doc_2]\n")
-        file.write("; Документ Начисления платежей\n")
-        file.write("name=pp_charges\n")
-        if lines["required"].get("required_pp_charges"):
-            file.write(
-                f'required_fields={",".join(lines["required"]["required_pp_charges"])}\n\n')
-        else:
-            file.write("required_fields=calc_value,recalculation\n\n")
-
+        file.write("\n")
         file.write("[pp_charges_0]\n")
         file.write("; ИНН, ОГРН или OrgID\n")
         file.write("name=org_ppa_guid\n")
