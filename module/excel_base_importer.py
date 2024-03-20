@@ -347,9 +347,7 @@ class ExcelBaseImporter:
                     if index[POS_INDEX_VALUE] in range(len(record)):
                         v = record[index[POS_INDEX_VALUE]]
                         if not check_row is None and check_row["name"] == key and v:
-                            if  not re.search(
-                                check_row["pattern"], v
-                            ):
+                            if not re.search(check_row["pattern"], v):
                                 return None
 
                         is_empty = is_empty and (v == "" or v is None)
@@ -1024,7 +1022,7 @@ class ExcelBaseImporter:
             )
             else ""
         )
-        records[-1]["value_rows"] = []
+        records[-1]["value_rows"] = {}
         for sub in item_fld["sub"]:
             records.append(sub.copy())
             records[-1]["value"] = (
@@ -1040,7 +1038,7 @@ class ExcelBaseImporter:
                 )
                 else ""
             )
-            records[-1]["value_rows"] = []
+            records[-1]["value_rows"] = {}
         return records
 
     def __get_total_value_from_values(
@@ -1395,10 +1393,9 @@ class ExcelBaseImporter:
                                             )
                                             if x_o and fld_record["value_o"] != x_o:
                                                 fld_record["value_o"] = x_o
-                                                if fld_record["func_is_empty"] is False:
-                                                    fld_record["value_rows"].append(
-                                                        table_row[POS_VALUE]
-                                                    )
+                                                fld_record["value_rows"].setdefault(
+                                                    "row", table_row
+                                                )
                                                 # запоминаем, чтобы не было повтора
                                                 offset_rows_exclude.add(
                                                     (
@@ -1415,6 +1412,9 @@ class ExcelBaseImporter:
                                         )
                                         is None
                                     ):
+                                        fld_record["value_rows"].setdefault(
+                                            "row", table_row
+                                        )
                                         # запоминаем, чтобы не было повтора
                                         main_rows_exclude[
                                             (table_row[0], col[POS_VALUE])
@@ -1466,12 +1466,14 @@ class ExcelBaseImporter:
                         )
                         else str(fld_record["value"]).strip()
                     )
-                    # if value:
+                    if fld_record["value_rows"]:
+                        fld_record["value_rows"]["value"] = value
                     doc[fld_record["name"]].append(
                         {
                             "row": len(doc[fld_record["name"]]),
                             "col": col[0],
                             "value": value,
+                            "value_rows": fld_record["value_rows"],
                         }
                     )
         except Exception as ex:
