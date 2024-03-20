@@ -346,7 +346,7 @@ class ExcelBaseImporter:
                 for index in value["indexes"]:
                     if index[POS_INDEX_VALUE] in range(len(record)):
                         v = record[index[POS_INDEX_VALUE]]
-                        if not check_row is None and check_row["name"] == key and v:
+                        if not check_row is None and check_row["name"] == key:
                             if not re.search(check_row["pattern"], v):
                                 return None
 
@@ -1479,6 +1479,53 @@ class ExcelBaseImporter:
         except Exception as ex:
             logger.error(f"{ex}")
         return doc
+
+# Разбиваем данные документа по-строчно
+    def __document_split_one_line_2(self, doc: dict, doc_param: dict) -> None:
+        try:
+            name = doc_param["name"]
+            # для каждого поля свой индекс прохода
+            index = {x: 0 for x in doc.keys()}
+            rows = [x[-1]["row"] for x in doc.values() if x]
+            counts = [len(x) for x in doc.values() if x]
+            rows = rows + counts
+            rows_count = max(rows) if rows else 0
+            rows_required = self.__get_required_rows(name, doc)
+            requeired_names = set(doc_param.get("required_fields","").split(","))
+            rows_exclude = [
+                x[0] if x[0] >= 0 else rows_count + 1 + x[0]
+                for x in doc_param["rows_exclude"]
+            ]
+            row = 0
+            elem_default = dict()
+            while row < rows_count:
+                elem = dict()
+                names = list()
+                is_empty = True
+                for key, values in doc.items():
+                    value = [x["value_rows"]["value"] for x in values if x["value_rows"] and x["value_rows"]["row"][POS_VALUE] == row]
+                    value = value[0] if value else None
+                    if value:
+                        elem[key] = value
+                        elem_default.setdefault(key, value)
+                        names.append(key)
+                        is_empty = False
+                    else:
+                        elem[key] = elem_default.get(key,"")
+                if (
+                    not is_empty
+                    and not (row in rows_exclude)
+                    and (not doc_param["required_fields"] or set(names) & requeired_names)
+                ):
+                    self.__append_to_collection(name, elem)
+                else:
+                    pass
+                row += 1
+
+        except Exception as ex:
+            logger.error(f"{ex}")
+        return
+
 
     # Разбиваем данные документа по-строчно
     def __document_split_one_line(self, doc: dict, doc_param: dict) -> None:

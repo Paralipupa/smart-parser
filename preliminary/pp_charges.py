@@ -25,48 +25,32 @@ def pp_charges(lines: list, path: str) -> str:
                 required_fields=required_fields,
             )
         )
-        file.write("\n")
-        file.write("[pp_charges_0]\n")
-        file.write("; ИНН, ОГРН или OrgID\n")
-        file.write("name=org_ppa_guid\n")
-        file.write("pattern=@\n")
-        file.write("col_config=0\n")
-        file.write("row_data=0\n")
-        file.write("func=inn\n\n")
+        write_section_org_ppa_guid(
+            **dict(
+                file=file,
+                lines=lines,
+                sec_type=doc_type,
+                sec_number=0,
+                sec_title="ИНН, ОГРН или OrgID",
+                sec_name="org_ppa_guid",
+            )
+        )
 
-        file.write("[pp_charges_1]\n")
-        file.write("; Внутренний идентификатор начисления\n")
-        file.write("name=internal_id\n")
-        file.write("pattern=@0\n")
-        file.write("col_config=0\n")
-        file.write("row_data=0\n")
-        if lines["dic"].get("service"):
-            file.write(
-                f'offset_col_config={lines["dic"]["service"][0]["col"]}\n'
+        write_section(
+            **dict(
+                file=file,
+                lines=lines,
+                sec_type=doc_type,
+                sec_number=1,
+                sec_title="Внутренний идентификатор начисления",
+                sec_name="internal_id",
+                sec_suffix="НЧ",
+                sec_is_service=True,
+                sec_is_hash=True,
+                sec_is_ident=True,
             )
-            name = get_name(get_ident(l[0]["name"].split(";")[0]), names)
-            file.write(f"offset_pattern=@{name}\n")
-            if len(l) > 2:
-                file.write(
-                    f'func=id+{get_func_name(l[0]["name"].split(";")[0])}+НЧ,spacerepl,hash\n\n'
-                )
-            else:
-                file.write(f"func=id+НЧ,spacerepl,hash\n\n")
-        else:
-            file.write(f"offset_col_config=0\n")
-            file.write(f"offset_pattern=.+\n")
-            file.write(
-                f'func=id+{get_func_name(l[0]["name"].split(";")[0])}+НЧ,spacerepl,hash\n\n'
-            )
-        if not lines["dic"].get("service") or len(l) > 2:
-            for i, line in enumerate(l[1:]):
-                file.write(f"[pp_charges_1_{i}]\n")
-                name = get_name(get_ident(line["name"].split(";")[0]), names)
-                file.write(f"offset_pattern=@{name}\n")
-                file.write(
-                    f'func=id+{get_func_name(line["name"].split(";")[0])}+НЧ,spacerepl,hash\n'
-                )
-                file.write("\n")
+        )
+
 
         file.write("[pp_charges_2]\n")
         file.write("; Внутренний идентификатор платежного документа\n")
@@ -163,37 +147,39 @@ def pp_charges(lines: list, path: str) -> str:
                 )
                 file.write("\n")
 
-        names = []
-        file.write("[pp_charges_5]\n")
-        file.write("; Идентификатор услуги\n")
-        file.write(f'; {l[0]["name"]}\n')
-        file.write("name=service_internal_id\n")
-        file.write("pattern=.+\n")
-        file.write("row_data=0\n")
-        if lines["dic"].get("service"):
-            file.write(f'col_config={lines["dic"]["service"][0]["col"]}\n')
-            if len(l) > 2:
-                file.write(
-                    f'func={get_func_name(l[0]["name"].split(";")[0])},hash\n'
-                )
-            else:
-                file.write(f"func=hash\n")
-        else:
-            file.write("col_config=0\n")
-            file.write(
-                f'func={get_func_name(l[0]["name"].split(";")[0])},hash\n'
-            )
-        file.write("\n")
 
-        if not lines["dic"].get("service") or len(l) > 2:
-            for i, line in enumerate(l[1:]):
-                file.write(f"[pp_charges_5_{i}]\n")
-                file.write("; Идентификатор услуги\n")
-                file.write(f'; {line["name"].rstrip()}\n')
-                file.write(
-                    f'func={get_func_name(line["name"].split(";")[0])},hash\n'
-                )
-                file.write("\n")
+        write_section(
+            **dict(
+                file=file,
+                lines=lines,
+                sec_type=doc_type,
+                sec_number=4,
+                sec_title="тариф при однотарифном начислении",
+                sec_name="tariff",
+                sec_is_service=True,
+                sec_is_hash=False,
+                sec_is_ident=False,
+                sec_is_func_name=False,
+                sec_func=f'key+fias+{get_func_name(line["name"].split(";")[0])},hash,dictionary'
+            )
+        )
+
+        write_section(
+            **dict(
+                file=file,
+                lines=lines,
+                sec_type=doc_type,
+                sec_number=5,
+                sec_title="Идентификатор услуги",
+                sec_name="service_internal_id",
+                sec_is_service=True,
+                sec_is_hash=True,
+                sec_is_ident=False,
+                sec_is_func_name=True,
+            )
+        )
+
+
 
         file.write("[pp_charges_6]\n")
         file.write("; кол-во услуги  при однотарифном начислении\n")
