@@ -162,7 +162,7 @@ class Func:
                 value = fld_param.get("value", "")
                 self._current_value_type = fld_param.get("type", "str")
             if bool(value) is False and not fld_param.get("func_is_empty", True):
-                return value
+                return ""
 
             self._current_value_pattern = (
                 fld_param["func_pattern"][0] if fld_param.get("func_pattern") else ""

@@ -426,13 +426,14 @@ def __write_sec_func(**kwargs):
     elif (
         fld_param
         and __get_is_service_sub_flds(**kwargs)
-        and kwargs.get("lines")["dic"].get("service")
+        and kwargs.get("lines")["dic"].get("service") and 
+        (service_field is None or service_field["index"] == 0)
     ):
         col_fld = service_field["line"].get("col", fld_param[0]["col"])
         col_service = kwargs.get("lines")["dic"]["service"][0]["col"]
         if col_fld != col_service and not fld_param[0]["func"]:
             kwargs.get("file").write(f"func=column_value({col_fld})\n")
-            kwargs.get("file").write(f"func_is_empty=true\n")
+            kwargs.get("file").write(f"func_is_empty=false\n")
 
 
 def __write_sec_sub_fields(**kwargs):
