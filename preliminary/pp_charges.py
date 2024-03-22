@@ -107,46 +107,6 @@ def pp_charges(lines: list, path: str) -> str:
                 file.write(f"offset_col_config={COLUMN_BEGIN+1+i}\n")
             file.write("\n")
 
-        names = []
-        file.write("[pp_charges_4]\n")
-        file.write("; тариф при однотарифном начислении\n")
-        file.write(f'; {l[0]["name"]}\n')
-        file.write("name=tariff\n")
-        if lines["dic"].get("service"):
-            if lines["dic"].get("tariff"):
-                name = get_name(get_ident(l[0]["name"].split(";")[0]), names)
-                file.write(f"pattern=@{name}\n")
-                file.write(
-                    f'col_config={lines["dic"]["service"][0]["col"]}\n'
-                )
-                file.write(
-                    f'offset_col_config={lines["dic"]["tariff"][0]["col"]}\n'
-                )
-                file.write("offset_pattern=.+\n\n")
-                for i, line in enumerate(l[1:]):
-                    file.write(f"[pp_charges_4_{i}]\n")
-                    file.write("; тариф при однотарифном начислении\n")
-                    file.write(f'; {line["name"].rstrip()}\n')
-                    name = get_name(
-                        get_ident(line["name"].split(";")[0]), names)
-                    file.write(f"pattern=@{name}\n")
-                    file.write("\n")
-        else:
-            file.write("pattern=.+\n")
-            file.write("col_config=0\n")
-            file.write("row_data=0\n")
-            file.write(
-                f'func=key+fias+{get_func_name(l[0]["name"].split(";")[0])},hash,dictionary\n\n'
-            )
-            for i, line in enumerate(l[1:]):
-                file.write(f"[pp_charges_4_{i}]\n")
-                file.write("; тариф при однотарифном начислении\n")
-                file.write(f'; {line["name"].rstrip()}\n')
-                file.write(
-                    f'func=key+fias+{get_func_name(line["name"].split(";")[0])},hash,dictionary\n'
-                )
-                file.write("\n")
-
 
         write_section(
             **dict(
@@ -160,7 +120,7 @@ def pp_charges(lines: list, path: str) -> str:
                 sec_is_hash=False,
                 sec_is_ident=False,
                 sec_is_func_name=False,
-                sec_func=f'key+fias+{get_func_name(line["name"].split(";")[0])},hash,dictionary'
+                sec_func=f'key+fias+{get_func_name(line["name"].split(";")[0])},hash,dictionary' if not lines["dic"].get("service") else None
             )
         )
 

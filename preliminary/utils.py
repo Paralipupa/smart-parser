@@ -1,5 +1,5 @@
 import fileinput
-import re
+import re, os
 from typing import Tuple
 
 
@@ -72,7 +72,7 @@ def get_lines(lines: list) -> list:
 
 
 def write_config(filenames: list, path: str, output: str = "gis_config.ini"):
-    file_name = f"{path}/ini/{output}"
+    file_name = os.path.join(path, output)
     with open(file_name, "w") as fout, fileinput.input(filenames) as fin:
         for line in fin:
             fout.write(line)
