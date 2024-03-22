@@ -212,22 +212,22 @@ class TestGisConfig(unittest.TestCase):
         hash_origin, hash_download = self.__check()
         self.assertEqual(hash_origin, hash_download)
 
-    # def test_10_gefest(self):
-    #     self.parser.is_hash = False
-    #     self.parser.name = os.path.join(BASE_DIR, "test", "input", "gefest.zip")
-    #     self.parser.download_file = (
-    #         f"gefest{'_no_hash' if self.parser.is_hash is False else ''}.zip"
-    #     )
-    #     self.__remove_download()
-    #     if os.path.exists(
-    #         os.path.join(BASE_DIR, "test", "download", self.parser.download_file)
-    #     ):
-    #         os.remove(
-    #             os.path.join(BASE_DIR, "test", "download", self.parser.download_file)
-    #         )
-    #     self.parser.start()
-    #     hash_origin, hash_download = self.__check()
-    #     self.assertEqual(hash_origin, hash_download)
+    def test_10_gefest(self):
+        self.parser.is_hash = False
+        self.parser.name = os.path.join(BASE_DIR, "test", "input", "gefest.zip")
+        self.parser.download_file = (
+            f"gefest{'_no_hash' if self.parser.is_hash is False else ''}.zip"
+        )
+        self.__remove_download()
+        if os.path.exists(
+            os.path.join(BASE_DIR, "test", "download", self.parser.download_file)
+        ):
+            os.remove(
+                os.path.join(BASE_DIR, "test", "download", self.parser.download_file)
+            )
+        self.parser.start()
+        hash_origin, hash_download = self.__check()
+        self.assertEqual(hash_origin, hash_download)
 
     # def test_99_shustoff(self):
     #     self.parser.name = os.path.join(BASE_DIR, "test", "input", "shustoff.zip")
