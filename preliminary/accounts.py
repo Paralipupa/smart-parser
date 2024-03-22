@@ -214,6 +214,6 @@ def accounts(lines: list, path: str) -> str:
             sec_number=19,
             sec_title="Тип лицевого счета (uo|cr)",
             sec_name="account_type",
-            sec_is_service=False,
+            sec_is_service=True,
         )
     return file_name
