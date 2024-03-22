@@ -229,16 +229,16 @@ class TestGisConfig(unittest.TestCase):
         hash_origin, hash_download = self.__check()
         self.assertEqual(hash_origin, hash_download)
 
-    # def test_99_shustoff(self):
-    #     self.parser.name = os.path.join(BASE_DIR, "test", "input", "shustoff.zip")
-    #     self.parser.is_hash = False
-    #     self.parser.download_file = (
-    #         f"shustoff{'_no_hash' if self.parser.is_hash is False else ''}.zip"
-    #     )
-    #     self.__remove_download()
-    #     self.parser.start()
-    #     hash_origin, hash_download = self.__check()
-    #     self.assertEqual(hash_origin, hash_download)
+    def test_99_shustoff(self):
+        self.parser.name = os.path.join(BASE_DIR, "test", "input", "shustoff.zip")
+        self.parser.is_hash = False
+        self.parser.download_file = (
+            f"shustoff{'_no_hash' if self.parser.is_hash is False else ''}.zip"
+        )
+        self.__remove_download()
+        self.parser.start()
+        hash_origin, hash_download = self.__check()
+        self.assertEqual(hash_origin, hash_download)
 
 
 @timing(

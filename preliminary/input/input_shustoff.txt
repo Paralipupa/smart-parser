@@ -2,6 +2,9 @@
 ;accounts: Адрес@address	Квартира@room_number	Проживает@living_person_number	Площадь@total_square	@account_identifier	@account_number
 ;pp: Сальдо начальное@credit		Начисление@bill_value	Оплата@payment_value	@payment_date	Сальдо конечное@saldo
 name:ТСЖ Шустовъ парк
+
+filename:gisconfig_002_00shustov_park.ini
+
 check_row:0<200
 check_pattern:Шустовъ парк
 check_pattern:Отчёт о начислениях в разрезе поставщика услуги|Оборотно-сальдовая ведомость по услугам

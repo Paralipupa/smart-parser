@@ -118,8 +118,8 @@ def pp_charges(lines: list, path: str) -> str:
                 sec_name="tariff",
                 sec_is_service=True,
                 sec_is_hash=True,
-                sec_is_ident=True,
-                sec_is_func_name=True,
+                sec_is_ident=True if not lines["dic"].get("service") else False,
+                sec_is_func_name=True if not lines["dic"].get("service") else False,
                 sec_func_ident="key+fias",
                 sec_is_func_dictionary=True
             )
