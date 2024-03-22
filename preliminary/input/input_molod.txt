@@ -2,6 +2,9 @@
 ;accounts: Адрес@address	Квартира@room_number	Проживает@living_person_number	Площадь@total_square	@account_identifier	@account_number_accounts
 ;pp: Сальдо начальное@credit		Начисление@bill_value	Оплата@payment_value	@payment_date	Сальдо конечное@saldo
 name:ТСЖ Молодежное
+
+filename:gisconfig_002_00molod.ini
+
 check_pattern:Молодежное
 check_row:0<25
 main_max_rows_heading:25
