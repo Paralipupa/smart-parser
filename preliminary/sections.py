@@ -310,6 +310,8 @@ def __write_sec_offset_row_col(**kwargs):
 
         if kwargs.get("sec_is_ident"):
             kwargs.get("file").write("col_config=0\n")
+            if not fld_param:
+                kwargs.get("file").write(f"offset_col_config={col_fld}\n")
         else:
             kwargs.get("file").write(f"col_config={col_service}\n")
             if col_fld != col_service:
@@ -403,7 +405,9 @@ def __write_sec_type(**kwargs):
             oft = kwargs.get("lines")["dic"][
                 f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix','')}"
             ][0]["type"][0]
-            if kwargs.get("lines")["dic"].get("service"):
+            if __get_is_service_sub_flds(**kwargs) and kwargs.get("lines")["dic"].get(
+                "service"
+            ):
                 kwargs.get("file").write(f"offset_type={oft}\n")
             else:
                 kwargs.get("file").write(f"type={oft}\n")
@@ -435,10 +439,19 @@ def __write_sec_func(**kwargs):
             kwargs.get("file").write(f"func_is_no_return=true\n")
     elif kwargs.get("sec_is_ident") and not service_field is None:
         ident = get_func_name(service_field["line"]["name"].split(";")[0])
-        func_ident = kwargs.get("sec_func_ident","id")
-        kwargs.get("file").write(f"func={func_ident}+{ident}{suffix}{spacerepl}{hash}{dictionary}\n")
+        func_ident = kwargs.get("sec_func_ident", "id")
+        kwargs.get("file").write(
+            f"func={func_ident}+{ident}{suffix}{spacerepl}{hash}{dictionary}\n"
+        )
     elif kwargs.get("sec_is_func_name") and not service_field is None:
-        if fld_param and not __get_is_service_sub_flds(**kwargs) and (kwargs.get("sec_is_func_name_no_ident") is None  or kwargs.get("sec_is_func_name_no_ident")):
+        if (
+            fld_param
+            and not __get_is_service_sub_flds(**kwargs)
+            and (
+                kwargs.get("sec_is_func_name_no_ident") is None
+                or kwargs.get("sec_is_func_name_no_ident")
+            )
+        ):
             ident = get_ident(
                 get_func_name(service_field["line"]["name"].split(";")[0])
             )
@@ -470,7 +483,7 @@ def __write_sec_sub_fields(**kwargs):
             kwargs.get("file").write(f"; {kwargs.get('sec_title')}\n")
 
             kwargs["line"] = dict(index=i + 1, line=line)
-            kwargs["line"]["line"]["name"] = get_ident(kwargs["line"]["line"]["name"] )
+            kwargs["line"]["line"]["name"] = get_ident(kwargs["line"]["line"]["name"])
             __write_sec_offset_row_col(**kwargs)
             __write_sec_func(**kwargs)
 
@@ -501,7 +514,6 @@ def __write_service_fields(**kwargs):
                 kwargs["line"] = dict(index=i + 1, line=line)
                 __write_sec_offset_pattern(**kwargs)
                 __write_sec_func(**kwargs)
-
 
 
 def __get_sub_fields(**kwargs):

@@ -165,16 +165,16 @@ class TestGisConfig(unittest.TestCase):
     #     hash_origin, hash_download = self.__check()
     #     self.assertEqual(hash_origin, hash_download)
 
-    # def test_02_druzhba(self):
-    #     self.parser.name = os.path.join(BASE_DIR, "test", "input", "druzhba.zip")
-    #     self.parser.is_hash = False
-    #     self.parser.download_file = (
-    #         f"druzhba{'_no_hash' if self.parser.is_hash is False else ''}.zip"
-    #     )
-    #     self.__remove_download()
-    #     self.parser.start()
-    #     hash_origin, hash_download = self.__check()
-    #     self.assertEqual(hash_origin, hash_download)
+    def test_02_druzhba(self):
+        self.parser.name = os.path.join(BASE_DIR, "test", "input", "druzhba.zip")
+        self.parser.is_hash = False
+        self.parser.download_file = (
+            f"druzhba{'_no_hash' if self.parser.is_hash is False else ''}.zip"
+        )
+        self.__remove_download()
+        self.parser.start()
+        hash_origin, hash_download = self.__check()
+        self.assertEqual(hash_origin, hash_download)
 
     # def test_03_molod(self):
     #     self.parser.name = os.path.join(BASE_DIR, "test", "input", "molod.zip")

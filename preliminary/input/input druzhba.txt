@@ -2,6 +2,9 @@
 ;accounts: Адрес@address	Квартира@room_number	Проживает@living_person_number	Площадь@total_square	@account_identifier	@account_number
 ;pp: Сальдо начальное@credit		Начисление@bill_value	Оплата@payment_value	@payment_date	Сальдо конечное@saldo
 name:ТСЖ Дружба
+
+filename:gisconfig_002_00druzhba.ini
+
 check_pattern:Дружба
 pattern_inn:@7802348243
 pattern_account_number:@40703810055130108611
