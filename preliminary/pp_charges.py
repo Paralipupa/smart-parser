@@ -117,10 +117,11 @@ def pp_charges(lines: list, path: str) -> str:
                 sec_title="тариф при однотарифном начислении",
                 sec_name="tariff",
                 sec_is_service=True,
-                sec_is_hash=False,
-                sec_is_ident=False,
-                sec_is_func_name=False,
-                sec_func=f'key+fias+{get_func_name(line["name"].split(";")[0])},hash,dictionary' if not lines["dic"].get("service") else None
+                sec_is_hash=True,
+                sec_is_ident=True,
+                sec_is_func_name=True,
+                sec_func_ident="key+fias",
+                sec_is_func_dictionary=True
             )
         )
 
