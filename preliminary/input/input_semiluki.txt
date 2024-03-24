@@ -14,10 +14,13 @@ filename:gisconfig_002_00semiluki.ini
 
 main_page_index:-1
 pattern_inn:@3628019094
+
 pattern_ЛС:^11[0-9]{8}$
+;pattern_ЛС:^11[0-9]{8}.+$
 
 required_pu:serial_number,device_type
 
+;0:Л/С;Л/c;Лицевой счет;Услуга;Зав.№@internal_id_pu
 0:Л/С;Л/c;Лицевой счет
 0:Адрес@address{func{_}}
 0:Общ. площадь л/с@total_square
