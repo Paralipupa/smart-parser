@@ -72,6 +72,7 @@ def header(lines: list, path: str) -> str:
                         file.write(
                             f'pattern{"_" if i>0 else ""}{i-1 if i>0 else ""}={p[:index] if index != -1 else p }\n'
                         )
+                        fields = p[index+1:]
                     else:
                         file.write(
                             f'pattern{"_" if i>0 else ""}{i-1 if i>0 else ""}={p}\n'

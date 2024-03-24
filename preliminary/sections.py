@@ -109,13 +109,19 @@ def write_section_address(**kwargs):
 
 def write_section_account_internal_id(**kwargs):
     __write_section_head(**kwargs)
-    kwargs.get("file").write("pattern=@0\n")
-    kwargs.get("file").write("col_config=0\n")
     kwargs.get("file").write("row_data=0\n")
     if kwargs.get("lines")["dic"].get(f"{kwargs.get('sec_name')}"):
         col = kwargs.get("lines")["dic"][f"{kwargs.get('sec_name')}"][0]["col"]
-        kwargs.get("file").write(f"offset_col_config={col}\n")
-        kwargs.get("file").write("offset_pattern=.+\n")
+        kwargs.get("file").write(f"col_config={col}\n")
+        if kwargs.get("lines")["dic"]["account_internal_id"][0]["pattern"]:
+            pattern = kwargs.get("lines")["dic"]["account_internal_id"][0]["pattern"]
+            kwargs.get("file").write(f"pattern={pattern}\n")
+        else:
+            kwargs.get("file").write("pattern=.+\n")
+    else:
+        kwargs.get("file").write("pattern=@0\n")
+        kwargs.get("file").write("col_config=0\n")
+        
     if (
         kwargs.get("lines")["dic"].get(f"{kwargs.get('sec_name')}")
         and kwargs.get("lines")["dic"][f"{kwargs.get('sec_name')}"][0]["func"]

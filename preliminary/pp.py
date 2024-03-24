@@ -41,18 +41,16 @@ def pp(lines: list, path: str):
         file.write("row_data=0\n")
         file.write("func=id+account_number,spacerepl,hash\n\n")
 
-        file.write("[pp_2]\n")
-        file.write("; Внутренний идентификатор ЛС\n")
-        file.write("name=account_internal_id\n")
-        file.write("pattern=@0\n")
-        file.write("col_config=0\n")
-        file.write("row_data=0\n")
-        if lines["dic"].get("account_internal_id"):
-            file.write(
-                f'offset_col_config={lines["dic"]["account_internal_id"][0]["col"]}\n'
+        write_section_account_internal_id(
+            **dict(
+                file=file,
+                lines=lines,
+                sec_type=doc_type,
+                sec_number=2,
+                sec_title="Внутренний идентификатор ЛС",
+                sec_name="account_internal_id",
             )
-            file.write("offset_pattern=.+\n")
-        file.write("func=spacerepl,hash\n")
+        )
         file.write("\n")
 
         file.write("[pp_3]\n")
