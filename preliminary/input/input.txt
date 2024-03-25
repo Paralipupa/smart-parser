@@ -20,51 +20,26 @@ pattern_ЛС:.+
 
 required_pu:serial_number,device_type
 
-0:Л/С;Л/c;Лицевой счет;Зав.№@internal_id_accounts::^11[0-9]{8}$@account_internal_id::^11[0-9]{8}@contract_internal_id::^11[0-9]{8}
-;0:Л/С;Л/c;Лицевой счет
+3:Статус шкалы ПУ@checking_rows::Работоспособен
+
+0:Л/С;Л/c;Лицевой счет;Услуга;Зав.№@internal_id_accounts::^11[0-9]{8}$@account_internal_id::*@contract_internal_id::*@account_identifier::*@account_number_accounts::*
+
 0:Адрес@address{func{_}}
 0:Общ. площадь л/с@total_square
 0:Кол-во проживающих@living_person_number
 0:Номер помещения@room_number
+0:Начислено с учетом корректировок, руб.@bill_value
+0:Итого начислено в тек. периоде, руб.@accounting_period_total
+0:Тариф@tariff
 
-
+0:Показание@rr1_puv{type{float}}{func{round6}}
 0:Дата фактической поверки@first_verification_date
 0:Дата планируемой поверки (указанная на ПУ)@next_verification_date
 0:Межповерочный интервал, мес.@checking_interval
-0:Статус шкалы ПУ@checking_rows::Работоспособен
-0:Тариф@tariff
-0:Показание@rr1_puv{type{float}}{func{round6}}
-0:Начислено с учетом корректировок, руб.@bill_value
-0:Итого начислено в тек. периоде, руб.@accounting_period_total
-
 0:Тип ПУ@device_type
 0:Зав.№@serial_number
 0:Дата планируемой поверки (указанная на ПУ)@next_verification_date
 0:Дата@date_puv
 
-1:Услуга@service
-
-1a:Холодное водоснабжение
-1a:Водоотведение (норматив)
-1a:Водоотведение ПУ
-1a:ХВС полив(ИПУ)
-1a:Водоотведение_ОДН ( норматив)
-1a:ХВС_ОДН
-1a:Водоотведение_ОДН (по ХВС )
-1a:ВО ГВС
-1a:ВО ХВС
-1a:Водоотведение_ОДН ( по ГВС)
-1a:ГВС_ОДН
-1a:Горячее водоснабжение
-1a:Водоотведение_ОДН (ХВС и ГВС)
-1a:ХВС (МОП Помещения)
-1a:ХВС для ГВС
-1a:ХВС полив
-
-2a:ХВС
-2a:ХВС полив(ИПУ)
-2a:ХВС полив
-2a:ХВС(общий ПУ)
-2a:ХВС для ГВС
-2a:ГВС
+1:Услуга@service@name_pp_service@kind
 

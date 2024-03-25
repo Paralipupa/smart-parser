@@ -121,7 +121,6 @@ if __name__ == "__main__":
     args = getArgs()
     namespace = args.parse_args(sys.argv[1:])
     lines = read_from_text(namespace.name)
-    # lines = read_from_config(f'{os.path.dirname(__file__)}/ini/gis_config.ini')
     cols = set_columns(lines, os.path.dirname(__file__))
     names.append(header(lines, os.path.dirname(__file__)))
     names.append(cols)

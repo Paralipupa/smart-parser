@@ -121,7 +121,7 @@ def write_section_account_internal_id(**kwargs):
     else:
         kwargs.get("file").write("pattern=@0\n")
         kwargs.get("file").write("col_config=0\n")
-        
+
     if (
         kwargs.get("lines")["dic"].get(f"{kwargs.get('sec_name')}")
         and kwargs.get("lines")["dic"][f"{kwargs.get('sec_name')}"][0]["func"]
@@ -158,9 +158,7 @@ def write_section_rr(**kwargs):
         if __is_service_parameters(**kwargs):
             name = get_name(get_ident(service_names[0]["name"].split(";")[0]))
             kwargs.get("file").write(f"pattern=@{name}\n")
-            kwargs.get("file").write(
-                f'col_config={kwargs.get("lines")["dic"]["service"][0]["col"]}\n'
-            )
+            kwargs.get("file").write(f"col_config={__get_service_col(**kwargs)}\n")
             col = kwargs.get("lines")["dic"][
                 f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix','')}"
             ][0]["col"]
@@ -216,8 +214,8 @@ def __write_section_service_internal_id(**kwargs):
         kwargs.get("file").write("pattern=@Прочие\n")
         kwargs.get("file").write("row_data=0\n")
         if __is_service_parameters(**kwargs):
-            col = kwargs.get("lines")["dic"]["service"][0]["col"]
-            kwargs.get("file").write(f"col_config={col}\n")
+            col_service = __get_service_col(**kwargs)
+            kwargs.get("file").write(f"col_config={col_service}\n")
             if kwargs.get("sec_is_hash"):
                 kwargs.get("file").write(f"func=hash\n")
     # kwargs.get("file").write("\n")
@@ -413,13 +411,8 @@ def __write_sec_pattern(**kwargs):
                 else:
                     kwargs.get("file").write(f"pattern=@{name}\n")
                     if __is_first_service(**kwargs):
-                        col_service = kwargs.get("lines")["dic"]["service"][0]["col"]
-                        if not fld_param:
-                            col_fld = col_service
-                        else:
-                            col_fld = current_service["line"].get(
-                                "col", fld_param[0]["col"]
-                            )
+                        col_service = __get_service_col(**kwargs)
+                        col_fld = __get_field_col(**kwargs)
                         if col_fld != col_service:
                             if pattern_default:
                                 kwargs.get("file").write(
@@ -491,6 +484,10 @@ def __write_sec_func(**kwargs):
             kwargs.get("file").write(f"func_is_no_return=true\n")
     elif __is_sec_internal_id(**kwargs) and not current_service is None:
         ident = get_func_name(current_service["line"]["name"].split(";")[0])
+        if current_service["line"]["name"] == "Прочие" and __is_service_parameters(
+            **kwargs
+        ):
+            ident = "_"
         func_ident = kwargs.get("sec_func_ident", "id")
         kwargs.get("file").write(
             f"func={func_ident}+{ident}{suffix}{spacerepl}{hash}{dictionary}\n"
@@ -509,6 +506,10 @@ def __write_sec_func(**kwargs):
             )
         else:
             ident = get_func_name(current_service["line"]["name"].split(";")[0])
+        if current_service["line"]["name"] == "Прочие" and __is_service_parameters(
+            **kwargs
+        ):
+            ident = "_"
         kwargs.get("file").write(f"func={ident}{hash}{dictionary}\n")
 
 

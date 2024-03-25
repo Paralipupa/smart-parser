@@ -104,12 +104,18 @@ def parsing_lines(
             line["name"] = line["name"][1:]
         ls = line["name"].split("@")
         line["name"] = ls[0]
+        pattern_default = ""
         for x in ls[1:]:
             x, param_off = get_param_offset(x)
             x, param_func = get_param_function(x)
             x, param_func_is_no = get_param_function_is_no_return(x)
             x, param_type = get_param_type(x)
             x, param_pattern = get_pattern(x)
+            if param_pattern:
+                if param_pattern == "*" and pattern_default:
+                    param_pattern = pattern_default
+                else:
+                    pattern_default = param_pattern
             set_dict(
                 ldict=ldict,
                 key=x,

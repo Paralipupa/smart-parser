@@ -137,6 +137,8 @@ def pp_charges(lines: list, path: str) -> str:
                 sec_is_hash=True,
                 sec_is_ident=False,
                 sec_is_func_name=True,
+                sec_is_func_name_no_ident=False,
+                required_fields=required_fields,
             )
         )
 

@@ -230,7 +230,7 @@ class TestGisConfig(unittest.TestCase):
         self.assertEqual(hash_origin, hash_download)
 
     def test_11_semiluki(self):
-        self.parser.is_hash = True
+        self.parser.is_hash = False
         self.parser.name = os.path.join(BASE_DIR, "test", "input", "semiluki.zip")
         self.parser.download_file = (
             f"semiluki{'_no_hash' if self.parser.is_hash is False else ''}.zip"
