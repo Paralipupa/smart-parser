@@ -20,7 +20,9 @@ required_pp_charges:calc_value,recalculation,tariff
 required_pp:bill_value,payment_value,credit,saldo
 
 0:ЛС ЕИРЦ;ЛС ИКУ/ поставщика;ЛСЕИРЦ;ЛС ИКУ/поставщика@account_number
-0:Сальдо на начало периода;+(1)@credit	Начислено за период@bill_value	Оплачено за период;Оплата(пени)@payment_value	Сальдо на конец периода;+(1)@saldo
+0:Сальдо на начало периода;+(1)@credit{type{float}}{func{round2}}::*currency
+0:Начислено за период@bill_value	Оплачено за период;Оплата(пени)@payment_value
+0:Сальдо на конец периода;+(1)@saldo{type{float}}{func{round2}}::*currency
 0:Начисление(пени)	Населенный пункт;Улица;Дом@address	Кв.@room_number	Кол-вопрож.@living_person_number	Общаяплощадь@total_square	
 0:Всего начислено;Начислено за период;Начисленов указ.периоде(руб.);Сумма перерасчета@accounting_period_total{offset{4}}
 0:Лицевой счет;ЛС ИКУ/ поставщика;ЛС ИКУ/поставщика@account_number_accounts@account_identifier

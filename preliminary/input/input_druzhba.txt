@@ -19,7 +19,10 @@ pattern_ЛС:(?<=ИНН: )[0-9]+
 pattern_ЛС:^(?![0-9])[А-Яа-яЁё"«»-]+\s["«»А-Яа-яЁё-]+
 
 0:№ пом.;№ кв.;Ф.И.О.
-0:Сальдо Вх.@credit	Начисление;Дебет@bill_value	Оплачено;Кредит@payment_value	Сальдо исх.@saldo
+0:Сальдо Вх.@credit{type{float}}{func{round2}}::*currency
+0:Начисление;Дебет@bill_value{type{float}}{func{round2}}::*currency
+0:Оплачено;Кредит@payment_value{type{float}}{func{round2}}::*currency
+0:Сальдо исх.@saldo{type{float}}{func{round2}}::*currency
 0:Квартира;№ пом.;№ кв.@room_number	Проживает@living_person_number
 0:>Площадь;Площадь, м2@total_square{type{float}}{func{round2}}
 0:Дата оп.@payment_date	Прописано	Начислено

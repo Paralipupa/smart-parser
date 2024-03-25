@@ -1353,8 +1353,8 @@ class ExcelBaseImporter:
                                 values = [
                                     (
                                         x["value"],
-                                        col[POS_NUMERIC_IS_ABSOLUTE],
-                                        col[POS_NUMERIC_IS_NEGATIVE],
+                                        None,
+                                        x["negative"],
                                     )
                                     for x in team[name_field]
                                     if x["row"] == table_row[POS_VALUE]
@@ -1461,7 +1461,7 @@ class ExcelBaseImporter:
                         )
                         or (
                             isinstance(fld_record["value"], str)
-                            and fld_record["offset_type"] == "float"
+                            and (fld_record["type"] == "float" or fld_record["offset_type"] == "float" )
                             and fld_record["value"] == "0.0"
                         )
                         else str(fld_record["value"]).strip()

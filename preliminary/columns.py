@@ -112,7 +112,9 @@ def parsing_lines(
             x, param_type = get_param_type(x)
             x, param_pattern = get_pattern(x)
             if param_pattern:
-                if param_pattern == "*" and pattern_default:
+                if param_pattern[0] == "*":
+                    param_pattern = "@" + param_pattern[1:]
+                if param_pattern == "@" and pattern_default:
                     param_pattern = pattern_default
                 else:
                     pattern_default = param_pattern

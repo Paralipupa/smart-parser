@@ -280,8 +280,8 @@ def __is_service_parameters(**kwargs) -> bool:
     return bool(kwargs.get("lines")["dic"].get("service"))
 
 
-def __is_service_section(**kwargs) -> bool:
-    """секция может быть многострочной. Т.е. содержать дочерние поля"""
+def __is_simple_section(**kwargs) -> bool:
+    """ Простая секция без дочерних полей """
     return (
         not kwargs.get("sec_is_service") is None
         and kwargs.get("sec_is_service") is False
@@ -298,7 +298,7 @@ def __is_sub_fields_in_col(**kwargs) -> bool:
     if __is_sub_fields_in_row(**kwargs):
         # Если данные берктся только из нескольких колонок исходной таблицы
         return False
-    if __is_service_section(**kwargs):
+    if __is_simple_section(**kwargs):
         # секция не является многострочной
         return False
     return True
@@ -382,7 +382,9 @@ def __write_sec_row_col(**kwargs):
         elif __is_first_service(**kwargs):
             kwargs.get("file").write("pattern=@0\n")
             kwargs.get("file").write("col_config=0\n")
-        if __is_first_service(**kwargs):
+        if __is_first_service(**kwargs) and (
+            not __is_service_parameters(**kwargs) or __is_simple_section(**kwargs)
+        ):
             kwargs.get("file").write("row_data=0\n")
 
 

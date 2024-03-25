@@ -28,8 +28,8 @@ required_pu:serial_number,device_type
 0:Общ. площадь л/с@total_square
 0:Кол-во проживающих@living_person_number
 0:Номер помещения@room_number
-0:Начислено с учетом корректировок, руб.@bill_value
-0:Итого начислено в тек. периоде, руб.@accounting_period_total
+0:Начислено с учетом корректировок, руб.@bill_value{type{float}}{func{round2}}::*currency
+0:Итого начислено в тек. периоде, руб.@accounting_period_total{type{float}}{func{round2}}::*currency
 0:Тариф@tariff
 
 0:Показание@rr1_puv{type{float}}{func{round6}}

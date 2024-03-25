@@ -100,6 +100,19 @@ def pp(lines: list, path: str):
             file.write("offset_pattern=@currency\n")
             file.write("func=round2\n\n")
 
+        # write_section(
+        #     **dict(
+        #         file=file,
+        #         lines=lines,
+        #         sec_type=doc_type,
+        #         sec_number=5,
+        #         sec_title="Сальдо на начало месяца (<0 переплата, >0 задолженность)",
+        #         sec_name="credit",
+        #         required_fields=required_fields,
+        #         sec_is_service=False,
+        #     )
+        # )
+
         file.write("[pp_6]\n")
         file.write("; Сальдо на конец месяца (<0 переплата, >0 задолженность)\n")
         file.write("name=saldo\n")
@@ -110,6 +123,20 @@ def pp(lines: list, path: str):
             file.write("offset_type=float\n")
             file.write("offset_pattern=@currency\n")
             file.write("func=round2\n\n")
+
+        # write_section(
+        #     **dict(
+        #         file=file,
+        #         lines=lines,
+        #         sec_type=doc_type,
+        #         sec_number=6,
+        #         sec_title="Сальдо на конец месяца (<0 переплата, >0 задолженность)",
+        #         sec_name="saldo",
+        #         required_fields=required_fields,
+        #         sec_is_service=False,
+        #     )
+        # )
+
 
         file.write("[pp_7]\n")
         file.write("; Оплачено денежных средств в расчетный период\n")
