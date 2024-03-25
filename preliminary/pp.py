@@ -2,7 +2,7 @@ from sections import *
 
 
 def pp(lines: list, path: str):
-    
+
     file_name = f"{path}/ini/3_pp.ini"
     with open(file_name, "w") as file:
 
@@ -24,22 +24,33 @@ def pp(lines: list, path: str):
             )
         )
 
-        file.write("\n")
-        file.write("[pp_0]\n")
-        file.write(";ИНН, ОГРН или OrgID\n")
-        file.write("name=org_ppa_guid\n")
-        file.write("pattern=@\n")
-        file.write("col_config=0\n")
-        file.write("row_data=0\n")
-        file.write("func=inn\n\n")
+        write_section_org_ppa_guid(
+            **dict(
+                file=file,
+                lines=lines,
+                sec_type=doc_type,
+                sec_number=0,
+                sec_title="ИНН, ОГРН или OrgID",
+                sec_name="org_ppa_guid",
+            )
+        )
 
-        file.write("[pp_1]\n")
-        file.write("; Внутренний идентификатор ПД\n")
-        file.write("name=internal_id\n")
-        file.write("pattern=@0\n")
-        file.write("col_config=0\n")
-        file.write("row_data=0\n")
-        file.write("func=id+account_number,spacerepl,hash\n\n")
+        write_section(
+            **dict(
+                file=file,
+                lines=lines,
+                sec_type=doc_type,
+                sec_number=1,
+                sec_title="Внутренний идентификатор ПД",
+                sec_name="internal_id",
+                sec_suffix="ПУ",
+                sec_is_service=False,
+                sec_is_hash=True,
+                sec_is_ident=True,
+                sec_is_func_name_no_ident=False,
+                sec_func="id+account_number,spacerepl,hash",
+            )
+        )
 
         write_section_account_internal_id(
             **dict(
@@ -51,19 +62,32 @@ def pp(lines: list, path: str):
                 sec_name="account_internal_id",
             )
         )
-        file.write("\n")
 
-        file.write("[pp_3]\n")
-        file.write("; ГИС. Идентификатор ПП\n")
-        file.write("name=gis_id\n\n")
+        write_section(
+            **dict(
+                file=file,
+                lines=lines,
+                sec_type=doc_type,
+                sec_number=3,
+                sec_title="ГИС. Идентификатор ПП GUID",
+                sec_name="gis_id",
+                required_fields=required_fields,
+            )
+        )
 
-        file.write("[pp_4]\n")
-        file.write("; Месяц (первый день месяца)\n")
-        file.write("name=month\n")
-        file.write("pattern=@0\n")
-        file.write("col_config=0\n")
-        file.write("row_data=0\n")
-        file.write("func=period_first\n\n")
+        write_section(
+            **dict(
+                file=file,
+                lines=lines,
+                sec_type=doc_type,
+                sec_number=4,
+                sec_title="Месяц (первый день месяца)",
+                sec_name="month",
+                required_fields=required_fields,
+                sec_func="period_first",
+                sec_is_service=False,
+            )
+        )
 
         file.write("[pp_5]\n")
         file.write("; Сальдо на начало месяца (<0 переплата, >0 задолженность)\n")
