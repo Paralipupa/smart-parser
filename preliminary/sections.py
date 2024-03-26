@@ -198,11 +198,38 @@ def write_section_rr(**kwargs):
     return
 
 
+def write_section_bank(**kwargs):
+    __write_section_head(**kwargs)
+    __write_sec_main(**kwargs)
+    kwargs.get("file").write(f"row_data=0\n")
+    fld_param = __get_fld_parameters(**kwargs)
+    if fld_param and fld_param[0].get("col") != 0:
+        kwargs.get("file").write(f"offset_col_config={fld_param[0].get('col')}\n")
+        kwargs.get("file").write(
+            f"offset_pattern={fld_param[0].get('pattern') if fld_param[0].get('pattern') else '.+' }\n"
+        )
+    else:
+        kwargs.get("file").write(f"func={kwargs.get('sec_func')}\n")
+        kwargs.get("file").write("func_is_no_return=true\n")
+
+
+def write_section_date_payment(**kwargs):
+    __write_section_head(**kwargs)
+    __write_sec_main(**kwargs)
+    kwargs.get("file").write(f"row_data=0\n")
+    fld_param = __get_fld_parameters(**kwargs)
+    if fld_param:
+        kwargs.get("file").write(f"offset_col_config={fld_param[0].get('col')}\n")
+        kwargs.get("file").write("offset_pattern=.+\n")
+    else:
+        kwargs.get("file").write("func=period_last\n")
+        kwargs.get("file").write("depends_on=payment_value\n")
+
+
 def __write_section_service_internal_id(**kwargs):
     service_names: list = get_lines(kwargs.get("lines"))
     kwargs["line"] = dict(index=0, line=get_lines(kwargs.get("lines"))[0])
     if not __is_service_parameters(**kwargs) or len(service_names) > 2:
-        __write_sec_main(**kwargs)
         __write_sec_row_col(**kwargs)
         __write_sec_pattern(**kwargs)
         __write_sec_type(**kwargs)
@@ -222,6 +249,23 @@ def __write_section_service_internal_id(**kwargs):
     return
 
 
+def write_section_calculation(**kwargs):
+    __write_section_head(**kwargs)
+    fld_param = __get_fld_parameters(**kwargs)
+    if fld_param:
+        __write_sec_main(**kwargs)
+        kwargs.get("file").write(f"offset_col_config={fld_param[0].get('col')}\n")
+        kwargs.get("file").write(
+            f"offset_type={fld_param[0].get('type')[0] if fld_param[0].get('type') else 'float'}\n"
+        )
+        kwargs.get("file").write(
+            f"offset_pattern={fld_param[0].get('pattern') if fld_param[0].get('pattern') else '@currency' }\n"
+        )
+        kwargs.get("file").write(
+            f"func={fld_param[0].get('func')[0] if fld_param[0].get('func') else 'round2'} \n"
+        )
+
+
 def write_section(**kwargs):
     __write_section_head(**kwargs)
     kwargs["sec_prefix"] = __get_sec_prefix(**kwargs)
@@ -234,7 +278,6 @@ def write_section(**kwargs):
         or "internal_id" in kwargs.get("sec_name")
     ):
         kwargs["line"] = __get_sub_fields(**kwargs)
-        __write_sec_main(**kwargs)
         __write_sec_row_col(**kwargs)
         __write_sec_pattern(**kwargs)
         __write_sec_type(**kwargs)
@@ -281,7 +324,7 @@ def __is_service_parameters(**kwargs) -> bool:
 
 
 def __is_simple_section(**kwargs) -> bool:
-    """ Простая секция без дочерних полей """
+    """Простая секция без дочерних полей"""
     return (
         not kwargs.get("sec_is_service") is None
         and kwargs.get("sec_is_service") is False
@@ -348,9 +391,8 @@ def __is_first_service(**kwargs) -> bool:
 
 
 def __write_sec_main(**kwargs):
-    # kwargs.get("file").write("pattern=@0\n")
-    # kwargs.get("file").write("col_config=0\n")
-    pass
+    kwargs.get("file").write("pattern=@0\n")
+    kwargs.get("file").write("col_config=0\n")
 
 
 def __write_sec_row_col(**kwargs):
