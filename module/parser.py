@@ -4,11 +4,7 @@ import logging
 import shutil
 import datetime
 from .excel_base_importer import ExcelBaseImporter
-from .helpers import (
-    get_config_files,
-    write_list,
-    check_tarif,
-)
+from .helpers import get_config_files, write_list, check_tarif, write_log_time
 from .union import UnionData
 from .exceptions import (
     InnMismatchException,
@@ -32,6 +28,7 @@ class Parser:
         path_down: str = PATH_OUTPUT,
         file_down: str = "output",
         hash: str = "yes",
+        is_daemon: bool = False,
     ) -> None:
         self.logs = list()
         self._dictionary = dict()
@@ -45,6 +42,7 @@ class Parser:
         self.download_file = file_down
         self.is_hash = False if hash == "no" else True
         self.check_tarif = False
+        self.is_daemon = is_daemon
         self.config_files = get_config_files()
 
     def start(self) -> list:
@@ -67,7 +65,11 @@ class Parser:
                     f"Архив: {COLOR_CONSOLE['red']}'{os.path.basename(self.name) }'{COLOR_CONSOLE['end']}"
                 )
                 search_conf = SearchConfig(
-                    self.name, self.config_files, self.inn, self.config
+                    file_name=self.name,
+                    config_files=self.config_files,
+                    inn=self.inn,
+                    file_conf=self.config,
+                    is_daemon=self.is_daemon,
                 )
                 list_files = search_conf.get_list_files()
                 isParser = False
@@ -81,9 +83,14 @@ class Parser:
                                 index=index,
                                 output=self.output_path,
                                 period=self._period,
+                                is_hash=self.is_hash,
+                                dictionary=self._dictionary.copy(),
+                                download_file=(
+                                    os.path.join(self.download_path, self.download_file)
+                                    if self.is_daemon
+                                    else ""
+                                ),
                             )
-                            rep.is_hash = self.is_hash
-                            rep._dictionary = self._dictionary.copy()
                             if (
                                 self.check_tarif is False
                                 and not rep._dictionary.get("tarif") is None
@@ -96,7 +103,7 @@ class Parser:
                                 f"Начало обработки файла '{os.path.basename(file_name['name'])}'"
                             )
                             if rep.extract():
-                                logger.info(f"Обработка завершена")
+                                logger.info(f"Обработка завершена      ")
                                 isParser = True
                                 self._dictionary = rep._dictionary.copy()
                                 self._period = datetime.datetime.strptime(
@@ -120,16 +127,23 @@ class Parser:
                         return u.start()
                 else:
                     logger.info(f"Данные в архиве не распознаны")
+                    if self.is_daemon:
+                        file_name = os.path.join(self.download_path, self.download_file)
+                        write_log_time(file_name, True)
         except InnMismatchException as ex:
+            logger.exception(f"{ex}")
             return f"{ex}"
         except FatalException as ex:
+            logger.exception(f"{ex}")
             return f"{ex._message}"
         except ConfigNotFoundException as ex:
+            logger.exception(f"{ex}")
             return f"{ex._message}"
         except CheckTarifException as ex:
+            logger.exception(f"{ex}")
             return f"{ex._message}"
         except Exception as ex:
-            logger.exception("Error start")
+            logger.exception(f"{ex}")
             return f"{ex}"
         shutil.copy(
             os.path.join(BASE_DIR, "doc", "error.txt"),

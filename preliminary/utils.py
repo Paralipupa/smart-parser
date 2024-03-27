@@ -1,5 +1,5 @@
 import fileinput
-import re
+import re, os
 from typing import Tuple
 
 
@@ -36,7 +36,7 @@ def get_reg(pattern: str) -> str:
             patt = patt.replace("[", "\[").replace("]", "\]")
             patt = patt.replace("(", "\(").replace(")", "\)")
             patt = patt.replace(".", "[.]").replace("*", "[*]")
-            patt = patt.replace("+", "[+]").replace("_", "")
+            patt = patt.replace("+", "[+]")
         new_pattern += (patt + ";")
     new_pattern = new_pattern.strip(";").strip()
     return (
@@ -72,7 +72,7 @@ def get_lines(lines: list) -> list:
 
 
 def write_config(filenames: list, path: str, output: str = "gis_config.ini"):
-    file_name = f"{path}/ini/{output}"
+    file_name = os.path.join(path, output)
     with open(file_name, "w") as fout, fileinput.input(filenames) as fin:
         for line in fin:
             fout.write(line)
@@ -133,7 +133,7 @@ def get_pattern(x: str, default: str = '') -> Tuple[str, str]:
     if pattern and pattern[0] == "!":
         pattern = "@" + pattern[1:]
     x = x.replace('::'+pattern, '').strip()
-    return x, pattern
+    return x, pattern.strip()
 
 def get_func_name(x: str) -> str:
-    return re.sub("[\^\$\+]","",x.replace(","," ").rstrip())
+    return re.sub("[\^\$\+]","",x.replace(","," ").replace("  "," ").rstrip())

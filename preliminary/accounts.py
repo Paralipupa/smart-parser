@@ -3,49 +3,217 @@ from sections import *
 
 def accounts(lines: list, path: str) -> str:
     doc_type = "accounts"
-    file_name = f'{path}/ini/2_accounts.ini'
-    with open(file_name, 'w') as file:
-        write_section_caption(file, doc_type)
+    file_name = f"{path}/ini/2_accounts.ini"
+    with open(file_name, "w") as file:
+        write_section_caption(**dict(file=file, sec_type=doc_type))
         write_section_doc(
-            file, "doc", 0, "Лицевые счета", doc_type, required_fields="address,account_number,living_person_number,total_square")
-        write_section_org_ppa_guid(file, lines, doc_type, 0,
-                                   "ИНН, ОГРН или OrgID", "org_ppa_guid")
-        write_section(file, lines, doc_type, 1,
-                      "Внутренний идентификатор договора", "contract_internal_id", sec_func="_+К,spacerepl,hash")
-        write_section(file, lines, doc_type, 2,
-                      "Внутренний идентификатор ЛС", "internal_id", sec_func="spacerepl,hash")
-        write_section(file, lines, doc_type, 3,
-                      "Идентификатор дома GUID", "fias", sec_func="!fias")
-        write_section_address(file, lines, doc_type, 4,
-                              "Адрес дома", "address")
-        write_section(file, lines, doc_type, 5,
-                      "Номер помещения (если есть)", "room_number")
-        write_section(file, lines, doc_type, 6,
-                      "ГИС. Идентификатор квартиры GUID", "gis_premises_id")
-        write_section(file, lines, doc_type, 7,
-                      "ГИС. Идентификатор блока GUID", "gis_block_id")
-        write_section(file, lines, doc_type, 8,
-                      "ГИС. Идентификатор комнаты GUID", "gis_room_id")
-        write_section(file, lines, doc_type, 9,
-                      "ГИС. Идентификатор ЛС GUID", "gis_account_id")
-        write_section(file, lines, doc_type, 10, "Номер ЛС",
-                      "account_number", sec_func="spacerepl")
-        write_section(file, lines, doc_type, 11,
-                      "ГИС. Идентификатор ЛС (20)", "gis_account_service_id")
-        write_section(file, lines, doc_type, 12,
-                      "ГИС. Номер ЛИ (20)", "gis_account_unified_number")
-        write_section(file, lines, doc_type, 13,
-                      "Общая площадь помещения", "total_square")
-        write_section(file, lines, doc_type, 14,
-                      "Жилая площадь", "residential_square")
-        write_section(file, lines, doc_type, 15,
-                      "Кол-во проживающих", "living_person_number")
-        write_section(file, lines, doc_type, 16,
-                      "Часовой пояс. Кол-во часов + или - от UTC", "timezone", sec_func="!timezone")
-        write_section(file, lines, doc_type, 17,
-                      "Альтернативный идентификатор ЛС, используется в некоторых конфигурациях.", "account_identifier", sec_func="spacerepl")
-        write_section(file, lines, doc_type, 18,
-                      "Признак нежилого помещения (0 1)", "not_residential")        
-        write_section(file, lines, doc_type, 19,
-                      "Тип лицевого счета (uo|cr)", "account_type")
+            **dict(
+                file=file,
+                sec_type="doc",
+                sec_number=0,
+                sec_title="Лицевые счета",
+                sec_name=doc_type,
+                required_fields="address,account_number,living_person_number,total_square",
+            )
+        )
+        write_section_org_ppa_guid(
+            **dict(
+                file=file,
+                lines=lines,
+                sec_type=doc_type,
+                sec_number=0,
+                sec_title="ИНН, ОГРН или OrgID",
+                sec_name="org_ppa_guid",
+                sec_is_service=False,
+            )
+        )
+        write_section(
+            **dict(
+                file=file,
+                lines=lines,
+                sec_type=doc_type,
+                sec_number=1,
+                sec_title="Внутренний идентификатор договора",
+                sec_name="contract_internal_id",
+                sec_func="_+К,spacerepl,hash",
+                sec_is_service=False,
+            )
+        )
+        write_section(
+            **dict(
+                file=file,
+                lines=lines,
+                sec_type=doc_type,
+                sec_number=2,
+                sec_title="Внутренний идентификатор ЛС",
+                sec_name="internal_id",
+                sec_func="spacerepl,hash",
+                sec_is_service=False,
+            )
+        )
+        write_section(
+            **dict(
+                file=file,
+                lines=lines,
+                sec_type=doc_type,
+                sec_number=3,
+                sec_title="Идентификатор дома GUID",
+                sec_name="fias",
+                sec_func="!fias",
+                sec_is_service=False,
+            )
+        )
+        write_section_address(
+            **dict(
+                file=file,
+                lines=lines,
+                sec_type=doc_type,
+                sec_number=4,
+                sec_title="Адрес дома",
+                sec_name="address",
+                sec_is_service=False,
+            )
+        )
+        write_section(
+            **dict(
+                file=file,
+                lines=lines,
+                sec_type=doc_type,
+                sec_number=5,
+                sec_title="Номер помещения (если есть)",
+                sec_name="room_number",
+                sec_is_service=False,
+            )
+        )
+        write_section(
+            **dict(
+                file=file,
+                lines=lines,
+                sec_type=doc_type,
+                sec_number=6,
+                sec_title="ГИС. Идентификатор квартиры GUID",
+                sec_name="gis_premises_id",
+                sec_is_service=False,
+            )
+        )
+        write_section(
+            file=file,
+            lines=lines,
+            sec_type=doc_type,
+            sec_number=7,
+            sec_title="ГИС. Идентификатор блока GUID",
+            sec_name="gis_block_id",
+            sec_is_service=False,
+        )
+        write_section(
+            file=file,
+            lines=lines,
+            sec_type=doc_type,
+            sec_number=8,
+            sec_title="ГИС. Идентификатор комнаты GUID",
+            sec_name="gis_room_id",
+            sec_is_service=False,
+        )
+        write_section(
+            file=file,
+            lines=lines,
+            sec_type=doc_type,
+            sec_number=9,
+            sec_title="ГИС. Идентификатор ЛС GUID",
+            sec_name="gis_account_id",
+            sec_is_service=False,
+        )
+        write_section(
+            file=file,
+            lines=lines,
+            sec_type=doc_type,
+            sec_number=10,
+            sec_title="Номер ЛС",
+            sec_name="account_number",
+            sec_func="spacerepl",
+            sec_is_service=False,
+        )
+        write_section(
+            file=file,
+            lines=lines,
+            sec_type=doc_type,
+            sec_number=11,
+            sec_title="ГИС. Идентификатор ЛС (20)",
+            sec_name="gis_account_service_id",
+            sec_is_service=False,
+        )
+        write_section(
+            file=file,
+            lines=lines,
+            sec_type=doc_type,
+            sec_number=12,
+            sec_title="ГИС. Номер ЛИ (20)",
+            sec_name="gis_account_unified_number",
+            sec_is_service=False,
+        )
+        write_section(
+            file=file,
+            lines=lines,
+            sec_type=doc_type,
+            sec_number=13,
+            sec_title="Общая площадь помещения",
+            sec_name="total_square",
+            sec_is_service=False,
+        )
+        write_section(
+            file=file,
+            lines=lines,
+            sec_type=doc_type,
+            sec_number=14,
+            sec_title="Жилая площадь",
+            sec_name="residential_square",
+            sec_is_service=False,
+        )
+        write_section(
+            file=file,
+            lines=lines,
+            sec_type=doc_type,
+            sec_number=15,
+            sec_title="Кол-во проживающих",
+            sec_name="living_person_number",
+            sec_is_service=False,
+        )
+        write_section(
+            file=file,
+            lines=lines,
+            sec_type=doc_type,
+            sec_number=16,
+            sec_title="Часовой пояс. Кол-во часов + или - от UTC",
+            sec_name="timezone",
+            sec_func="!timezone",
+            sec_is_service=False,
+        )
+        write_section(
+            file=file,
+            lines=lines,
+            sec_type=doc_type,
+            sec_number=17,
+            sec_title="Альтернативный идентификатор ЛС, используется в некоторых конфигурациях.",
+            sec_name="account_identifier",
+            sec_func="spacerepl",
+            sec_is_service=False,
+        )
+        write_section(
+            file=file,
+            lines=lines,
+            sec_type=doc_type,
+            sec_number=18,
+            sec_title="Признак нежилого помещения (0 1)",
+            sec_name="not_residential",
+            sec_is_service=False,
+        )
+        write_section(
+            file=file,
+            lines=lines,
+            sec_type=doc_type,
+            sec_number=19,
+            sec_title="Тип лицевого счета (uo|cr)",
+            sec_name="account_type",
+            sec_is_service=False,
+        )
     return file_name

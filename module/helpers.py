@@ -1,4 +1,4 @@
-import datetime, re, os, json
+import datetime, re, os, json, csv
 import pathlib
 import hashlib
 import zipfile
@@ -104,9 +104,9 @@ def get_value_int(value: Union[list, str]) -> int:
             if isinstance(value, list):
                 return value[0]
             elif isinstance(value, str):
-                return int(value.replace(",", ".").replace(" ", "")).replace(
+                return int(value.replace(",", ".").replace(" ", "").replace(
                     chr(160), ""
-                )
+                ))
         else:
             return 0
     except:
@@ -229,6 +229,7 @@ def get_config_files():
     except Exception as ex:
         files = []
     return files
+
 
 def get_list_files(name: str) -> list:
     l = list()
@@ -356,10 +357,80 @@ def hashit(s):
 
 
 def check_tarif(data: list) -> str:
-    comp = re.compile("\d{1,9}(?:[\.,]\d{1,3})?")
+    comp = re.compile(r"[0-9]{1,9}(?:[\.,][0-9]{1,3})?")
     mess = ""
     for index, item in enumerate(data):
         res = comp.findall(item)
         if len(res) != 1:
             mess += f"{index+1}: {item}\n"
     return mess
+
+
+def get_value(
+    value: str = "", pattern: str = "", type_value: str = ""
+) -> Union[str, int, float]:
+    try:
+        value = str(value)
+        if type_value == "int":
+            value = str(get_value_int(value))
+        elif type_value == "double" or type_value == "float":
+            value = str(get_value_float(value))
+    except:
+        pass
+    result = regular_calc(pattern, value)
+    if result != None:
+        try:
+            if type_value == "int":
+                result = get_value_int(value)
+            elif type_value == "double" or type_value == "float":
+                result = get_value_float(result)
+            else:
+                result = result.rstrip() + " "
+        except:
+            result = 0
+    else:
+        if type_value == "int":
+            result = 0
+        elif type_value == "double" or type_value == "float":
+            result = 0
+        else:
+            result = ""
+    return result
+
+
+def write_log_time(file_name: str, is_error: bool=False):
+    with open(file_name + ".log", "w") as f:
+        if is_error:
+            f.write(f"{file_name}\t" + "01-01-1900 00:00:00")
+        else:
+            f.write(f"{file_name}\t" + datetime.now().strftime("%d-%m-%Y %H:%M:%S"))
+
+
+def get_list_dict_from_csv(file_name: str) -> list:
+    file_list = read_file(file_name)
+    headers = file_list[0][0].split(";")
+    values = file_list[1:]
+    final_list = []
+    for lists in values:
+        final_list.append(lists_to_dict(headers, lists))
+    return final_list
+
+
+def lists_to_dict(headers, lists):
+    data = {}
+    for index in range(len(lists)):
+        data[headers[index].strip()] = lists[index].strip()
+    return data
+
+
+def read_file(file_name):
+    list_urls = list()
+    try:
+        with open(file_name, mode="r", encoding=ENCONING) as read_file:
+            reading = csv.reader(read_file)
+            for row in reading:
+                list_urls.append(row)
+        return list_urls
+    except FileNotFoundError:
+        logger.error(f"Файл не найден {file_name}")
+    return []

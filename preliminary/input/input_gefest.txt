@@ -2,6 +2,9 @@
 ;accounts: Адрес@address	Квартира@room_number	Проживает@living_person_number	Площадь@total_square	@account_identifier	@account_number_accounts
 ;pp: Сальдо начальное@credit		Начисление@bill_value	Оплата@payment_value	@payment_date	Сальдо конечное@saldo
 name:ТСЖ Гефест
+
+filename:gisconfig_002_00gefest.ini
+
 check_pattern:Гефест
 check_pattern:Оборотно-сальдовая ведомость по лицевым счетам|Ведомость начислений
 pattern_inn:@7801636143
@@ -18,9 +21,13 @@ pattern_fias_Кадетская:Кадетская В[.]О[.] линия@f93f3cb
 pattern_fias_Малый:Малый В[.]О[.] пр-кт@dd0c6749-c088-4bd2-b23d-f8a2ffe005c2
 header_fias:@fias_6+fias_11+fias_Кадетская+fias_Малый
 
+required_pu:internal_id
+
 0:№ пом.;№ кв.;ФИО;Плательщик
-0:Сальдо  вход.@credit	
-0:Начислено@bill_value	Оплачено@payment_value	Сальдо  исх.@saldo
+0:Сальдо  вход.@credit{type{float}}{func{round2}}
+0:Начислено@bill_value{type{float}}{func{round2}}
+0:Оплачено@payment_value{type{float}}{func{round2}}
+0:Сальдо  исх.@saldo{type{float}}{func{round2}}
 0:В т.ч.  пени	
 0:>Всего начислено
 0:Адрес@address	№ пом.@room_number	Проживает;Прож@living_person_number	Площадь;Общая площадь@total_square{type{float}}{func{round2}}

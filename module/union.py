@@ -8,7 +8,7 @@ import csv
 import zipfile
 import shutil
 from collections import Counter
-from .helpers import warning_error, fatal_error, print_message
+from .helpers import warning_error, fatal_error, print_message, get_list_dict_from_csv
 from .exceptions import ConfigNotFoundException
 from .settings import *
 
@@ -46,7 +46,11 @@ class UnionData:
         files = self.__files_sorted(files_o)
         if files:
             data = self.__get_data_files(files)
-            # data = self.__sort_data_files(data)
+            print_message(
+                "               Финальная сборка                                                 \r",
+                end="",
+                flush=True,
+            )
             for inn, item in data.items():
                 for id_period, files in item.items():
                     file_data = {}
@@ -72,6 +76,10 @@ class UnionData:
         self.__make_archive(save_directories)
         if os.path.isdir(self.path_input):
             shutil.rmtree(self.path_input)
+            if os.path.isfile(
+                os.path.join(self.path_output, self.file_output + ".log")
+            ):
+                os.remove(os.path.join(self.path_output, self.file_output + ".log"))
         return self.file_output
 
     def __get_data_files(self, files: list) -> dict:
@@ -94,8 +102,11 @@ class UnionData:
         for file in files:
             for fn in DOCUMENTS.split():
                 name: list = re.findall(
-                    r"(?<=[0-9]{1}_)" + fn + r"(?=\.json)", file, re.IGNORECASE
+                    r"(?<=[0-9]{1}_)" + fn + r"(?=\.)", file, re.IGNORECASE
                 )
+                # name: list = re.findall(
+                #     r"(?<=[0-9]{1}_)" + fn + r"(?=\.json)", file, re.IGNORECASE
+                # )
                 if name:
                     inn: list = re.findall(r"^[0-9]{8,10}(?=_)", file, re.IGNORECASE)
                     if inn and inn[0] == "0000000000":
@@ -154,16 +165,13 @@ class UnionData:
     def __get_data(self, file_name: str) -> dict:
         data = dict()
         file_name = pathlib.Path(self.path_input, file_name)
-        with open(file_name, mode="r", encoding=ENCONING) as file:
-            try:
-                data = json.load(file)
-                if data:
-                    # список в словарь
-                    keys = [x["internal_id"] + x.get("account_type", "") for x in data]
-                    self.__check_unique(file_name, keys)
-                    data = dict(zip(keys, data))
-            except Exception as ex:
-                print_message(f"{ex}")
+        try:
+            data = get_list_dict_from_csv(file_name)
+            keys = [x["internal_id"] + x.get("account_type", "") for x in data]
+            self.__check_unique(file_name, keys)
+            data = dict(zip(keys, data))
+        except Exception as ex:
+            logger.error(f"ex")
         return data
 
     @fatal_error
@@ -171,7 +179,8 @@ class UnionData:
         files = list()
         if os.path.isdir(self.path_input):
             for file in os.listdir(self.path_input):
-                if file.endswith(".json"):
+                if file.endswith(".csv"):
+                    # if file.endswith(".json"):
                     files.append(file)
         return files
 
@@ -218,8 +227,8 @@ class UnionData:
                 if (len(valA.strip()) == 0) or (
                     len(valA.replace(" ", "")) < len(valB.replace(" ", ""))
                 ):
-                    if a[key]:
-                        logger.debug(f"{key_record} {key}:{a[key]} = {valB}")
+                    # if a[key]:
+                    #     logger.debug(f"{key_record} {key}:{a[key]} = {valB}")
                     a[key] = valB
         return a
 
@@ -268,11 +277,12 @@ class UnionData:
                     )
                     if name:
                         if file.endswith(".csv") or file.endswith(".log"):
-                            arch_zip.write(
-                                os.path.join(folder, file),
-                                os.path.join(name[0], file),
-                                compress_type=zipfile.ZIP_DEFLATED,
-                            )
+                            if not (file == "pu.csv") or ([x for x in files if x == "puv.csv"]):
+                                arch_zip.write(
+                                    os.path.join(folder, file),
+                                    os.path.join(name[0], file),
+                                    compress_type=zipfile.ZIP_DEFLATED,
+                                )
         arch_zip.close()
         return self.file_output
 

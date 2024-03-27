@@ -2,12 +2,14 @@ import re
 import os
 import datetime
 import pathlib
-import uuid
-import csv
 import aiofiles
 import asyncio
 import json
 import logging
+from copy import deepcopy
+from time import sleep
+from threading import Thread
+from collections import OrderedDict
 from aiocsv import AsyncWriter, AsyncDictWriter
 from typing import Union, List
 from itertools import product
@@ -15,20 +17,21 @@ from .gisconfig import GisConfig
 from module.exceptions import InnMismatchException
 from .file_readers import get_file_reader
 from preliminary.utils import get_ident, get_reg
-from .helpers import (
-    hashit,
+from module.func import Func
+from module.helpers import (
+    write_log_time,
     warning_error,
     fatal_error,
     print_message,
     regular_calc,
+    get_value,
     get_value_int,
-    get_value_float,
     get_value_range,
     get_months,
     get_absolute_index,
     get_index_key,
-    get_index_find_any,
 )
+from preliminary.utils import get_reg
 from .settings import *
 
 logger = logging.getLogger(__name__)
@@ -44,57 +47,85 @@ class ExcelBaseImporter:
         index: int = 0,
         output: str = "output",
         period: datetime.date = None,
+        is_hash: bool = True,
+        dictionary: dict = dict(),
+        download_file: str = "",
     ):
         self.num_file = index
         self.index_config: int = 0
         self.config_files = config_files
         self._output = output
         self.is_file_exists = True
-        self.is_hash = True
+        self.is_hash = is_hash
         self.is_check_mode = False
         self.is_condition_check = False
         self._period = period
-        # список данных, сгруппированных по идентификатору - internal_id
+        self._dictionary = dictionary
+        self.download_file = download_file
         self.colontitul = {
             "status": 0,
             "is_parameters": False,
             "head": list(),  # до таблицы
             "foot": list(),  # после таблицы
         }  # список  записей вне таблицы
+
+        # список данных, сгруппированных по идентификатору - internal_id
+        # блоки данных из таблицы сгруппированных по идентификатору (internal_id)
+        self._teams = OrderedDict()
+        self._collections = dict()  # коллекция выходных документов
+        self._possible_columns = list()
+        self._headers = list()
+        self._column_names = dict()
         self._parameters = dict()  # параметры отчета (период, имя_файла, инн и др.)
         self._parameters["inn"] = {
             "fixed": True,
             "value": [inn if inn else "0000000000"],
         }
         self._parameters["filename"] = {"fixed": True, "value": [file_name]}
-        self._dictionary = dict()
-        self.__set_functions()
+        self._column_names = dict()  # колонки таблицы
+        self._column_service = list()
+        self.is_event = False
+        self.row = 0
+        self.team_index = 0
+        _Func: Func = Func(
+            self._parameters, self._dictionary, self._column_names, self.is_hash, self
+        )
+        self.func = _Func.func
+        self.func_id = _Func.func_id
+        self.func_inn = _Func.func_inn
+
         self.__init_page()
 
     ###################  Проверка совместимости файла конфигурации ######################
-    def check(self, headers: list, is_warning: bool = False) -> bool:
+    def check(self, sheets_in: list, is_warning: bool = False) -> bool:
         self.__init_config()
         self.__read_config()
         is_find = False
         if not self.is_verify(self._parameters["filename"]["value"][0]):
             mess = f'Файл не найден {self._parameters["filename"]["value"][0]}'
-            self.__add_warning(mess)
+            self.add_warning(mess)
             logger.warning(mess)
             return False
         if self.__check_incorrect_inn():
             mess = f"\tНе прошла проверка по ИНН "
-            self.__add_warning(mess)
+            self.add_warning(mess)
             # logger.warning(mess)
             return False
-        self._headers = self.__get_headers()
-        for index, headers in enumerate(self._headers):
+        if sheets_in:
+            sheets = sheets_in.copy()
+        else:
+            sheets = self.__get_headers()
+        for index, rows in enumerate(sheets):
             self.__init_data()
             self.__init_page()
-            if self.__check_controll(headers, True):
+            if self.__check_controll(rows, True):
                 self.config_files[self.index_config - 1]["sheets"].append(index)
                 is_find = True
         mess = f'\t{os.path.basename(self.config_files[self.index_config-1]["name"])}'
-        logger.debug(mess)
+        if not sheets_in:
+            for sheet in sheets:
+                sheets_in.append(sheet)
+        # logger.debug(mess)
         return is_find
 
     @fatal_error
@@ -102,79 +133,200 @@ class ExcelBaseImporter:
         if not self.__is_init():
             return False
         if not os.path.exists(self._parameters["filename"]["value"][0]):
-            self.__add_warning(f"ОШИБКА чтения файла {file_name}")
+            self.add_warning(f"ОШИБКА чтения файла {file_name}")
             self.is_file_exists = False
             return False
         return True
 
     ####################  Точка входа, чтение и обработка файла #############################
-    @fatal_error
     def extract(self) -> bool:
-        data_reader = self.__get_data_xls()
-        if not data_reader:
-            self.__add_warning(
-                f"\nОШИБКА чтения файла {self._parameters['filename']['value'][0]}"
-            )
-            return False
-        while self.__init_config():
-            self.num_config = data_reader.set_config(self._page_index)
-            self.config_files[self.num_config]["warning"] = []
-            is_init = True
-            while True:
-                if not is_init:
-                    self.__read_config()
-                is_init = False
-                page = data_reader.get_sheet()
-                if page is None:
-                    break
-                self.num_page = page
-                self.__init_data()
-                self.__init_page()
-                self.__set_parameters_page()
-                if not self.__get_header("pattern"):
-                    self.colontitul["status"] = 1
-                for row, record in enumerate(data_reader):
-                    if row < 100 and row % 10 == 0:
-                        print_message(
-                            "         {} Обработано: {}                          \r".format(
-                                self.func_inn(), row
-                            ),
-                            end="",
-                            flush=True,
-                        )
-                    record = record[self._col_start :]
-                    if self.colontitul["status"] != 2:
-                        # Область до или после таблицы
-                        if not self.__check_bound_row(row):
-                            break
-                        self.__check_colontitul(self.__get_names(record), row, record)
-                    if self.colontitul["status"] == 2:
-                        # Табличная область данных
-                        self.__check_record_in_body(record, row)
-                    if row % 100 == 0:
-                        print_message(
-                            "         {} Обработано: {}                          \r".format(
-                                self.func_inn(), row
-                            ),
-                            end="",
-                            flush=True,
-                        )
-                self.__done()
-                asyncio.run(
-                    self.write_results_async(
-                        num_config=self.num_config + 1,
-                        num_page=self.num_page + 1,
-                        num_file=self.num_file + 1,
-                        path_output=self._output,
-                        collections=self._collections.copy(),
-                        # output_format="json",
-                    )
+        try:
+            data_reader = self.__get_data_xls()
+            if not data_reader:
+                self.add_warning(
+                    f"\nОШИБКА чтения файла {self._parameters['filename']['value'][0]}"
                 )
+                return False
+            # создаются три потока (thread) для обработки данных
+            # в основном потоке разбиваются табличные данные из MS Excel на блоки
+            # (self.teams[team]) по идентификаторам (internal_id)
+            # во втором потоке из блоков формируются выходные документы (self._collections[document])
+            # в третьем потоке документы сохраняются в файлах csv и json
+            thread_modules = [self.stage_build_documents, self.stage_print_documents]
+            while self.__init_config():
+                # перебираем все файлы конфигурации
+                # для данного входного файла MS Excel
+                # как правило на один файл MS Excel приходится один файл конфигурации,
+                # но может быть и несколько конф.файлов распределенные по листам MS Excel
+
+                self.num_config = data_reader.set_config(self._page_index)
+                self.config_files[self.num_config]["warning"] = []
+                is_init = True
+                while True:
+                    # перебираем все листы исходного Excel файла
+                    if not is_init:
+                        self.__read_config()
+                    is_init = False
+                    page = data_reader.get_sheet()
+                    if page is None:
+                        break
+                    self.num_page = page
+                    self.__init_data()
+                    self.__init_page()
+                    self.__set_parameters_page()
+                    if not self.__get_header("pattern"):
+                        self.colontitul["status"] = 1
+                    try:
+                        self.is_event = True
+                        threads = [Thread(target=x) for x in thread_modules]
+                        for t in threads:
+                            t.start()
+
+                        for self.row, record in enumerate(data_reader):
+                            if self.row < 100 and self.row % 10 == 0:
+                                print_message(
+                                    "         {} {} Обработано: {}({})                          \r".format(
+                                        self.num_page,
+                                        self.func_inn(),
+                                        self.row,
+                                        self.team_index,
+                                    ),
+                                    end="",
+                                    flush=True,
+                                )
+                            record = record[self._col_start :]
+                            if self.colontitul["status"] != 2:
+                                # Область до или после таблицы
+                                if not self.__check_bound_row(self.row):
+                                    break
+                                self.__check_colontitul(
+                                    self.__get_names(record), self.row, record
+                                )
+                            if self.colontitul["status"] == 2:
+                                # Табличная область данных
+                                self.__check_record_in_body(record, self.row)
+
+                            if self.row % 100 == 0:
+                                print_message(
+                                    "         {} {} Обработано: {}({})                        \r".format(
+                                        self.num_page,
+                                        self.func_inn(),
+                                        self.row,
+                                        self.team_index,
+                                    ),
+                                    end="",
+                                    flush=True,
+                                )
+                    except Exception as ex:
+                        logger.error(f"{self.row}:{ex}")
+                    finally:
+                        self.is_event = False
+                        for t in threads:
+                            t.join()
+        except Exception as ex:
+            logger.error(f"{ex}")
 
         self.__process_finish()
+
         return True
 
-    # Формируем словарь колонок из записи исходной таблицы
+    def stage_build_documents(self):
+        while self.is_event:
+            if len(self._teams) > 50:
+                self.__process_record()
+        self.__done()
+
+    def stage_print_documents(self):
+        loop = asyncio.new_event_loop()
+        try:
+            while self.is_event or len(self._teams) != 0:
+                if self._collections:
+                    collections = self._collections.copy()
+                    self._collections.clear()
+                    loop.run_until_complete(
+                        self.write_results_async(
+                            num_config=self.num_config + 1,
+                            num_page=self.num_page + 1,
+                            num_file=self.num_file + 1,
+                            path_output=self._output,
+                            collections=collections,
+                            output_format="csv",
+                        )
+                    )
+            print_message(
+                "         {} {} Запись в файл                                                 \r".format(
+                    self.num_page, self.func_inn()
+                ),
+                end="",
+                flush=True,
+            )
+            loop.run_until_complete(
+                self.write_all_results_async(
+                    num_config=self.num_config + 1,
+                    num_page=self.num_page + 1,
+                    num_file=self.num_file + 1,
+                    path_output=self._output,
+                    collections=self._collections.copy(),
+                    output_format="csv",
+                )
+            )
+        except Exception as ex:
+            logger.error(f"{ex}")
+        finally:
+            loop.close()
+        return
+
+    def __done(self):
+        while len(self._teams) != 0:
+            self.__process_record()
+
+    def __process_record(self) -> None:
+        if len(self._teams) == 0:
+            return
+        try:
+            key = next(iter(self._teams))
+            team = self._teams[key]
+
+            if not self.colontitul["is_parameters"]:
+                self.__set_parameters()
+            for doc_param in self.__get_config_documents():
+                self.__make_collections(doc_param, team)
+
+        except Exception as ex:
+            logger.error(f"{ex}")
+        finally:
+            self._teams.popitem(last=False)
+            if not self.is_event and len(self._teams) % 10 == 0:
+                print_message(
+                    "         {} {} Осталось обработать: {}                          \r".format(
+                        self.num_page, self.func_inn(), len(self._teams)
+                    ),
+                    end="",
+                    flush=True,
+                )
+                if self.download_file:
+                    # при фоновой обработке отслеживаем процесс выполнения
+                    # записывая текущее время в файл
+                    write_log_time(self.download_file, False)
+                sleep(0)
+
+    def __make_collections(self, doc_param: dict, team: dict):
+        try:
+            doc = self.__set_document(doc_param, team)
+            self.__document_split_one_line(doc, doc_param)
+        except Exception as ex:
+            logger.error(f"{ex}")
+
+    def __process_finish(self) -> None:
+        for doc_param in self.__get_config_documents():
+            if doc_param.get("func_after"):
+                param = {"value": "", "func": doc_param["func_after"]}
+                self.func(
+                    fld_param=param,
+                    team=self._collections.get(doc_param["name"]),
+                )
+
+    # Формируем словарь колонок из записи исходной таблицы MS Excel
     # key - имя колонки
     # value - словарь
     #   row - порядковый номер строки в группе
@@ -182,49 +334,88 @@ class ExcelBaseImporter:
     #   active - найдена колонка в исходной  таблице или нет
     #  indexes - список номеров колонок в виде кортежа (номер, признак отриц.значения) в исходной таблице откуда берутся данные
     def __map_record(self, record):
+        is_possible = False
         result_record = dict()
         is_empty = True
-        for key, value in self._column_names.items():
-            result_record.setdefault(key, [])
-            size = len(result_record[key])
-            for index in value["indexes"]:
-                if index[POS_INDEX_VALUE] in range(len(record)):
-                    v = record[index[POS_INDEX_VALUE]]
-                    is_empty = is_empty and (v == "" or v is None)
-                    result_record[key].append(
-                        {
-                            "row": size,
-                            "col": value["col"],
-                            "index": index[POS_INDEX_VALUE],
-                            "value": v,
-                            "negative": index[POS_INDEX_IS_NEGATIVE],
-                        }
-                    )
+        # проверяем есть ли условия проверки записи на валидность
+        check_row = self.__get_checking_rows()
+        try:
+            for key, value in self._column_names.items():
+                result_record.setdefault(key, [])
+                size = len(result_record[key])
+                for index in value["indexes"]:
+                    if index[POS_INDEX_VALUE] in range(len(record)):
+                        v = record[index[POS_INDEX_VALUE]]
+                        if not check_row is None and check_row["name"] == key:
+                            if not re.search(check_row["pattern"], v):
+                                return None
+
+                        is_empty = is_empty and (v == "" or v is None)
+                        result_record[key].append(
+                            {
+                                "row": size,
+                                "col": value["col"],
+                                "index": index[POS_INDEX_VALUE],
+                                "value": v,
+                                "negative": index[POS_INDEX_IS_NEGATIVE],
+                            }
+                        )
+                    if (
+                        self._column_service
+                        and self._column_service[0][1] == key
+                        and v
+                        and v != key
+                    ):
+                        if (
+                            not (self._column_service[0][0], v)
+                            in self._possible_columns
+                        ):
+                            self._possible_columns.append(
+                                (self._column_service[0][0], v)
+                            )
+                            # is_possible = True
+            if is_possible:
+                self.__dynamic_change_config()
+        except Exception as ex:
+            logger.error(f"{ex}")
+
         return result_record if not is_empty else None
 
     # группируем записи по идентификатору
-    def __append_to_team(self, mapped_record: list) -> bool:
-        if self.__check_condition_team(mapped_record):
-            # Новый идентификатор
-            self._teams.append(mapped_record)
-            return True
-        elif len(self._teams) != 0:
-            for key in mapped_record.keys():
-                size = self._teams[-1][key][-1]["row"] + 1
-                for mr in mapped_record[key]:
-                    self._teams[-1][key].append(
-                        {
-                            "row": size,
-                            "col": mr["col"],
-                            "index": mr["index"],
-                            "value": mr["value"],
-                            "negative": mr["negative"],
-                        }
-                    )
+    def __append_to_team(self, mapped_record: dict) -> bool:
+        try:
+            team_id = self.__get_team_id(mapped_record)
+            if team_id:
+                if self._teams.get(team_id):
+                    self.__update_team(mapped_record, team_id)
+                else:
+                    self._teams[team_id] = mapped_record
+                    self.team_index += 1
+        except Exception as ex:
+            logger.error(f"{ex}")
         return False
 
+    def __update_team(self, mapped_record: dict, team_id: str = ""):
+        if team_id:
+            try:
+                for key in mapped_record.keys():
+                    if self._teams[team_id].get(key):
+                        size = self._teams[team_id][key][-1]["row"] + 1
+                        for mr in mapped_record[key]:
+                            self._teams[team_id][key].append(
+                                {
+                                    "row": size,
+                                    "col": mr["col"],
+                                    "index": mr["index"],
+                                    "value": mr["value"],
+                                    "negative": mr["negative"],
+                                }
+                            )
+            except Exception as ex:
+                logger.error(f"{ex}")
+
     # Проверяем условие завершения группировки записей по текущему идентификатору
-    def __check_condition_team(self, mapped_record: list) -> bool:
+    def __check_condition_team(self, mapped_record: dict) -> bool:
         if not self.__get_condition_team():
             return True
         if not mapped_record:
@@ -248,6 +439,16 @@ class ExcelBaseImporter:
                             return True
         return b
 
+    def __get_team_id(self, mapped_record: dict) -> str:
+        for p in self.__get_condition_team():
+            if mapped_record.get(p["col"]):
+                for patt in p["pattern"]:
+                    result = self.__get_condition_data(mapped_record[p["col"]], patt)
+                    b = False if not result or result.find("error") != -1 else True
+                    if b:
+                        return result
+        return ""
+
     # Область до или после таблицы
     def __check_bound_row(self, row: int) -> bool:
         if self.__get_row_start() + self.__get_max_rows_heading() < row:
@@ -267,31 +468,35 @@ class ExcelBaseImporter:
                     s2 += f"{item['name']} {c}\n"
 
             if is_active_find:
-                self.__add_warning(
+                self.add_warning(
                     '\n{}:\nВ загружаемом файле "{}"\nне все колонки найдены \n'.format(
                         self._config._config_name,
                         self._parameters["filename"]["value"][0],
                     )
                 )
                 if s2:
-                    self.__add_warning("\tНайдены колонки:\n{}\n".format(s2.strip()))
+                    self.add_warning("\tНайдены колонки:\n{}\n".format(s2.strip()))
                 if s1:
-                    self.__add_warning("\tНе найдены колонки:\n{}\n".format(s1.strip()))
+                    self.add_warning("\tНе найдены колонки:\n{}\n".format(s1.strip()))
             else:
                 s = "Найдены колонки:"
                 for key, value in self._column_names.items():
                     s += f"\n{key} - {value['indexes'][0][POS_INDEX_VALUE]}"
-                self.__add_warning(
+                self.add_warning(
                     '\n{0}:\nВ загружаемом файле "{1}" \
                 \nневерен шаблон нахождения начала области данных(({3})condition_begin_team(\n{2}\n))\n{4}\n'.format(
                         self._config._config_name,
                         self._parameters["filename"]["value"][0],
-                        self.__get_condition_team()[0]["pattern"]
-                        if self.__get_condition_team()
-                        else "",
-                        self.__get_condition_team()[0]["col"]
-                        if self.__get_condition_team()
-                        else "",
+                        (
+                            self.__get_condition_team()[0]["pattern"]
+                            if self.__get_condition_team()
+                            else ""
+                        ),
+                        (
+                            self.__get_condition_team()[0]["col"]
+                            if self.__get_condition_team()
+                            else ""
+                        ),
                         s,
                     )
                 )
@@ -302,7 +507,7 @@ class ExcelBaseImporter:
         if self.colontitul["status"] == 0:
             if self.__check_headers_status(names):
                 if len(self._teams) != 0:
-                    self.__process_record(self._teams[-1])
+                    self.__done()
                     self.__init_data()
                     self.__set_row_start(row)
         if self.__check_columns(names, row):
@@ -314,7 +519,7 @@ class ExcelBaseImporter:
                 ) or self.__check_condition_team(self.__map_record(record)):
                     # переход в табличную область данных
                     self.colontitul["status"] = 2
-                    if not self._is_column_service_exist:
+                    if not self._column_service:
                         self.__dynamic_change_config()
                     self._config._parameters.setdefault(
                         "table_start",
@@ -349,11 +554,8 @@ class ExcelBaseImporter:
                 for item in self.__get_columns_heading():
                     item["active"] = False
                 self.colontitul["foot"].append(record)
-            # если добавлена новая группа
-            elif self.__append_to_team(mapped_record):
-                # если уже нашли более одной группы, то добавляем предпоследнюю в документ
-                if len(self._teams) > 1:
-                    self.__process_record(self._teams[-2])
+            else:
+                self.__append_to_team(mapped_record)
         if len(self._teams) < 2:
             # добавляем первые записи в таблице в область заголовка
             # (иногда там могут находиться некоторые параметры)
@@ -435,7 +637,7 @@ class ExcelBaseImporter:
                     key = item_head_column["name"]
                     if key == "Услуга":
                         # В таблице присутствует колонка в которой указаны названия услуг ЖКУ
-                        self._is_column_service_exist = True
+                        self._column_service.append((column_name["col"], key))
                     self._column_names.setdefault(
                         key,
                         {
@@ -476,9 +678,9 @@ class ExcelBaseImporter:
                                 (column_name["col"], False)
                             )
                             if is_last:
-                                self._possible_columns[
-                                    column_name["col"]
-                                ] = column_name["name"]
+                                self._possible_columns.append(
+                                    (column_name["col"], column_name["name"])
+                                )
                     item_head_column["row"] = row
                     is_find = True
                     if not is_last:
@@ -490,7 +692,11 @@ class ExcelBaseImporter:
                             ):
                                 self._column_names[key]["indexes"].remove((x, False))
                                 item_head_column["indexes"].remove((x, False))
-                                self._possible_columns.pop(x)
+                                self._possible_columns = [
+                                    item
+                                    for item in self._possible_columns
+                                    if item[1] != x
+                                ]
                     if item_head_column["unique"]:
                         break
         return is_find
@@ -548,6 +754,7 @@ class ExcelBaseImporter:
             "%d-%m-%Y",
             "%d.%m.%Y",
             "%m.%Y",
+            "%m %Y",
             "%d/%m/%Y",
             "%Y-%m-%d",
             "%d-%m-%y",
@@ -636,7 +843,7 @@ class ExcelBaseImporter:
         data_reader = ReaderClass(self._parameters["filename"]["value"][0])
         if not data_reader:
             self.is_file_exists = False
-            self.__add_warning(
+            self.add_warning(
                 f"\nОШИБКА чтения файла {self._parameters['filename']['value'][0]}"
             )
             return None
@@ -708,7 +915,7 @@ class ExcelBaseImporter:
                 for record in data_reader:
                     sheet_headers.append(record)
                     index += 1
-                    if index > self._config._max_rows_heading[0][0]:
+                    if index > 100:  # self._config._max_rows_heading[0][0]:
                         break
                 headers.append(sheet_headers)
         except Exception as ex:
@@ -792,37 +999,6 @@ class ExcelBaseImporter:
                 return key
         return ""
 
-    def __get_value(
-        self, value: str = "", pattern: str = "", type_value: str = ""
-    ) -> Union[str, int, float]:
-        try:
-            value = str(value)
-            if type_value == "int":
-                value = str(get_value_int(value))
-            elif type_value == "double" or type_value == "float":
-                value = str(get_value_float(value))
-        except:
-            pass
-        result = regular_calc(pattern, value)
-        if result != None:
-            try:
-                if type_value == "int":
-                    result = get_value_int(value)
-                elif type_value == "double" or type_value == "float":
-                    result = get_value_float(result)
-                else:
-                    result = result.rstrip() + " "
-            except:
-                result = 0
-        else:
-            if type_value == "int":
-                result = 0
-            elif type_value == "double" or type_value == "float":
-                result = 0
-            else:
-                result = ""
-        return result
-
     def __get_doc_param_fld(self, name: str, fld_name: str):
         doc = next(
             (x for x in self.__get_config_documents() if x["name"] == name), None
@@ -846,6 +1022,7 @@ class ExcelBaseImporter:
             )
             else ""
         )
+        records[-1]["value_rows"] = {}
         for sub in item_fld["sub"]:
             records.append(sub.copy())
             records[-1]["value"] = (
@@ -861,20 +1038,21 @@ class ExcelBaseImporter:
                 )
                 else ""
             )
+            records[-1]["value_rows"] = {}
         return records
 
     def __get_total_value_from_values(
         self, values: list, type_fld: str, pattern: str
     ) -> str:
-        value = self.__get_value(type_value=type_fld)
+        value = get_value(type_value=type_fld)
         for val in values:
             if (type_fld == "int" or type_fld == "float") and val[
                 POS_NUMERIC_IS_NEGATIVE
             ]:
-                value -= self.__get_value(val[POS_VALUE], pattern, type_fld)
+                value -= get_value(val[POS_VALUE], pattern, type_fld)
             else:
                 try:
-                    value += self.__get_value(val[POS_VALUE], pattern, type_fld)
+                    value += get_value(val[POS_VALUE], pattern, type_fld)
                 except Exception as ex:
                     pass
         if not (type_fld == "float" or type_fld == "double" or type_fld == "int"):
@@ -887,14 +1065,14 @@ class ExcelBaseImporter:
     ) -> Union[str, int, float]:
         rows: list = record["offset_row"]
         cols: list = record["offset_column"]
-        value: str = record["value_o"]
+        value = record["value_o"]
         if not rows:
             rows = [(0, False)]
         if not cols:
             cols = [(col_curr, True)]
         for c in cols:
             fld_name = self.__get_key_from_input_names(c[POS_NUMERIC_VALUE])
-            if fld_name:
+            if fld_name and not team.get(fld_name) is None:
                 row = get_absolute_index(rows[0], row_curr)
                 values = [
                     (x["value"], None, x["negative"] | c[POS_NUMERIC_IS_NEGATIVE])
@@ -926,7 +1104,7 @@ class ExcelBaseImporter:
                     "",
                 )
                 for item in doc[name_field.replace("(", "").replace(")", "")]:
-                    val = self.__get_value(str(item["value"]), ".+", fld_type)
+                    val = get_value(str(item["value"]), ".+", fld_type)
                     if (
                         (fld_type == "" or fld_type == "str") and val.strip() != ""
                     ) or ((fld_type == "float" or fld_type == "int") and val != 0):
@@ -946,42 +1124,51 @@ class ExcelBaseImporter:
         fld = record["depends"]
         if doc[fld] and doc[fld][0]["value"]:
             fld_param = self.__get_doc_param_fld(doc_param["name"], fld)
-            x = self.__get_value(
+            x = get_value(
                 doc[fld][0]["value"], ".+", fld_param["type"] + fld_param["offset_type"]
             )
         else:
             x = ""
         return x
 
-    def __done(self):
-        if len(self._teams) != 0:
-            self.__process_record(self._teams[-1])
-
-    def __process_record(self, team: dict) -> None:
-        if not self.colontitul["is_parameters"]:
-            self.__set_parameters()
-        for doc_param in self.__get_config_documents():
-            doc = self.__set_document(team, doc_param)
-            self.__document_split_one_line(doc, doc_param)
-        self._teams.remove(team)
-
-    def __process_finish(self) -> None:
-        for doc_param in self.__get_config_documents():
-            if doc_param.get("func_after"):
-                param = {"value": "", "func": doc_param["func_after"]}
-                self.func(
-                    fld_param=param, team=self._collections.get(doc_param["name"])
-                )
+    # если текущая таблица типа словарь (задается в gisconfig_000_00),
+    # то формируем глобальный словарь значений
+    # для последующих таблиц
+    def __build_global_dictionary(self, doc: dict):
+        param = {}
+        for fld, value in doc.items():
+            if fld == "key":
+                param = {"value": "key" + doc["key"], "func": "hash"}
+                param["key"] = self.func(fld_param=param)
+            elif regular_calc("^value", fld):
+                param["data"] = value
+            else:
+                index_key = get_index_key(fld)
+                self._dictionary.setdefault(index_key, [])
+                if not value in self._dictionary[index_key]:
+                    self._dictionary[index_key].append(value)
+            if param.get("key") and param.get("data"):
+                index_key = get_index_key(param["key"])
+                self._dictionary.setdefault(index_key, [])
+                if not param["data"] in self._dictionary[index_key]:
+                    self._dictionary[index_key].append(param["data"])
+        return
 
     ########################   Изменение конфигурации "на ходу" #################################
     def __dynamic_change_config(self):
-        if self.__change_heading():
-            self.__change_pp_charges_and_pp_service()
+        try:
+            if self.__change_heading():
+                # if not self._column_service:
+                self.__change_pp_charges_and_pp_service()
+        except Exception as ex:
+            logger.error(f"{ex}")
 
     # Добавляем колонки (услуги), отсутствующие в конфигурации, но имеющиеся в заголовках таблицы
     def __change_heading(self) -> bool:
         bResult = False
-        for key, name in self._possible_columns.items():
+        for item in self._possible_columns:
+            key = item[0]
+            name = item[1]
             b = self.__heading_append(key, name)
             bResult |= b
         return bResult
@@ -995,7 +1182,7 @@ class ExcelBaseImporter:
             flds = self.__get_list_fields_to_update(doc)
             for fld in flds:
                 self.__append_to_fld_sub(fld["sub"])
-        self._possible_columns = {}
+        # self._possible_columns.clear()
 
     def __heading_append(self, key: str, name: str) -> bool:
         name = get_ident(name)
@@ -1047,53 +1234,64 @@ class ExcelBaseImporter:
         if fld_sub:
             ls = []
             last_rec = fld_sub.pop()
-            for name in self._possible_columns.values():
-                ls.append(last_rec.copy())
-                ls[-1]["func"] = ls[-1]["func"].replace(
-                    "Прочие", name.replace(",", " ")
-                )
-                if len(last_rec["offset_column"]) > 0:
-                    l = [
+            for item in self._possible_columns:
+                name = item[1]
+                pattern = get_reg(name)
+                if not (
+                    [x for x in fld_sub if name in x["func"]]
+                    or [
                         x
-                        for x in self._config._columns_heading
-                        if x["name"] == get_ident(name)
+                        for x in fld_sub
+                        if x["pattern"]
+                        and (pattern in x["pattern"][0] or name in x["pattern"][0])
                     ]
-                    if l:
-                        ls[-1]["offset_column"] = [(l[0]["col"], True, False)]
+                    or [
+                        x
+                        for x in fld_sub
+                        if x["offset_pattern"]
+                        and (
+                            pattern in x["offset_pattern"][0]
+                            or name in x["offset_pattern"][0]
+                        )
+                    ]
+                ):
+                    ls.append(deepcopy(last_rec))
+                    ls[-1]["func"] = ls[-1]["func"].replace(
+                        "Прочие", name.replace(",", " ")
+                    )
+                    if not name.replace(",", " ") in ls[-1]["func"]:
+                        if ls[-1]["pattern"]:
+                            ls[-1]["pattern"][0] = ls[-1]["pattern"][0].replace(
+                                r".+", pattern
+                            )
+                        if ls[-1]["offset_pattern"]:
+                            ls[-1]["offset_pattern"][0] = ls[-1]["offset_pattern"][
+                                0
+                            ].replace(r".+", pattern)
+                    if len(last_rec["offset_column"]) > 0:
+                        l = [
+                            x
+                            for x in self._config._columns_heading
+                            if x["name"] == get_ident(name)
+                        ]
+                        if l:
+                            ls[-1]["offset_column"] = [(l[0]["col"], True, False)]
+                else:
+                    pass
             last_rec["offset_column"] = [(-1, True, False)]
-            fld_sub.clear()
+            # fld_sub.clear()
             fld_sub.extend(ls)
             fld_sub.append(last_rec)
             return
-
-    # если текущая таблица типа словарь (задается в gisconfig_000_00),
-    # то формируем глобальный словарь значений
-    # для последующих таблиц
-    def __build_global_dictionary(self, doc: dict):
-        param = {}
-        for fld, value in doc.items():
-            if fld == "key":
-                param = {"value": "key" + doc["key"], "func": "hash"}
-                param["key"] = self.func(fld_param=param)
-            elif regular_calc("^value", fld):
-                param["data"] = value
-            else:
-                index_key = get_index_key(fld)
-                self._dictionary.setdefault(index_key, [])
-                if not value in self._dictionary[index_key]:
-                    self._dictionary[index_key].append(value)
-            if param.get("key") and param.get("data"):
-                index_key = get_index_key(param["key"])
-                self._dictionary.setdefault(index_key, [])
-                if not param["data"] in self._dictionary[index_key]:
-                    self._dictionary[index_key].append(param["data"])
-        return
 
     ###############################################################################################################################################
     # --------------------------------------------------- Документы --------------------------------------------------------------------------------
     ################################################################################################################################################
     def __append_to_collection(self, name: str, doc: dict) -> None:
         key = self._page_name if self._page_name else "noname"
+        # man.collections.setdefault(name, {key: list()})
+        # man.collections[name].setdefault(key, list())
+        # man.collections[name][key].append(doc)
         self._collections.setdefault(name, {key: list()})
         self._collections[name].setdefault(key, list())
         self._collections[name][key].append(doc)
@@ -1107,136 +1305,153 @@ class ExcelBaseImporter:
 
     # Формирование документа из части исходной таблицы - team (отдельной области или иерархии)
     # выбранной по идентификатору internal_id
-    def __set_document(self, team: dict, doc_param: dict):
+    def __set_document(self, doc_param: dict, team: dict) -> dict:
         doc = dict()
-        for fld_item in doc_param["fields"]:  # перебор полей выходной таблицы
-            # Формируем данные для записи в выходном файле
-            # одно поле (ключ в doc) соответствует одной записи
-            doc.setdefault(fld_item["name"], list())
-            main_rows_exclude = (
-                dict()
-            )  # набор записей для исключение по основному значению
-            offset_rows_exclude = set()  # набор записей для исключение по смещению
-            for table_row in doc_param["rows_exclude"]:
-                main_rows_exclude[(table_row[0], -1)] = ""
-            # собираем все поля (sub): name_attr, name_attr_0, ... , name_attr_N
-            fld_records = self.__get_fld_records(fld_item)
-            x = 0
-            for index, fld_record in enumerate(fld_records):
-                if (
-                    not fld_record["column"]
-                    or not fld_record["pattern"]
-                    or not fld_record["pattern"][0]
-                ):
-                    continue
-                col = fld_record["column"][0]
-                name_field = self.__get_key_from_input_names(col[POS_VALUE])
-                if not name_field:
-                    continue
-                for table_row in fld_record["rows_exclude"]:
+        try:
+            for fld_item in doc_param["fields"]:  # перебор полей выходной таблицы
+                # Формируем данные для записи в выходном файле
+                # одно поле (ключ в doc) соответствует одной записи
+                doc.setdefault(fld_item["name"], list())
+                main_rows_exclude = (
+                    dict()
+                )  # набор записей для исключение по основному значению
+                offset_rows_exclude = set()  # набор записей для исключение по смещению
+                for table_row in doc_param["rows_exclude"]:
                     main_rows_exclude[(table_row[0], -1)] = ""
-                table_rows = get_value_range(fld_record["row"], len(team[name_field]))
-                for table_row in table_rows:  # обрабатываем все строки области данных
+                # собираем все поля (sub): name_attr, name_attr_0, ... , name_attr_N
+                fld_records = self.__get_fld_records(fld_item)
+                x = 0
+                for index, fld_record in enumerate(fld_records):
                     if (
-                        len(team[name_field]) > table_row[0]
-                        and main_rows_exclude.get((table_row[0], -1)) is None
-                        and main_rows_exclude.get(
-                            (table_row[POS_VALUE], col[POS_VALUE])
-                        )
-                        is None
+                        not fld_record["column"]
+                        or not fld_record["pattern"]
+                        or not fld_record["pattern"][0]
                     ):
-                        for patt in fld_record["pattern"]:
-                            # Берем данные из исходной таблицы
-                            values = [
-                                (
-                                    x["value"],
-                                    col[POS_NUMERIC_IS_ABSOLUTE],
-                                    col[POS_NUMERIC_IS_NEGATIVE],
-                                )
-                                for x in team[name_field]
-                                if x["row"] == table_row[POS_VALUE]
-                            ]
-                            # И получаем из них одно значение (суммирование для чисел, конкатенация для строк)
-                            x = self.__get_total_value_from_values(
-                                values=values, type_fld=fld_record["type"], pattern=patt
+                        continue
+                    col = fld_record["column"][0]
+                    name_field = self.__get_key_from_input_names(col[POS_VALUE])
+                    if not name_field:
+                        continue
+                    for table_row in fld_record["rows_exclude"]:
+                        main_rows_exclude[(table_row[0], -1)] = ""
+                    table_rows = get_value_range(
+                        fld_record["row"], len(team[name_field])
+                    )
+                    for (
+                        table_row
+                    ) in table_rows:  # обрабатываем все строки области данных
+                        if (
+                            len(team[name_field]) > table_row[0]
+                            and main_rows_exclude.get((table_row[0], -1)) is None
+                            and main_rows_exclude.get(
+                                (table_row[POS_VALUE], col[POS_VALUE])
                             )
-                            if x:
-                                fld_record["value"] += (
-                                    x
-                                    if not isinstance(x, str)
-                                    or fld_record["value"].find(x) == -1
-                                    else ""
+                            is None
+                        ):
+                            for patt in fld_record["pattern"]:
+                                # Берем данные из исходной таблицы
+                                values = [
+                                    (
+                                        x["value"],
+                                        None,
+                                        x["negative"],
+                                    )
+                                    for x in team[name_field]
+                                    if x["row"] == table_row[POS_VALUE]
+                                ]
+                                # И получаем из них одно значение (суммирование для чисел, конкатенация для строк)
+                                x = self.__get_total_value_from_values(
+                                    values=values,
+                                    type_fld=fld_record["type"],
+                                    pattern=patt,
                                 )
-                                if fld_record["is_offset"]:
-                                    if (
-                                        not (
-                                            table_row[POS_VALUE],
-                                            col[POS_VALUE],
-                                            fld_record["offset_column"][0][POS_VALUE],
-                                        )
-                                        in offset_rows_exclude
-                                    ):
-                                        # если есть смещение по таблице относительно текущего значения,
-                                        # то берем данные от туда
-                                        fld_record[
-                                            "value_o"
-                                        ] = self.__get_value_from_offset(
-                                            team,
-                                            fld_record,
-                                            table_row[0],
-                                            col[POS_VALUE],
-                                        )
-                                        # запоминаем, чтобы не было повтора
-                                        offset_rows_exclude.add(
-                                            (
+                                if x:
+                                    fld_record["value"] += (
+                                        x
+                                        if not isinstance(x, str)
+                                        or fld_record["value"].find(x) == -1
+                                        else ""
+                                    )
+                                    if fld_record["is_offset"]:
+                                        if (
+                                            not (
                                                 table_row[POS_VALUE],
                                                 col[POS_VALUE],
                                                 fld_record["offset_column"][0][
                                                     POS_VALUE
                                                 ],
                                             )
+                                            in offset_rows_exclude
+                                        ):
+                                            # если есть смещение по таблице относительно текущего значения,
+                                            # то берем данные от туда
+                                            x_o = self.__get_value_from_offset(
+                                                team,
+                                                fld_record,
+                                                table_row[0],
+                                                col[POS_VALUE],
+                                            )
+                                            if x_o and fld_record["value_o"] != x_o:
+                                                fld_record["value_o"] = x_o
+                                                fld_record["value_rows"].setdefault(
+                                                    "row", table_row
+                                                )
+                                                # запоминаем, чтобы не было повтора
+                                                offset_rows_exclude.add(
+                                                    (
+                                                        table_row[POS_VALUE],
+                                                        col[POS_VALUE],
+                                                        fld_record["offset_column"][0][
+                                                            POS_VALUE
+                                                        ],
+                                                    )
+                                                )
+                                    elif (
+                                        main_rows_exclude.get(
+                                            (table_row[0], col[POS_VALUE])
                                         )
-                                elif (
-                                    main_rows_exclude.get(
-                                        (table_row[0], col[POS_VALUE])
-                                    )
-                                    is None
-                                ):
-                                    # запоминаем, чтобы не было повтора
-                                    main_rows_exclude[
-                                        (table_row[0], col[POS_VALUE])
-                                    ] = x
-                                break  # пропускаем проверку по остальным шаблонам
-                    elif (
-                        main_rows_exclude.get((table_row[POS_VALUE], col[POS_VALUE]))
-                        is not None
-                        and not fld_record["value"]
-                    ):
-                        # если значение пустое, берем то что запомнили
-                        fld_record["value"] = main_rows_exclude.get(
-                            (table_row[POS_VALUE], col[POS_VALUE])
-                        )
+                                        is None
+                                    ):
+                                        fld_record["value_rows"].setdefault(
+                                            "row", table_row
+                                        )
+                                        # запоминаем, чтобы не было повтора
+                                        main_rows_exclude[
+                                            (table_row[0], col[POS_VALUE])
+                                        ] = x
+                                    break  # пропускаем проверку по остальным шаблонам
+                        elif (
+                            main_rows_exclude.get(
+                                (table_row[POS_VALUE], col[POS_VALUE])
+                            )
+                            is not None
+                            and not fld_record["value"]
+                        ):
+                            # если значение пустое, берем то что запомнили
+                            fld_record["value"] = main_rows_exclude.get(
+                                (table_row[POS_VALUE], col[POS_VALUE])
+                            )
 
-                if fld_record["func"]:
-                    # если есть, запускаем функцию
-                    fld_record["value"] = self.func(
-                        team=team, fld_param=fld_record, row=table_row[0], col=col[0]
-                    )
-                elif fld_record["is_offset"]:
-                    fld_record["value"] = fld_record["value_o"]
-                    fld_record["type"] = fld_record["offset_type"]
-                if fld_record["value"] and not self.__is_data_depends(
-                    fld_record, doc, doc_param
-                ):
-                    # Если поле зависит от значения другого поля и это значение пусто,
-                    # то текущее значение тоже обнуляем (наприме, дату если соответствующая сумма = 0 )
-                    fld_record["value"] = ""
-                # формируем документ
-                doc[fld_record["name"]].append(
-                    {
-                        "row": len(doc[fld_record["name"]]),
-                        "col": col[0],
-                        "value": ""
+                    if fld_record["func"]:
+                        # если есть, запускаем функцию
+                        fld_record["value"] = self.func(
+                            team=team,
+                            fld_param=fld_record,
+                            row=table_row[0],
+                            col=col[0],
+                        )
+                    elif fld_record["is_offset"]:
+                        fld_record["value"] = fld_record["value_o"]
+                        fld_record["type"] = fld_record["offset_type"]
+                    if fld_record["value"] and not self.__is_data_depends(
+                        fld_record, doc, doc_param
+                    ):
+                        # Если поле зависит от значения другого поля и это значение пусто,
+                        # то текущее значение тоже обнуляем (наприме, дату если соответствующая сумма = 0 )
+                        fld_record["value"] = ""
+                    # формируем документ
+                    value = (
+                        ""
                         if (
                             (
                                 isinstance(fld_record["value"], int)
@@ -1246,63 +1461,142 @@ class ExcelBaseImporter:
                         )
                         or (
                             isinstance(fld_record["value"], str)
-                            and fld_record["offset_type"] == "float"
+                            and (fld_record["type"] == "float" or fld_record["offset_type"] == "float" )
                             and fld_record["value"] == "0.0"
                         )
-                        else str(fld_record["value"]).strip(),
-                    }
-                )
+                        else str(fld_record["value"]).strip()
+                    )
+                    if fld_record["value_rows"]:
+                        fld_record["value_rows"]["value"] = value
+                    doc[fld_record["name"]].append(
+                        {
+                            "row": len(doc[fld_record["name"]]),
+                            "col": col[0],
+                            "value": value,
+                            "value_rows": fld_record["value_rows"],
+                        }
+                    )
+        except Exception as ex:
+            logger.error(f"{ex}")
         return doc
+
+# Разбиваем данные документа по-строчно
+    def __document_split_one_line_2(self, doc: dict, doc_param: dict) -> None:
+        try:
+            name = doc_param["name"]
+            # для каждого поля свой индекс прохода
+            index = {x: 0 for x in doc.keys()}
+            rows = [x[-1]["row"] for x in doc.values() if x]
+            counts = [len(x) for x in doc.values() if x]
+            rows = rows + counts
+            rows_count = max(rows) if rows else 0
+            rows_required = self.__get_required_rows(name, doc)
+            requeired_names = set(doc_param.get("required_fields","").split(","))
+            rows_exclude = [
+                x[0] if x[0] >= 0 else rows_count + 1 + x[0]
+                for x in doc_param["rows_exclude"]
+            ]
+            row = 0
+            elem_default = dict()
+            while row < rows_count:
+                elem = dict()
+                names = list()
+                is_empty = True
+                for key, values in doc.items():
+                    value = [x["value_rows"]["value"] for x in values if x["value_rows"] and x["value_rows"]["row"][POS_VALUE] == row]
+                    value = value[0] if value else None
+                    if value:
+                        elem[key] = value
+                        elem_default.setdefault(key, value)
+                        names.append(key)
+                        is_empty = False
+                    else:
+                        elem[key] = elem_default.get(key,"")
+                if (
+                    not is_empty
+                    and not (row in rows_exclude)
+                    and (not doc_param["required_fields"] or set(names) & requeired_names)
+                ):
+                    self.__append_to_collection(name, elem)
+                else:
+                    pass
+                row += 1
+
+        except Exception as ex:
+            logger.error(f"{ex}")
+        return
+
 
     # Разбиваем данные документа по-строчно
     def __document_split_one_line(self, doc: dict, doc_param: dict) -> None:
-        name = doc_param["name"]
-        # для каждого поля свой индекс прохода
-        index = {x: 0 for x in doc.keys()}
-        rows = [x[-1]["row"] for x in doc.values() if x]
-        counts = [len(x) for x in doc.values() if x]
-        rows = rows + counts
-        rows_count = max(rows) if rows else 0
-        rows_required = self.__get_required_rows(name, doc)
-        rows_exclude = [
-            x[0] if x[0] >= 0 else rows_count + 1 + x[0]
-            for x in doc_param["rows_exclude"]
-        ]
-        i = -1
-        done = True
-        elem = dict()
-        while done:
-            i += 1
-            done = i < rows_count
+        try:
+            name = doc_param["name"]
+            # для каждого поля свой индекс прохода
+            index = {x: 0 for x in doc.keys()}
+            rows = [x[-1]["row"] for x in doc.values() if x]
+            counts = [len(x) for x in doc.values() if x]
+            rows = rows + counts
+            rows_count = max(rows) if rows else 0
+            rows_required = self.__get_required_rows(name, doc)
+            rows_exclude = [
+                x[0] if x[0] >= 0 else rows_count + 1 + x[0]
+                for x in doc_param["rows_exclude"]
+            ]
+            i = -1
+            done = True
             elem = dict()
-            is_empty = True
-            for key, values in doc.items():
-                elem[key] = ""
-                if index[key] < len(values):
-                    # проверяем соответствие номера строки (row) в данных с номером записи (i) в выходном файле
-                    if values[index[key]]["row"] == i:
-                        elem[key] = values[index[key]]["value"]
-                        is_empty = is_empty and (values[index[key]]["value"] == "")
-                        index[key] += 1
-                        done = True
-                    elif values[0]["row"] == 0:
+            while done:
+                i += 1
+                done = i < rows_count
+                elem = dict()
+                is_empty = True
+                for key, values in doc.items():
+                    elem[key] = ""
+                    if index[key] < len(values):
+                        # проверяем соответствие номера строки (row) в данных с номером записи (i) в выходном файле
+                        if values[index[key]]["row"] == i:
+                            elem[key] = values[index[key]]["value"]
+                            is_empty = is_empty and (values[index[key]]["value"] == "")
+                            index[key] += 1
+                            done = True
+                        elif values[0]["row"] == 0:
+                            elem[key] = values[0]["value"]
+                    elif len(values) == 1 and values[0]["row"] == 0:
                         elem[key] = values[0]["value"]
-                elif len(values) == 1 and values[0]["row"] == 0:
-                    elem[key] = values[0]["value"]
-            if (
-                not is_empty
-                and not (i in rows_exclude)
-                and (not doc_param["required_fields"] or i in rows_required)
-            ):
-                self.__append_to_collection(name, elem)
-            else:
-                pass
+                if (
+                    not is_empty
+                    and not (i in rows_exclude)
+                    and (not doc_param["required_fields"] or i in rows_required)
+                ):
+                    self.__append_to_collection(name, elem)
+                else:
+                    pass
+        except Exception as ex:
+            logger.error(f"{ex}")
         return
 
     ################################################################################################################################################
     # --------------------------------------------------- Запись в файл ----------------------------------------------------------------------------
     ################################################################################################################################################
     async def write_results_async(
+        self,
+        num_config: int = 0,
+        num_page: int = 0,
+        num_file: int = 0,
+        path_output: str = "output",
+        collections: dict = None,
+        output_format: str = None,
+    ):
+        await self.write_collections_async(
+            num_config=num_config,
+            num_page=num_page,
+            num_file=num_file,
+            path_output=path_output,
+            collections=collections,
+            output_format=output_format,
+        )
+
+    async def write_all_results_async(
         self,
         num_config: int = 0,
         num_page: int = 0,
@@ -1327,17 +1621,24 @@ class ExcelBaseImporter:
             collections=collections,
         )
 
-    async def write_json_async(self, filename: str, text: str):
-        async with aiofiles.open(filename, mode="w", encoding=ENCONING) as f:
+    async def write_json_async(self, filename: str, records: list):
+        text = json.dumps(records, indent=4, ensure_ascii=False)
+        async with aiofiles.open(filename, mode="a+", encoding=ENCONING) as f:
             await f.write(text)
 
     async def write_csv_async(self, filename: str, records: list):
-        names = [x for x in records[0].keys()]
-        async with aiofiles.open(filename, mode="w", encoding=ENCONING) as f:
-            writer_head = AsyncDictWriter(
-                f, delimiter=";", lineterminator="\r", fieldnames=names
-            )
-            await writer_head.writeheader()
+
+        if not os.path.exists(filename):
+            names = [x for x in records[0].keys()]
+        else:
+            names = []
+
+        async with aiofiles.open(filename, mode="a+", encoding=ENCONING) as f:
+            if names:
+                writer_head = AsyncDictWriter(
+                    f, delimiter=";", lineterminator="\r", fieldnames=names
+                )
+                await writer_head.writeheader()
             writer_body = AsyncWriter(f)
             for rec in records:
                 await writer_body.writerow(rec.values())
@@ -1351,7 +1652,7 @@ class ExcelBaseImporter:
         collections: dict = None,
         output_format: str = None,
     ) -> None:
-        if not self.__is_init() or len(self._collections) == 0:
+        if not self.__is_init() or len(collections) == 0:
             logger.warning(
                 'Не удалось прочитать данные из файла "{0} - {1}"\n'.format(
                     self.func_inn(), self._parameters["filename"]["value"][0]
@@ -1361,26 +1662,27 @@ class ExcelBaseImporter:
 
         os.makedirs(pathlib.Path(PATH_OUTPUT, path_output), exist_ok=True)
 
-        self._current_id = ""
-        id = self.func_id()
-        inn = self.func_inn()
-        for name, pages in collections.items():
-            for key, records in pages.items():
-                file_output = pathlib.Path(
-                    PATH_OUTPUT,
-                    path_output,
-                    f'{inn}{"_"+str(num_file) if num_file != 0 else ""}'
-                    + f'{"_"+key.replace(" ","_") if key != "noname" else ""}'
-                    + f'{"_"+str(num_page) if num_page!=0 else ""}'
-                    + f'{"_"+str(num_config) if num_config!=0 else ""}'
-                    + f"{id}_{name}",
-                )
-                if output_format is None or output_format == "json":
-                    jstr = json.dumps(records, indent=4, ensure_ascii=False)
-                    await self.write_json_async(f"{file_output}.json", jstr)
+        try:
+            id = self.func_id("")
+            inn = self.func_inn()
+            for name, pages in collections.items():
+                for key, records in pages.items():
+                    file_output = pathlib.Path(
+                        PATH_OUTPUT,
+                        path_output,
+                        f'{inn}{"_"+str(num_file) if num_file != 0 else ""}'
+                        + f'{"_"+key.replace(" ","_") if key != "noname" else ""}'
+                        + f'{"_"+str(num_page) if num_page!=0 else ""}'
+                        + f'{"_"+str(num_config) if num_config!=0 else ""}'
+                        + f"{id}_{name}",
+                    )
+                    if output_format is None or output_format == "json":
+                        await self.write_json_async(f"{file_output}.json", records)
 
-                if output_format is None or output_format == "csv":
-                    await self.write_csv_async(f"{file_output}.csv", records)
+                    if output_format is None or output_format == "csv":
+                        await self.write_csv_async(f"{file_output}.csv", records)
+        except Exception as ex:
+            logger.error(f"{ex}")
 
     async def write_logs_async(
         self,
@@ -1393,8 +1695,7 @@ class ExcelBaseImporter:
         if not self.__is_init() or len(collections) == 0:
             return
         os.makedirs(pathlib.Path(PATH_LOG, path_output), exist_ok=True)
-        self._current_id = ""
-        id = self.func_id()
+        id = self.func_id("")
         inn = self.func_inn()
 
         file_output = pathlib.Path(
@@ -1540,7 +1841,7 @@ class ExcelBaseImporter:
 
     def __get_period_from_file_name(self):
         comp = re.compile(
-            "(?:01|02|03|04|05|06|07|08|09|10|11|12)[.,_]?(?:202[0-9]|[2,3][0-9])"
+            f"(?:01|02|03|04|05|06|07|08|09|10|11|12)[.,_\s]?(?:202[0-9]|[2,3][0-9])"
         )
         period = comp.findall(self._parameters["filename"]["value"][0])
         if period:
@@ -1572,14 +1873,15 @@ class ExcelBaseImporter:
         self._col_start = 0
 
     def __init_page(self):
-        self._is_column_service_exist = (
-            False  # Наличие колонки, в которой указаны названия услуг ЖКУ
-        )
-        self._teams = list()
-        self._collections = dict()  # коллекция выходных таблиц
-        self._possible_columns = dict()
-        self._headers = list()
-        self._column_names = dict()  # колонки таблицы
+        # Наличие колонки, в которой указаны названия услуг ЖКУ
+        self._column_service.clear()
+        self._teams.clear()
+        self._collections.clear()  # коллекция выходных документов
+        self._possible_columns.clear()
+        self._headers.clear()
+        self._column_names.clear()
+        self.team_index = 0
+        self.checking_rows = None
 
     def __is_init(self) -> bool:
         return self._config._is_init
@@ -1594,7 +1896,9 @@ class ExcelBaseImporter:
             return self._config._columns_heading
 
     def __is_column_heading_exist(self, name: str) -> bool:
-        names = [x for x in self._config._columns_heading if x.get(name) is not None]
+        names = [
+            x for x in self._config._columns_heading if x["name"] == name is not None
+        ]
         return len(names) != 0
 
     def __get_condition_team(self) -> str:
@@ -1621,6 +1925,17 @@ class ExcelBaseImporter:
 
     def __get_max_rows_heading(self) -> int:
         return get_value_int(self._config._max_rows_heading)[0]
+
+    def __get_checking_rows(self) -> dict:
+        if not self.checking_rows is None:
+            return self.checking_rows
+        if self._config._checking_rows:
+            self.checking_rows = {
+                "name": get_ident(self._config._checking_rows.split("::")[0]),
+                "pattern": self._config._checking_rows.split("::")[-1],
+            }
+            return self.checking_rows
+        return None
 
     def __get_header(self, name: str):
         return self._config._header[name]
@@ -1686,10 +2001,10 @@ class ExcelBaseImporter:
                         )
                     )
             if mess and not mess in self._config._debug:
-                logger.debug("\n" + mess.strip())
+                # logger.debug("\n" + mess.strip())
                 self._config._debug.append(mess)
                 if is_warning:
-                    self.__add_warning(mess)
+                    self.add_warning(mess)
         return False
 
     def __check_incorrect_inn(self) -> bool:
@@ -1724,415 +2039,9 @@ class ExcelBaseImporter:
         for col in self.__get_columns_heading():
             col["active"] = False
         self._column_names = dict()
-        self._teams = list()
+        self._teams = OrderedDict()
+        # self._teams = list()
+        self._teams_ref = OrderedDict()
 
-    def __add_warning(self, text: str):
+    def add_warning(self, text: str):
         self.config_files[self.index_config - 1]["warning"].append(text)
-
-    ################################################################################################################################################
-    # ----------------------------------------------------- Функции --------------------------------------------------------------------------------
-    ################################################################################################################################################
-    def __set_functions(self) -> None:
-        self.funcs = {
-            "inn": self.func_inn,
-            "period_first": self.func_period_first,
-            "period_last": self.func_period_last,
-            "period_month": self.func_period_month,
-            "period_year": self.func_period_year,
-            "column_name": self.func_column_name,
-            "account_number": self.func_account_number,
-            "bik": self.func_bik,
-            "column_value": self.func_column_value,
-            "hash": self.func_hash,
-            "guid": self.func_uuid,
-            "param": self.func_param,
-            "spacerem": self.func_spacerem,
-            "spacerepl": self.func_spacerepl,
-            "round2": self.func_round2,
-            "round4": self.func_round4,
-            "round6": self.func_round6,
-            "opposite": self.func_opposite,
-            "param": self.func_param,
-            "dictionary": self.func_dictionary,
-            "to_date": self.func_to_date,
-            "id": self.func_id,
-            "account_type": self.func_account_type,
-            "fillzero9": self.func_fillzero9,
-            "check_bank_accounts": self.func_bank_accounts,
-        }
-        self._current_value = list()
-        self._current_id = ""
-
-    def __get_func_list(self, part: str, names: str):
-        self._current_value_func.setdefault(part, {})
-        list_sub = re.findall(r"[a-z_0-9]+\(.+\)", names)
-        for item in list_sub:
-            ind_s = item.find("(")
-            ind_e = item.find(")")
-            func = item[:ind_s]
-            arg = item[ind_s + 1 : ind_e]
-            hash = hashit(func.encode("utf-8"))[:8]
-            if not self._current_value_func[part].get(hash):
-                self._current_value_func[part][hash] = {
-                    "name": func,
-                    "type": "sub",
-                    "input": "",
-                    "output": "",
-                }
-                arg_hash = self.__get_func_list(hash, arg)
-                self._current_value_func[hash]["expression"] = arg_hash
-                names = names.replace(item, hash)
-        names_new = ""
-        while True:
-            index = get_index_find_any(names, "+-,")
-            delim = ""
-            if index == -1:
-                item = names
-                names = ""
-            else:
-                item = names[:index]
-                delim = names[index : index + 1]
-                names = names[index + 1 :]
-            hash = hashit(item.encode("utf-8"))[:8]
-            self._current_value_func[part][hash] = {
-                "name": item,
-                "type": "",
-                "input": "",
-                "output": "",
-            }
-            names_new += f"{hash}{delim}"
-            if not names:
-                break
-        return names_new
-
-    def __recalc_expression(self, part: str) -> None:
-        for item in self._current_value_func[part]["expression"].split(","):
-            value = self._current_value_empty
-            for index, hash in enumerate(re.split(r"[+-]", item)):
-                self._current_index = 0
-                name = self._current_value_func[part][hash]["name"]
-                if regular_calc(r"(?<=\[)\d(?=\])", name):
-                    self._current_index = int(re.findall(r"(?<=\[)\d(?=\])", name)[0])
-                    name = re.findall(r".+(?=\[)", name)[0]
-                if self._current_value_func[part].get(name):
-                    self._current_value.append(value)
-                    ind = self._current_index
-                    self.__recalc_expression(name)
-                    self._current_index = ind
-                    name = self._current_value_func[part][name]["name"]
-                if self.funcs.get(name.strip()):
-                    f = self.funcs.get(name.strip())
-                    x = f()
-                    if isinstance(value, float) or isinstance(value, int):
-                        if item.find(f"-{name}") != -1 and index != 0:
-                            value -= self.__get_value(x, ".+", "float")
-                        else:
-                            value += self.__get_value(x, ".+", "float")
-                    else:
-                        value += x + " "
-                else:
-                    if self._dictionary.get(get_index_key(name)):
-                        value = value.strip() + self._dictionary[get_index_key(name)][0]
-                    elif self._parameters.get(name):
-                        value = value.strip() + (
-                            self._parameters[name]["value"][-1]
-                            if len(self._parameters[name]["value"]) > 0
-                            else ""
-                        )
-                    elif name == "_":
-                        value = (
-                            value.strip()
-                            + (" " if value else "")
-                            + self._current_value[-1]
-                        )
-                    else:
-                        if isinstance(value, str):
-                            value = value.strip() + (" " if value else "") + name
-                        else:
-                            pass
-                if self._current_value_func[part].get(
-                    self._current_value_func[part][hash]["name"]
-                ):
-                    self._current_value.pop()
-            self._current_value.pop()
-            self._current_value.append(
-                value.rstrip() if isinstance(value, str) else value
-            )
-
-    def func(
-        self, team: dict = {}, fld_param: dict = {}, row: int = 0, col: int = 0
-    ) -> str:
-        self._current_id = fld_param.get("value", "")
-        self._current_index = 0
-        self._current_value = list()
-        if fld_param.get("is_offset"):
-            value = fld_param.get("value_o", "")
-            self._current_value_type = fld_param.get("offset_type", "str")
-        else:
-            value = fld_param.get("value", "")
-            self._current_value_type = fld_param.get("type", "str")
-        self._current_value_pattern = (
-            fld_param["func_pattern"][0] if fld_param.get("func_pattern") else ""
-        )
-        self._current_value_empty = 0 if self._current_value_type == "float" else ""
-        self._current_value_team = team
-        self._current_value_row = row
-        self._current_value_col = col
-        self._current_value_param = fld_param
-        self._current_value_func_is_no_return = fld_param.get(
-            "func_is_no_return", False
-        )
-        self._current_value_func = {}
-        part = "00000000"
-        m = fld_param.get("func", "")
-        m = self.__get_func_list(part, m)
-        self._current_value_func[part]["expression"] = m
-        self._current_value.append(value)
-        try:
-            self.__recalc_expression(part)
-            value = self._current_value.pop()
-        except Exception as ex:
-            logger.exception("Func:")
-            value = ""
-        if self._current_value_func_is_no_return and str(value).strip():
-            for x in [
-                x
-                for x in re.split(r"[+-,]", fld_param.get("func", ""))
-                if regular_calc("^[a-z_0-9]+$", x)
-            ]:
-                if str(value).find(x) != -1:
-                    value = ""
-                    break
-        return str(value).strip()
-
-    def func_inn(self):
-        if self._parameters["inn"]["value"][0] != "0000000000":
-            return self._parameters["inn"]["value"][0]
-        else:
-            return self._parameters["inn"]["value"][-1]
-
-    def func_period_first(self):
-        period = datetime.datetime.strptime(
-            self._parameters["period"]["value"][-1], "%d.%m.%Y"
-        )
-        return period.replace(day=1).strftime("%d.%m.%Y")
-
-    def func_period_last(self):
-        period = datetime.datetime.strptime(
-            self._parameters["period"]["value"][-1], "%d.%m.%Y"
-        )
-        next_month = period.replace(day=28) + datetime.timedelta(days=4)
-        return (next_month - datetime.timedelta(days=next_month.day)).strftime(
-            "%d.%m.%Y"
-        )
-
-    def func_period_month(self):
-        return self._parameters["period"]["value"][0][3:5]
-
-    def func_period_year(self):
-        return self._parameters["period"]["value"][0][6:]
-
-    def func_to_date(self):
-        patts = [
-            "%d-%m-%Y",
-            "%d.%m.%Y",
-            "%d/%m/%Y",
-            "%Y-%m-%d",
-            "%d-%m-%y",
-            "%d.%m.%y",
-            "%d/%m/%y",
-            "%B %Y",
-        ]
-        for p in patts:
-            try:
-                d = datetime.datetime.strptime(self._current_value[-1], p)
-                return self._current_value[-1]
-            except:
-                pass
-        return ""
-
-    def func_hash(self):
-        return (
-            hashit(str(get_index_key(self._current_value[-1])).encode("utf-8"))
-            if self.is_hash
-            else self._current_value[-1]
-        )
-
-    def func_uuid(self):
-        return str(uuid.uuid5(uuid.NAMESPACE_X500, self._current_value[-1]))
-
-    def func_id(self):
-        d = self._parameters["period"]["value"][0]
-        id = str(self._current_id).strip()
-        if self._parameters.get("id_length") is not None:
-            id = id.rjust(int(self._parameters["id_length"]["value"][0]), "0")
-        return f"{id}_{d[3:5]}{d[6:]}"  # _mmyyyy
-
-    def func_column_name(self):
-        if self._current_value_col != -1:
-            return self.__get_columns_heading(self._current_value_, "alias")
-        return ""
-
-    def func_column_value(self):
-        value = next(
-            (
-                x[self._current_value_row]["value"]
-                for x in self._current_value_team.values()
-                if x[self._current_value_row]["col"] == int(self._current_value[-1])
-            ),
-            "",
-        )
-        return value.strip() if isinstance(value, str) else value
-
-    def func_param(self):
-        m = ""
-        for item in self._parameters[self._current_value[-1]]["value"]:
-            m += (item.strip() + " ") if isinstance(item, str) else ""
-        return f"{m.strip()}"
-
-    def func_spacerem(self):
-        return self._current_value[-1].strip().replace(" ", "")
-
-    def func_spacerepl(self):
-        return self._current_value[-1].strip().replace(" ", "_")
-
-    def func_round2(self):
-        return (
-            str(round(self._current_value[-1], 2))
-            if isinstance(self._current_value[-1], float)
-            else str(self._current_value[-1])
-        )
-
-    def func_round4(self):
-        return (
-            str(round(self._current_value[-1], 4))
-            if isinstance(self._current_value[-1], float)
-            else self._current_value[-1]
-        )
-
-    def func_round6(self):
-        return (
-            str(round(self._current_value[-1], 6))
-            if isinstance(self._current_value[-1], float)
-            else self._current_value[-1]
-        )
-
-    def func_opposite(self):
-        return (
-            str(-self._current_value)
-            if isinstance(self._current_value, float)
-            else self._current_value
-        )
-
-    def func_account_number(self):
-        pattern: re.compile = re.compile(REG_KP_XLS, re.IGNORECASE)
-        if self._dictionary.get("account_number"):
-            if pattern.search(self._parameters["filename"]["value"][0].lower(), re.IGNORECASE):
-                return (
-                    self._dictionary.get("account_number", [])[-1]
-                    if len(self._dictionary.get("account_number", [])) != 0
-                    else ""
-                )
-            else:
-                return (
-                    self._dictionary.get("account_number", [])[0]
-                    if len(self._dictionary.get("account_number", [])) != 0
-                    else ""
-                )
-        elif self._parameters.get("account_number"):
-            if pattern.search(self._parameters["filename"]["value"][0].lower(), re.IGNORECASE):
-                return (
-                    self._parameters.get("account_number", {"value": [""]})["value"][-1]
-                    if len(
-                        self._parameters.get("account_number", {"value": [""]})["value"]
-                    )
-                    != 0
-                    else ""
-                )
-            else:
-                return (
-                    self._parameters.get("account_number", {"value": [""]})["value"][0]
-                    if len(
-                        self._parameters.get("account_number", {"value": [""]})["value"]
-                    )
-                    != 0
-                    else ""
-                )
-        else:
-            return ""
-
-    def func_bik(self):
-        pattern = re.compile(REG_KP_XLS, re.IGNORECASE)
-        if self._dictionary.get("bik"):
-            if pattern.search(self._parameters["filename"]["value"][0].lower()):
-                return (
-                    self._dictionary.get("bik", [])[-1]
-                    if len(self._dictionary.get("bik", [])) != 0
-                    else ""
-                )
-            else:
-                return (
-                    self._dictionary.get("bik", [])[0]
-                    if len(self._dictionary.get("bik", [])) != 0
-                    else ""
-                )
-        elif self._parameters.get("bik"):
-            if pattern.search(self._parameters["filename"]["value"][0].lower()):
-                return (
-                    self._parameters.get("bik", {"value": [""]})["value"][-1]
-                    if len(self._parameters.get("bik", {"value": [""]})["value"]) != 0
-                    else ""
-                )
-            else:
-                return (
-                    self._parameters.get("bik", {"value": [""]})["value"][0]
-                    if len(self._parameters.get("bik", {"value": [""]})["value"]) != 0
-                    else ""
-                )
-        else:
-            return ""
-
-    def func_dictionary(self):
-        dictionary = self._dictionary.get(get_index_key(self._current_value[-1]), [])
-        if len(dictionary) > self._current_index:
-            return dictionary[self._current_index]
-        elif len(dictionary) > 0:
-            return dictionary[-1]
-        else:
-            return ""
-
-    def func_account_type(self):
-        is_cap = False
-        comp: re.compile = re.compile(REG_KP_XLS, re.IGNORECASE)
-        for key in self._column_names.keys():
-            if comp.search(key):
-                is_cap = True
-                break
-        if is_cap or comp.search(self._parameters["filename"]["value"][0].lower()):
-            return "cr"
-        else:
-            return ""
-
-    def func_fillzero9(self):
-        return str(self._current_value[-1]).strip().rjust(9, "0") + " "
-
-    def func_bank_accounts(self):
-        if not self._current_value_team:
-            return ""
-        d = {}
-        u = {}
-        exist_overhaul = False
-        for item in self._current_value_team["noname"]:
-            d.setdefault(item.get("internal_id"), item)
-        for item in d.values():
-            if item.get("is_overhaul"):
-                exist_overhaul = True
-            u.setdefault(item["account_number"], 0)
-            u[item["account_number"]] += 1
-        if exist_overhaul == False:
-            mess = 'В тарифах отсутствует колонка "Кап.ремонт"'
-            self.__add_warning(mess)
-        if [x for x in u.values() if x > 1]:
-            mess = "Конфликт в расчетном счете по капитальному ремонту"
-            self.__add_warning(mess)
-        return ""

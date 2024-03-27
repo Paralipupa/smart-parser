@@ -78,6 +78,8 @@ def read_from_text(file_name: str) -> list:
                          if x.strip() != '' and not any(y for y in lines['9'] if y['name'].strip() == x.strip())]
                     lines['2a'].extend(l)
                     lines['9'].extend(l)
+                elif line[:8] == "filename":
+                    lines["filename"] = line[9:].strip()
                 elif line[:8] == 'pattern_':
                     k = line.find(':')
                     if k > 8:
@@ -119,7 +121,6 @@ if __name__ == "__main__":
     args = getArgs()
     namespace = args.parse_args(sys.argv[1:])
     lines = read_from_text(namespace.name)
-    # lines = read_from_config(f'{os.path.dirname(__file__)}/ini/gis_config.ini')
     cols = set_columns(lines, os.path.dirname(__file__))
     names.append(header(lines, os.path.dirname(__file__)))
     names.append(cols)
@@ -129,4 +130,12 @@ if __name__ == "__main__":
     names.append(pp_service(lines, os.path.dirname(__file__)))
     names.append(pu(lines, os.path.dirname(__file__)))
     names.append(puv(lines, os.path.dirname(__file__)))
-    write_config(names, os.path.dirname(__file__),'gis_config.ini')
+    write_config(
+        names, os.path.join(os.path.dirname(__file__), "ini"), "gis_config.ini"
+    )
+    if lines.get("filename"):
+        write_config(
+            names,
+            os.path.join(os.path.dirname(os.path.dirname(__file__)), "config"),
+            lines.get("filename"),
+        )

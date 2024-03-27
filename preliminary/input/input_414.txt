@@ -2,6 +2,9 @@
 ;accounts: Адрес@address	Квартира@room_number	Проживает@living_person_number	Площадь@total_square	@account_identifier	@account_number_accounts
 ;pp: Сальдо начальное@credit		Начисление@bill_value	Оплата@payment_value	@payment_date	Сальдо конечное@saldo
 name:ЖСК "414"
+
+filename:gisconfig_002_00.ini
+
 check_pattern:Ведомость|ОСВ
 main_page_index:-1
 main_max_rows_heading:450
@@ -14,12 +17,15 @@ pattern_ЛС:^[0-9]{13}$
 pattern_ЛС:^(?![0-9])[А-Яа-яЁё"«»-]+\s["«»А-Яа-яЁё-]+
 
 0:Лицевой счет;лицевой счёт;{{+0;+1;Ф[.]И[.]О[.]}}
-0:Сальдо Вх.@credit	Начисление;Дебет@bill_value	Оплачено;Кредит@payment_value	Сальдо исх.@saldo
+0:Сальдо Вх.@credit{type{float}}{func{round2}}::*currency
+0:Начисление;Дебет@bill_value{type{float}}{func{round2}}::*currency
+0:Оплачено;Кредит@payment_value{type{float}}{func{round2}}::*currency
+0:Сальдо исх.@saldo{type{float}}{func{round2}}::*currency
 0:Дата оп.@payment_date
 0:Начислено	Квартира;№ пом.;№ кв.@room_number	Проживает@living_person_number
 0:>Площадь;Площадь, м2@total_square{type{float}}{func{round2}}
 0:Прописано
 0:Лицевой счет@account_number_accounts::[0-9]+-?[A-Za-zА-Яа-я]?@account_identifier::[0-9]+-?[A-Za-zА-Яа-я]?
-0:ТипЛС:@account_type{func{account_type}}
+0:Лицевой счет;лицевой счёт:@account_type{func{account_type}}
 
 1:ПениКапремонт;Пени{{+0;-1;кап}}
