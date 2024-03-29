@@ -822,20 +822,19 @@ class ExcelBaseImporter:
 
     @warning_error
     def __get_condition_data(self, values: list, pattern: str) -> str:
+        """ формирование идентификатора по приоритету шаблонов """
         result = ""
-        for val in values:
-            if val["row"] == 0:
-                k = pattern.find("||")
-                if k != -1:
-                    patt = pattern[:k] if result == "" else pattern
-                else:
-                    patt = pattern
-                value = regular_calc(patt, val["value"])
-                if value == None:
-                    if result == "":
-                        return ""
-                else:
-                    result += value
+        values_tmp = [dict(value=x["value"], found=False) for x in values]
+        patterns_tmp = [x for x in pattern.split("||") if x]
+        for pattern in patterns_tmp:
+            for val in values_tmp:
+                if val["found"] is False:
+                    value = regular_calc(pattern, val["value"])
+                    if value is not None:
+                        result += value
+                        val["found"] = True
+            if not result:
+                return ""
         return result
 
     def __get_data_xls(self):
@@ -1461,7 +1460,10 @@ class ExcelBaseImporter:
                         )
                         or (
                             isinstance(fld_record["value"], str)
-                            and (fld_record["type"] == "float" or fld_record["offset_type"] == "float" )
+                            and (
+                                fld_record["type"] == "float"
+                                or fld_record["offset_type"] == "float"
+                            )
                             and fld_record["value"] == "0.0"
                         )
                         else str(fld_record["value"]).strip()
@@ -1480,7 +1482,7 @@ class ExcelBaseImporter:
             logger.error(f"{ex}")
         return doc
 
-# Разбиваем данные документа по-строчно
+    # Разбиваем данные документа по-строчно
     def __document_split_one_line_2(self, doc: dict, doc_param: dict) -> None:
         try:
             name = doc_param["name"]
@@ -1491,7 +1493,7 @@ class ExcelBaseImporter:
             rows = rows + counts
             rows_count = max(rows) if rows else 0
             rows_required = self.__get_required_rows(name, doc)
-            requeired_names = set(doc_param.get("required_fields","").split(","))
+            requeired_names = set(doc_param.get("required_fields", "").split(","))
             rows_exclude = [
                 x[0] if x[0] >= 0 else rows_count + 1 + x[0]
                 for x in doc_param["rows_exclude"]
@@ -1503,7 +1505,11 @@ class ExcelBaseImporter:
                 names = list()
                 is_empty = True
                 for key, values in doc.items():
-                    value = [x["value_rows"]["value"] for x in values if x["value_rows"] and x["value_rows"]["row"][POS_VALUE] == row]
+                    value = [
+                        x["value_rows"]["value"]
+                        for x in values
+                        if x["value_rows"] and x["value_rows"]["row"][POS_VALUE] == row
+                    ]
                     value = value[0] if value else None
                     if value:
                         elem[key] = value
@@ -1511,11 +1517,13 @@ class ExcelBaseImporter:
                         names.append(key)
                         is_empty = False
                     else:
-                        elem[key] = elem_default.get(key,"")
+                        elem[key] = elem_default.get(key, "")
                 if (
                     not is_empty
                     and not (row in rows_exclude)
-                    and (not doc_param["required_fields"] or set(names) & requeired_names)
+                    and (
+                        not doc_param["required_fields"] or set(names) & requeired_names
+                    )
                 ):
                     self.__append_to_collection(name, elem)
                 else:
@@ -1525,7 +1533,6 @@ class ExcelBaseImporter:
         except Exception as ex:
             logger.error(f"{ex}")
         return
-
 
     # Разбиваем данные документа по-строчно
     def __document_split_one_line(self, doc: dict, doc_param: dict) -> None:

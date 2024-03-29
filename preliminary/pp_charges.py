@@ -51,17 +51,33 @@ def pp_charges(lines: list, path: str) -> str:
             )
         )
 
-        file.write("\n")
-        file.write("[pp_charges_2]\n")
-        file.write("; Внутренний идентификатор платежного документа\n")
-        file.write("name=pp_internal_id\n")
-        file.write("pattern=@0\n")
-        file.write("row_data=0\n")
-        if lines["dic"].get("pp_internal_id"):
-            file.write(f'col_config={lines["dic"]["pp_internal_id"][0]["col"]}\n')
-        else:
-            file.write("col_config=0\n")
-        file.write("func=id+account_number,spacerepl,hash\n")
+        # file.write("\n")
+        # file.write("[pp_charges_2]\n")
+        # file.write("; Внутренний идентификатор платежного документа\n")
+        # file.write("name=pp_internal_id\n")
+        # file.write("pattern=@0\n")
+        # file.write("row_data=0\n")
+        # if lines["dic"].get("pp_internal_id"):
+        #     file.write(f'col_config={lines["dic"]["pp_internal_id"][0]["col"]}\n')
+        # else:
+        #     file.write("col_config=0\n")
+        # file.write("func=id+account_number,spacerepl,hash\n")
+
+        write_section(
+            **dict(
+                file=file,
+                lines=lines,
+                sec_type=doc_type,
+                sec_number=2,
+                sec_title="Внутренний идентификатор платежного документа",
+                sec_name="pp_internal_id",
+                sec_is_service=False,
+                sec_is_hash=True,
+                sec_is_ident=True,
+                sec_is_func_name_no_ident=False,
+                sec_func="id+account_number,spacerepl,hash",
+            )
+        )
 
         names = []
         file.write("\n")

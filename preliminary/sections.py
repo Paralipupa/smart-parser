@@ -422,7 +422,9 @@ def __write_sec_row_col(**kwargs):
         ):
             kwargs.get("file").write(f"col_config={col_fld}\n")
         elif __is_first_service(**kwargs):
-            kwargs.get("file").write("pattern=@0\n")
+            pattern_default = __get_pattern_default(**kwargs)
+            if not pattern_default:
+                kwargs.get("file").write("pattern=@0\n")
             kwargs.get("file").write("col_config=0\n")
         if __is_first_service(**kwargs) and (
             not __is_service_parameters(**kwargs) or __is_simple_section(**kwargs)
@@ -434,10 +436,7 @@ def __write_sec_pattern(**kwargs):
     fld_param = __get_fld_parameters(**kwargs)
     current_service = __get_current_service(**kwargs)
     if fld_param:
-        pattern_default = ""
-        if fld_param[0]["pattern"]:
-            if __is_first_service(**kwargs):
-                pattern_default = fld_param[0]["pattern"].strip()
+        pattern_default = __get_pattern_default(**kwargs)
 
         if __is_sub_fields_in_col(**kwargs):
             if (
@@ -479,6 +478,9 @@ def __write_sec_pattern(**kwargs):
                 kwargs.get("file").write(f"pattern={pattern_default}\n")
             else:
                 kwargs.get("file").write(f"pattern=.+\n")
+        elif pattern_default:
+            kwargs.get("file").write(f"pattern={pattern_default}\n")
+
     else:
         if __is_sub_fields_in_col(**kwargs) and kwargs.get("lines")["dic"].get(
             "service"
@@ -604,3 +606,14 @@ def __get_sub_fields(**kwargs):
         else:
             kwargs["line"] = None
     return kwargs["line"]
+
+
+def __get_pattern_default(**kwargs):
+    fld_param = kwargs.get("lines")["dic"].get(
+        f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix','')}"
+    )
+    if fld_param:
+        if fld_param[0]["pattern"]:
+            if __is_first_service(**kwargs):
+                return fld_param[0]["pattern"].strip()
+    return ""

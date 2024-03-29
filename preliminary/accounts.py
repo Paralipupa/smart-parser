@@ -5,6 +5,12 @@ def accounts(lines: list, path: str) -> str:
     doc_type = "accounts"
     file_name = f"{path}/ini/2_accounts.ini"
     with open(file_name, "w") as file:
+        required_fields = (
+            ",".join(lines["required"]["required_accounts"])
+            if lines["required"].get("required_accounts")
+            else "address,account_number,living_person_number,total_square"
+        )
+        
         write_section_caption(**dict(file=file, sec_type=doc_type))
         write_section_doc(
             **dict(
@@ -13,7 +19,7 @@ def accounts(lines: list, path: str) -> str:
                 sec_number=0,
                 sec_title="Лицевые счета",
                 sec_name=doc_type,
-                required_fields="address,account_number,living_person_number,total_square",
+                required_fields=required_fields,
             )
         )
         write_section_org_ppa_guid(

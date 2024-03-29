@@ -51,6 +51,7 @@ def puv(lines: list, path: str) -> str:
                 sec_number=2,
                 sec_title="ГИС. Идентификатор ПУП GUID",
                 sec_name="gis_id",
+                sec_is_service=False,
             )
         )
         write_section(

@@ -64,6 +64,7 @@ def pu(lines: list, path: str) -> str:
                 sec_number=3,
                 sec_title="ГИС. Идентификатор ПУ GUID",
                 sec_name="gis_id",
+                sec_is_service=False,
                 required_fields=required_fields,
             )
         )
