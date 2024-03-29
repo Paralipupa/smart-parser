@@ -70,7 +70,7 @@ def print_message(msg: str, end: str = "\n", flush: bool = False) -> None:
 def regular_calc(pattern: str, value: str) -> str:
     try:
         result = re.search(
-            pattern.replace("||", "|"), value.replace("\n", "").strip(), re.IGNORECASE
+            pattern.replace("~","").replace("||", "|"), value.replace("\n", "").strip(), re.IGNORECASE
         )
         if result is None or result.group(0).find("error") != -1:
             return None

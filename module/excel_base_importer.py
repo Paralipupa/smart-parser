@@ -1052,6 +1052,8 @@ class ExcelBaseImporter:
             else:
                 try:
                     value += get_value(val[POS_VALUE], pattern, type_fld)
+                    if value and "~" in pattern:
+                        break
                 except Exception as ex:
                     pass
         if not (type_fld == "float" or type_fld == "double" or type_fld == "int"):
