@@ -133,6 +133,7 @@ def pp_charges(lines: list, path: str) -> str:
                 sec_is_ident=True if not lines["dic"].get("service") else False,
                 sec_is_func_name=True if not lines["dic"].get("service") else False,
                 sec_func_ident="key+fias",
+                sec_func_pattern="[0-9-]+(?:[.,][0-9]*)?",
                 sec_is_func_dictionary=True,
             )
         )

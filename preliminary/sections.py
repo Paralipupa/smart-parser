@@ -553,6 +553,8 @@ def __write_sec_func(**kwargs):
         else:
             kwargs.get("file").write(f"func={kwargs.get('sec_func')[1:]}\n")
             kwargs.get("file").write(f"func_is_no_return=true\n")
+        if kwargs.get("sec_func_pattern"):
+            kwargs.get("file").write(f"func_pattern={kwargs.get('sec_func_pattern')}\n")
     elif __is_sec_internal_id(**kwargs) and not current_service is None:
         ident = get_func_name(current_service["line"]["name"].split(";")[0])
         if current_service["line"]["name"] == "Прочие" and __is_service_parameters(
@@ -563,6 +565,8 @@ def __write_sec_func(**kwargs):
         kwargs.get("file").write(
             f"func={func_ident}+{ident}{suffix}{spacerepl}{hash}{dictionary}\n"
         )
+        if kwargs.get("sec_func_pattern") and  __is_first_service(**kwargs):
+            kwargs.get("file").write(f"func_pattern={kwargs.get('sec_func_pattern')}\n")
     elif __is_sec_as_service_name(**kwargs) and not current_service is None:
         if (
             fld_param

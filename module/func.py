@@ -421,16 +421,18 @@ class Func:
 
     def func_dictionary(self):
         dictionary = self._dictionary.get(get_index_key(self._current_value[-1]), [])
-        for value in dictionary:
-            if re.search(self._current_value_pattern, value):
-                return value
-        return ""
-        # if len(dictionary) > self._current_index:
-        #     return dictionary[self._current_index]
-        # elif len(dictionary) > 0:
-        #     return dictionary[-1]
-        # else:
-        #     return ""
+        if len(dictionary) > self._current_index:
+            value = dictionary[self._current_index]
+        elif len(dictionary) > 0:
+            value = dictionary[-1]
+        else:
+            value = ""
+        if len(dictionary) > 1 and not re.search(self._current_value_pattern, value):
+            for val in dictionary:
+                if re.search(self._current_value_pattern, val):
+                    return val
+        return value
+
 
     def func_account_type(self):
         is_cap = False

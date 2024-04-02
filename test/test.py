@@ -159,7 +159,7 @@ class TestGisConfig(unittest.TestCase):
         self.parser.download_file = (
             f"comfort{'_no_hash' if self.parser.is_hash is False else ''}.zip"
         )
-        # self.parser.inn = "7811334511"
+        self.parser.inn = "7811334511"
         self.__remove_download()
         self.parser.start()
         hash_origin, hash_download = self.__check()
