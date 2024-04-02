@@ -53,7 +53,7 @@ class Func:
 
     def __get_func_list(self, part: str, names: str):
         self._current_value_func.setdefault(part, {})
-        list_sub = re.findall(r"[a-z_0-9]+\(.+\)", names)
+        list_sub = re.findall(r"[a-z_0-9]+\(.+?\)", names)
         for item in list_sub:
             ind_s = item.find("(")
             ind_e = item.find(")")
@@ -163,16 +163,32 @@ class Func:
                 self._current_value_type = fld_param.get("type", "str")
             if bool(value) is False and not fld_param.get("func_is_empty", True):
                 return ""
-
-            self._current_value_pattern = (
-                fld_param["func_pattern"][0] if fld_param.get("func_pattern") else ""
+            if fld_param.get("func_pattern") and fld_param.get("func_pattern")[0]:
+                self._current_value_pattern = fld_param["func_pattern"][0]
+            else:
+                if fld_param.get("is_offset"):
+                    self._current_value_pattern = (
+                        fld_param["offset_pattern"][0]
+                        if fld_param.get("offset_pattern")
+                        and fld_param["offset_pattern"][0]
+                        else ".+"
+                    )
+                else:
+                    self._current_value_pattern = (
+                        fld_param["pattern"][0]
+                        if fld_param.get("pattern") and fld_param["pattern"][0]
+                        else ".+"
+                    )
+            self._current_value_empty = (
+                0
+                if self._current_value_type == "float"
+                and not "dictionary" in fld_param.get("func", "")
+                else ""
             )
-            self._current_value_empty = 0 if self._current_value_type == "float" else ""
             self._current_value_team = team
-            self._current_value_row = row 
-            # if fld_param.get("value_rows"):
-            #     if len(fld_param["value_rows"]) != 0:
-            #         self._current_value_row = fld_param["value_rows"][0]
+            self._current_value_row = (
+                row if not "dictionary" in fld_param.get("func", "") else 0
+            )
             self._current_value_col = col
             self._current_value_param = fld_param
             self._current_value_func_is_no_return = fld_param.get(
@@ -275,15 +291,21 @@ class Func:
         return ""
 
     def func_column_value(self):
-        value = next(
-            (
-                x[self._current_value_row]["value"]
-                for x in self._current_value_team.values()
-                if x[self._current_value_row]["col"] == int(self._current_value[-1])
-            ),
-            "",
-        )
-        return value.strip() if isinstance(value, str) else value
+        try:
+            value = next(
+                (
+                    x[self._current_value_row]["value"]
+                    for x in self._current_value_team.values()
+                    if len(x) > self._current_value_row
+                    and x[self._current_value_row]["col"]
+                    == int(self._current_value[-1])
+                ),
+                "",
+            )
+            return value.strip() if isinstance(value, str) else value
+        except Exception as ex:
+            logger.error(f"{ex}")
+        return ""
 
     def func_param(self):
         m = ""
@@ -399,12 +421,16 @@ class Func:
 
     def func_dictionary(self):
         dictionary = self._dictionary.get(get_index_key(self._current_value[-1]), [])
-        if len(dictionary) > self._current_index:
-            return dictionary[self._current_index]
-        elif len(dictionary) > 0:
-            return dictionary[-1]
-        else:
-            return ""
+        for value in dictionary:
+            if re.search(self._current_value_pattern, value):
+                return value
+        return ""
+        # if len(dictionary) > self._current_index:
+        #     return dictionary[self._current_index]
+        # elif len(dictionary) > 0:
+        #     return dictionary[-1]
+        # else:
+        #     return ""
 
     def func_account_type(self):
         is_cap = False

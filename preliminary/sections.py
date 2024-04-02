@@ -1,5 +1,31 @@
+import re
 from utils import get_ident, get_name, get_lines, get_func_name
 from settings import *
+
+
+def write_other_fields(**kwargs):
+    for item in __get_other_fields(**kwargs):
+        for fld in item["fields"]:
+            name = re.findall("(?<=\().+(?=\))", fld["name"])
+            key = re.findall(".+(?=\()", fld["name"])
+            title = item["name"]
+            if key and title and name and kwargs.get("sec_type") == name[0]:
+                kwargs["sec_name"] = "__" + key[0]
+                kwargs["sec_title"] = title
+                kwargs.get("file").write("\n")
+                write_section_doc(**kwargs)
+                pattern = ".+"
+                if fld.get("pattern"):
+                    pattern = fld["pattern"]
+                kwargs.get("file").write(f"pattern={pattern}\n")
+                kwargs.get("file").write(f"col_config={fld['col']}\n")
+                kwargs.get("file").write("row_data=0\n")
+                if fld.get("func"):
+                    kwargs.get("file").write(f"func=fld['func'][0]\n")
+                # kwargs.get("file").write("invisible=1\n")
+                # kwargs.get("file").write("func_is_no_return=true\n")
+
+                kwargs["sec_number"] += 1
 
 
 def write_section_caption(**kwargs):
@@ -26,7 +52,6 @@ def write_section_doc(**kwargs):
     kwargs.get("file").write(f"name={kwargs.get('sec_name')}\n")
     if kwargs.get("required_fields"):
         kwargs.get("file").write(f"required_fields={kwargs.get('required_fields')}\n")
-    # kwargs.get("file").write("\n")
     return
 
 
@@ -617,3 +642,7 @@ def __get_pattern_default(**kwargs):
             if __is_first_service(**kwargs):
                 return fld_param[0]["pattern"].strip()
     return ""
+
+
+def __get_other_fields(**kwargs):
+    return kwargs["lines"]["fields"]

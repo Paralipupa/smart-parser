@@ -10,7 +10,7 @@ def accounts(lines: list, path: str) -> str:
             if lines["required"].get("required_accounts")
             else "address,account_number,living_person_number,total_square"
         )
-        
+
         write_section_caption(**dict(file=file, sec_type=doc_type))
         write_section_doc(
             **dict(
@@ -221,5 +221,11 @@ def accounts(lines: list, path: str) -> str:
             sec_title="Тип лицевого счета (uo|cr)",
             sec_name="account_type",
             sec_is_service=False,
+        )
+        write_other_fields(
+            file=file,
+            lines=lines,
+            sec_type=doc_type,
+            sec_number=20,
         )
     return file_name

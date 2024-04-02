@@ -822,7 +822,7 @@ class ExcelBaseImporter:
 
     @warning_error
     def __get_condition_data(self, values: list, pattern: str) -> str:
-        """ формирование идентификатора по приоритету шаблонов """
+        """формирование идентификатора по приоритету шаблонов"""
         result = ""
         values_tmp = [dict(value=x["value"], found=False) for x in values]
         patterns_tmp = [x for x in pattern.split("||") if x]
@@ -1138,10 +1138,10 @@ class ExcelBaseImporter:
     def __build_global_dictionary(self, doc: dict):
         param = {}
         for fld, value in doc.items():
-            if fld == "key":
-                param = {"value": "key" + doc["key"], "func": "hash"}
+            if (fld == "key") or (fld == "__key"):
+                param = {"value": "key" + doc[fld], "func": "hash"}
                 param["key"] = self.func(fld_param=param)
-            elif regular_calc("^value", fld):
+            elif regular_calc("^value", fld) or regular_calc("^__value", fld):
                 param["data"] = value
             else:
                 index_key = get_index_key(fld)
@@ -1297,10 +1297,14 @@ class ExcelBaseImporter:
         self._collections[name].setdefault(key, list())
         self._collections[name][key].append(doc)
         if (
-            self.__get_doc_type(name) == "dictionary"
-            and doc.get("key")
-            and doc.get("value")
+            (doc.get("key") or doc.get("__key") )
+            and (doc.get("value") or doc.get("__value") )
         ):
+        # if (
+        #     self.__get_doc_type(name) == "dictionary"
+        #     and (doc.get("key") or doc.get("__key") )
+        #     and (doc.get("value") or doc.get("__value") )
+        # ):
             self.__build_global_dictionary(doc)
         return
 
@@ -1472,14 +1476,15 @@ class ExcelBaseImporter:
                     )
                     if fld_record["value_rows"]:
                         fld_record["value_rows"]["value"] = value
-                    doc[fld_record["name"]].append(
-                        {
-                            "row": len(doc[fld_record["name"]]),
-                            "col": col[0],
-                            "value": value,
-                            "value_rows": fld_record["value_rows"],
-                        }
-                    )
+                    if not fld_record["invisible"]:
+                        doc[fld_record["name"]].append(
+                            {
+                                "row": len(doc[fld_record["name"]]),
+                                "col": col[0],
+                                "value": value,
+                                "value_rows": fld_record["value_rows"],
+                            }
+                        )
         except Exception as ex:
             logger.error(f"{ex}")
         return doc
@@ -1638,7 +1643,8 @@ class ExcelBaseImporter:
     async def write_csv_async(self, filename: str, records: list):
 
         if not os.path.exists(filename):
-            names = [x for x in records[0].keys()]
+            # names = [x for x in records[0].keys()]
+            names = [x for x in records[0].keys() if x[:2] != "__"]
         else:
             names = []
 
@@ -1650,7 +1656,7 @@ class ExcelBaseImporter:
                 await writer_head.writeheader()
             writer_body = AsyncWriter(f)
             for rec in records:
-                await writer_body.writerow(rec.values())
+                await writer_body.writerow([x for key, x in rec.items() if key[:2] != "__"])
 
     async def write_collections_async(
         self,

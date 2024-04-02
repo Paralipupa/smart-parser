@@ -93,6 +93,13 @@ def read_from_text(file_name: str) -> list:
                         p = line[:k]
                         lines['param'].setdefault(p, [])
                         lines['param'][p].append(line[len(p)+1:].strip())
+                elif line[:6] == 'field:':
+                    k = line.find(':')
+                    p = line[k+1:]
+                    l = [{'name': x.strip(), 'is_unique': True, 'is_optional': False if len(
+                        lines['fields']) == 0 else True} for x in line[k+1:].split('\t')
+                        if x.strip() != '' and not any(y for y in lines['fields'] if y['name'].strip() == x.strip())]
+                    lines['fields'].extend(l)
                 elif line[:9] == 'required_':
                     k = line.find(':')
                     if k > 9:

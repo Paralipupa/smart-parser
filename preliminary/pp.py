@@ -220,5 +220,11 @@ def pp(lines: list, path: str):
                 sec_is_service=False,
             )
         )
+        write_other_fields(
+            file=file,
+            lines=lines,
+            sec_type=doc_type,
+            sec_number=20,
+        )
 
     return file_name
