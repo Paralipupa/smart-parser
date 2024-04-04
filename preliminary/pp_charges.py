@@ -230,4 +230,11 @@ def pp_charges(lines: list, path: str) -> str:
             else:
                 file.write(f"offset_col_config={COLUMN_BEGIN+1+i}\n")
             file.write("\n")
+
+        write_other_fields(
+            file=file,
+            lines=lines,
+            sec_type=doc_type,
+            sec_number=9,
+        )
     return file_name

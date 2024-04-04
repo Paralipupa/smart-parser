@@ -357,12 +357,16 @@ def hashit(s):
 
 
 def check_tarif(data: list) -> str:
-    comp = re.compile(r"[0-9]{1,9}(?:[\.,][0-9]{1,3})?")
+    comp = re.compile(r"[0-9-]{1,9}(?:[\.,][0-9]{1,3})?")
     mess = ""
-    for index, item in enumerate(data):
-        res = comp.findall(item)
-        if len(res) != 1:
-            mess += f"{index+1}: {item}\n"
+    try:
+        for index, item in enumerate(data):
+            res = comp.findall(item["value"])
+            if len(res) != 1:
+                mess += f"{index+1}: {item['value']}\n"
+    except Exception as ex:
+        mess = f"{ex}"
+        logger.error(mess)
     return mess
 
 

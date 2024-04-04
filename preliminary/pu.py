@@ -238,4 +238,10 @@ def pu(lines: list, path: str) -> str:
                 required_fields=required_fields,
             )
         )
+        write_other_fields(
+            file=file,
+            lines=lines,
+            sec_type=doc_type,
+            sec_number=19,
+        )
     return file_name

@@ -154,20 +154,6 @@ def pp(lines: list, path: str):
             )
         )
 
-
-        # write_section_bank(
-        #     **dict(
-        #         file=file,
-        #         lines=lines,
-        #         sec_type=doc_type,
-        #         sec_number=10,
-        #         sec_title="Номер расчетного счета",
-        #         sec_name="account_number",
-        #         required_fields=required_fields,
-        #         sec_is_service=False,
-        #         sec_func="account_number",
-        #     )
-        # )
         write_section(
             **dict(
                 file=file,
@@ -182,19 +168,6 @@ def pp(lines: list, path: str):
             )
         )
 
-        # write_section_bank(
-        #     **dict(
-        #         file=file,
-        #         lines=lines,
-        #         sec_type=doc_type,
-        #         sec_number=11,
-        #         sec_title="БИК банка",
-        #         sec_name="bank_bik",
-        #         required_fields=required_fields,
-        #         sec_is_service=False,
-        #         sec_func="bik,spacerepl",
-        #     )
-        # )
         write_section(
             **dict(
                 file=file,
@@ -224,7 +197,7 @@ def pp(lines: list, path: str):
             file=file,
             lines=lines,
             sec_type=doc_type,
-            sec_number=20,
+            sec_number=13,
         )
 
     return file_name

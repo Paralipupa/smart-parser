@@ -7,7 +7,7 @@ from module.helpers import (
     get_value,
     regular_calc,
 )
-from module.settings import REG_KP_XLS
+from module.settings import REG_KP_XLS, REG_ACCOUNT_NUMBER_BANK, REG_BIK_BANK
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +36,7 @@ class Func:
             "opposite": self.func_opposite,
             "param": self.func_param,
             "dictionary": self.func_dictionary,
+            "dictionary_once": self.func_dictionaryOnce,
             "to_date": self.func_to_date,
             "id": self.func_id,
             "account_type": self.func_account_type,
@@ -100,6 +101,7 @@ class Func:
                 self._current_index = 0
                 name = self._current_value_func[part][hash]["name"]
                 if regular_calc(r"(?<=\[)\d(?=\])", name):
+                    # индекс значения словаря определен в квадратных скобках
                     self._current_index = int(re.findall(r"(?<=\[)\d(?=\])", name)[0])
                     name = re.findall(r".+(?=\[)", name)[0]
                 if self._current_value_func[part].get(name):
@@ -120,7 +122,7 @@ class Func:
                         value += x + " "
                 else:
                     if self._dictionary.get(get_index_key(name)):
-                        value = value.strip() + self._dictionary[get_index_key(name)][0]
+                        value = value.strip() + self.func_dictionary(name)
                     elif self._parameters.get(name):
                         value = value.strip() + (
                             self._parameters[name]["value"][-1]
@@ -204,7 +206,7 @@ class Func:
                 self.__recalc_expression(part)
                 value = self._current_value.pop()
             except Exception as ex:
-                logger.exception("Func:")
+                logger.exception(f"Func:{ex}")
                 value = ""
             if self._current_value_func_is_no_return and str(value).strip():
                 for x in [
@@ -349,19 +351,26 @@ class Func:
 
     def func_account_number(self):
         pattern: re.compile = re.compile(REG_KP_XLS, re.IGNORECASE)
+        parrent_account: re.compile = re.compile(REG_ACCOUNT_NUMBER_BANK, re.IGNORECASE)
         if self._dictionary.get("account_number"):
             if pattern.search(
                 self._parameters["filename"]["value"][0].lower(), re.IGNORECASE
             ):
                 return (
-                    self._dictionary.get("account_number", [])[-1]
+                    self._dictionary.get("account_number", [])[-1]["value"]
                     if len(self._dictionary.get("account_number", [])) != 0
+                    and parrent_account.search(
+                        self._dictionary.get("account_number", [])[-1]["value"]
+                    )
                     else ""
                 )
             else:
                 return (
-                    self._dictionary.get("account_number", [])[0]
+                    self._dictionary.get("account_number", [])[0]["value"]
                     if len(self._dictionary.get("account_number", [])) != 0
+                    and parrent_account.search(
+                        self._dictionary.get("account_number", [])[-1]["value"]
+                    )
                     else ""
                 )
         elif self._parameters.get("account_number"):
@@ -374,6 +383,9 @@ class Func:
                         self._parameters.get("account_number", {"value": [""]})["value"]
                     )
                     != 0
+                    and parrent_account.search(
+                        self._parameters.get("account_number", {"value": [""]})["value"][-1]
+                    )
                     else ""
                 )
             else:
@@ -383,6 +395,9 @@ class Func:
                         self._parameters.get("account_number", {"value": [""]})["value"]
                     )
                     != 0
+                    and parrent_account.search(
+                        self._parameters.get("account_number", {"value": [""]})["value"][0]
+                    )
                     else ""
                 )
         else:
@@ -393,13 +408,13 @@ class Func:
         if self._dictionary.get("bik"):
             if pattern.search(self._parameters["filename"]["value"][0].lower()):
                 return (
-                    self._dictionary.get("bik", [])[-1]
+                    self._dictionary.get("bik", [])[-1]["value"]
                     if len(self._dictionary.get("bik", [])) != 0
                     else ""
                 )
             else:
                 return (
-                    self._dictionary.get("bik", [])[0]
+                    self._dictionary.get("bik", [])[0]["value"]
                     if len(self._dictionary.get("bik", [])) != 0
                     else ""
                 )
@@ -419,20 +434,33 @@ class Func:
         else:
             return ""
 
-    def func_dictionary(self):
-        dictionary = self._dictionary.get(get_index_key(self._current_value[-1]), [])
+    def func_dictionary(self, key: str = None):
+        return self.__func_dictionary(key, False)
+
+    def func_dictionaryOnce(self, key: str = None):
+        return self.__func_dictionary(key, True)
+
+    def __func_dictionary(self, key: str = None, is_not_used: bool = False):
+        name = get_index_key(self._current_value[-1] if key is None else key)
+        dictionary = self._dictionary.get(name, [])
+        value = ""
         if len(dictionary) > self._current_index:
-            value = dictionary[self._current_index]
+            if is_not_used is False or dictionary[self._current_index]["used"] is False:
+                value = dictionary[self._current_index]["value"]
+                dictionary[self._current_index]["used"] = True
         elif len(dictionary) > 0:
-            value = dictionary[-1]
-        else:
-            value = ""
+            if is_not_used is False or dictionary[-1]["used"] is False:
+                value = dictionary[-1]["value"]
+                dictionary[self._current_index]["used"] = True
+
         if len(dictionary) > 1 and not re.search(self._current_value_pattern, value):
             for val in dictionary:
-                if re.search(self._current_value_pattern, val):
-                    return val
+                if (is_not_used is False or val["used"] is False) and re.search(
+                    self._current_value_pattern, val["value"]
+                ):
+                    val["used"] = True
+                    return val["value"]
         return value
-
 
     def func_account_type(self):
         is_cap = False

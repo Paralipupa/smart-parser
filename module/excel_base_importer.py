@@ -87,12 +87,6 @@ class ExcelBaseImporter:
         self.is_event = False
         self.row = 0
         self.team_index = 0
-        _Func: Func = Func(
-            self._parameters, self._dictionary, self._column_names, self.is_hash, self
-        )
-        self.func = _Func.func
-        self.func_id = _Func.func_id
-        self.func_inn = _Func.func_inn
 
         self.__init_page()
 
@@ -1142,12 +1136,14 @@ class ExcelBaseImporter:
                 param = {"value": "key" + doc[fld], "func": "hash"}
                 param["key"] = self.func(fld_param=param)
             elif regular_calc("^value", fld) or regular_calc("^__value", fld):
-                param["data"] = value
+                param["data"] = dict(value=value, used=False)
             else:
                 index_key = get_index_key(fld)
                 self._dictionary.setdefault(index_key, [])
-                if not value in self._dictionary[index_key]:
-                    self._dictionary[index_key].append(value)
+                if (
+                    not value in self._dictionary[index_key]
+                ):
+                    self._dictionary[index_key].append(dict(value=value, used=False))
             if param.get("key") and param.get("data"):
                 index_key = get_index_key(param["key"])
                 self._dictionary.setdefault(index_key, [])
@@ -1296,15 +1292,14 @@ class ExcelBaseImporter:
         self._collections.setdefault(name, {key: list()})
         self._collections[name].setdefault(key, list())
         self._collections[name][key].append(doc)
-        if (
-            (doc.get("key") or doc.get("__key") )
-            and (doc.get("value") or doc.get("__value") )
+        if (doc.get("key") or doc.get("__key")) and (
+            doc.get("value") or doc.get("__value")
         ):
-        # if (
-        #     self.__get_doc_type(name) == "dictionary"
-        #     and (doc.get("key") or doc.get("__key") )
-        #     and (doc.get("value") or doc.get("__value") )
-        # ):
+            # if (
+            #     self.__get_doc_type(name) == "dictionary"
+            #     and (doc.get("key") or doc.get("__key") )
+            #     and (doc.get("value") or doc.get("__value") )
+            # ):
             self.__build_global_dictionary(doc)
         return
 
@@ -1656,7 +1651,9 @@ class ExcelBaseImporter:
                 await writer_head.writeheader()
             writer_body = AsyncWriter(f)
             for rec in records:
-                await writer_body.writerow([x for key, x in rec.items() if key[:2] != "__"])
+                await writer_body.writerow(
+                    [x for key, x in rec.items() if key[:2] != "__"]
+                )
 
     async def write_collections_async(
         self,
@@ -1856,7 +1853,7 @@ class ExcelBaseImporter:
 
     def __get_period_from_file_name(self):
         comp = re.compile(
-            f"(?:01|02|03|04|05|06|07|08|09|10|11|12)[.,_\s]?(?:202[0-9]|[2,3][0-9])"
+            r"(?:01|02|03|04|05|06|07|08|09|10|11|12)[.,_\s]?(?:202[0-9]|[2,3][0-9])"
         )
         period = comp.findall(self._parameters["filename"]["value"][0])
         if period:
@@ -2045,6 +2042,9 @@ class ExcelBaseImporter:
         else:
             return self._config._documents
 
+    def __init_dictionary(self, d: dict):
+        d["used"] = False
+
     def __init_data(self):
         self._col_start = 0
         self.colontitul["head"] = list()
@@ -2055,8 +2055,19 @@ class ExcelBaseImporter:
             col["active"] = False
         self._column_names = dict()
         self._teams = OrderedDict()
-        # self._teams = list()
         self._teams_ref = OrderedDict()
+
+        _ = [
+            list(map(self.__init_dictionary, value))
+            for value in self._dictionary.values()
+        ]
+
+        _Func: Func = Func(
+            self._parameters, self._dictionary, self._column_names, self.is_hash, self
+        )
+        self.func = _Func.func
+        self.func_id = _Func.func_id
+        self.func_inn = _Func.func_inn
 
     def add_warning(self, text: str):
         self.config_files[self.index_config - 1]["warning"].append(text)
