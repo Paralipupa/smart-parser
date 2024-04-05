@@ -89,7 +89,7 @@ def sorted_lines(lines: list) -> list:
 
 
 def get_param_anchor(x: str) -> Tuple[str, list]:
-    anchor = re.findall("{{.+}}", x)
+    anchor = re.findall("{{.+?}}", x)
     if anchor:
         # проверяем наличие "якоря"
         x = x.replace(anchor[0], "")
@@ -98,7 +98,7 @@ def get_param_anchor(x: str) -> Tuple[str, list]:
 
 
 def get_param_offset(x: str) -> Tuple[str, list]:
-    param_off = re.findall("{offset{.+\}}", x)
+    param_off = re.findall("{offset{.+?\}}", x)
     if param_off:
         x = x.replace(param_off[0], "")
         param_off[0] = param_off[0].replace("{offset{", "").replace("}}", "")
@@ -106,7 +106,7 @@ def get_param_offset(x: str) -> Tuple[str, list]:
 
 
 def get_param_function(x: str) -> Tuple[str, list]:
-    param_func = re.findall("{func{.+}}", x)
+    param_func = re.findall("{func{.+?}}", x)
     if param_func:
         x = x.replace(param_func[0], "")
         param_func[0] = param_func[0].replace("{func{", "").replace("}}", "")
@@ -114,7 +114,7 @@ def get_param_function(x: str) -> Tuple[str, list]:
 
 
 def get_param_function_is_no_return(x: str) -> Tuple[str, list]:
-    param_func_is_no = re.findall("{func_no{.+}}", x)
+    param_func_is_no = re.findall("{func_no{.+?}}", x)
     if param_func_is_no:
         x = x.replace(param_func_is_no[0], "")
         param_func_is_no[0] = (
@@ -124,7 +124,7 @@ def get_param_function_is_no_return(x: str) -> Tuple[str, list]:
 
 
 def get_param_type(x: str) -> Tuple[str, list]:
-    param_type = re.findall("{type{.+}}", x)
+    param_type = re.findall("{type{.+?}}", x)
     if param_type:
         x = x.replace(param_type[0], "")
         param_type[0] = param_type[0].replace("{type{", "").replace("}}", "")

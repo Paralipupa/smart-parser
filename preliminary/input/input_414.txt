@@ -16,7 +16,10 @@ pattern_address:(?<=ОСВ )(?:.)+(?= c )
 pattern_ЛС:^[0-9]{13}$
 pattern_ЛС:^(?![0-9])[А-Яа-яЁё"«»-]+\s["«»А-Яа-яЁё-]+
 
-0:Лицевой счет;лицевой счёт;{{+0;+1;Ф[.]И[.]О[.]}}
+0:^Лицевой;{{+0;+1;Ф[.]И[.]О[.]}}
+0:@account_number_accounts::[0-9]+-?[A-Za-zА-Яа-я]?
+0:@account_identifier::[0-9]+-?[A-Za-zА-Яа-я]?
+0:@account_type{func{account_type}}
 0:Сальдо Вх.@credit{type{float}}{func{round2}}::*currency
 0:Начисление;Дебет@bill_value{type{float}}{func{round2}}::*currency
 0:Оплачено;Кредит@payment_value{type{float}}{func{round2}}::*currency
@@ -25,7 +28,5 @@ pattern_ЛС:^(?![0-9])[А-Яа-яЁё"«»-]+\s["«»А-Яа-яЁё-]+
 0:Начислено	Квартира;№ пом.;№ кв.@room_number	Проживает@living_person_number
 0:>Площадь;Площадь, м2@total_square{type{float}}{func{round2}}
 0:Прописано
-0:Лицевой счет@account_number_accounts::[0-9]+-?[A-Za-zА-Яа-я]?@account_identifier::[0-9]+-?[A-Za-zА-Яа-я]?
-0:Лицевой счет;лицевой счёт:@account_type{func{account_type}}
 
 1:ПениКапремонт;Пени{{+0;-1;кап}}
