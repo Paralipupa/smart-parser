@@ -35,9 +35,10 @@ def get_reg(pattern: str) -> str:
         if patt and not patt[0] in ("+-("):
             patt = patt.replace("\\", "\\\\").replace("/", "\/")
             patt = patt.replace("[", "\[").replace("]", "\]")
-            patt = patt.replace("(", "\(").replace(")", "\)")
-            patt = patt.replace(".", "[.]").replace("*", "[*]")
-            patt = patt.replace("+", "[+]")
+            if not "(?" in patt:
+                patt = patt.replace("(", "\(").replace(")", "\)")
+                patt = patt.replace(".", "[.]").replace("*", "[*]")
+                patt = patt.replace("+", "[+]")
         new_pattern += patt + ";"
     new_pattern = new_pattern.strip(";").strip()
     return (
