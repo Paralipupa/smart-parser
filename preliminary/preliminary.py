@@ -96,7 +96,7 @@ def read_from_text(file_name: str) -> list:
                 elif line[:6] == 'field:':
                     k = line.find(':')
                     p = line[k+1:]
-                    l = [{'name': x.strip(), 'is_unique': True, 'is_optional': False if len(
+                    l = [{'name': x.strip(), 'is_unique': True, 'is_optional': True if len(
                         lines['fields']) == 0 else True} for x in line[k+1:].split('\t')
                         if x.strip() != '' and not any(y for y in lines['fields'] if y['name'].strip() == x.strip())]
                     lines['fields'].extend(l)

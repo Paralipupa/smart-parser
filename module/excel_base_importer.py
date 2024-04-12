@@ -1046,7 +1046,7 @@ class ExcelBaseImporter:
             else:
                 try:
                     value += get_value(val[POS_VALUE], pattern, type_fld)
-                    if value and "~" in pattern:
+                    if (value.strip() if isinstance(value,str) else value) and "~" in pattern:
                         break
                 except Exception as ex:
                     pass
@@ -1638,8 +1638,7 @@ class ExcelBaseImporter:
     async def write_csv_async(self, filename: str, records: list):
 
         if not os.path.exists(filename):
-            # names = [x for x in records[0].keys()]
-            names = [x for x in records[0].keys() if x[:2] != "__"]
+            names = [x for x in records[0].keys()]
         else:
             names = []
 
@@ -1652,7 +1651,7 @@ class ExcelBaseImporter:
             writer_body = AsyncWriter(f)
             for rec in records:
                 await writer_body.writerow(
-                    [x for key, x in rec.items() if key[:2] != "__"]
+                    [x for key, x in rec.items()]
                 )
 
     async def write_collections_async(

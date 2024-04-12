@@ -38,6 +38,7 @@ class UnionData:
             "credit",
             "saldo",
         }
+        self.dict_ids = {}
 
     def start(self) -> list:
         save_directories = dict()
@@ -74,12 +75,12 @@ class UnionData:
                         key = self.__write(inn, id_period, file_data)
                         save_directories[key] = self.path_input
         self.__make_archive(save_directories)
-        if os.path.isdir(self.path_input):
-            shutil.rmtree(self.path_input)
-            if os.path.isfile(
-                os.path.join(self.path_output, self.file_output + ".log")
-            ):
-                os.remove(os.path.join(self.path_output, self.file_output + ".log"))
+        # if os.path.isdir(self.path_input):
+        #     shutil.rmtree(self.path_input)
+        #     if os.path.isfile(
+        #         os.path.join(self.path_output, self.file_output + ".log")
+        #     ):
+        #         os.remove(os.path.join(self.path_output, self.file_output + ".log"))
         return self.file_output
 
     def __get_data_files(self, files: list) -> dict:
@@ -167,7 +168,23 @@ class UnionData:
         file_name = pathlib.Path(self.path_input, file_name)
         try:
             data = get_list_dict_from_csv(file_name)
-            keys = [x["internal_id"] + x.get("account_type", "") for x in data]
+            self.dict_ids |= {
+                x["internal_id"]: x["__internal_id"]
+                for x in data
+                if x.get("__internal_id")
+            }
+            keys = [
+                (
+                    self.dict_ids.get(x["internal_id"])
+                    if self.dict_ids.get(x["internal_id"])
+                    else x["internal_id"] + x.get("account_type", "")
+                )
+                for x in data
+            ]
+            if self.dict_ids:
+                for dic in data:
+                    if dic.get('internal_id') and self.dict_ids.get(dic.get('internal_id')):
+                        dic['internal_id'] = self.dict_ids.get(dic.get('internal_id'))
             self.__check_unique(file_name, keys)
             data = dict(zip(keys, data))
         except Exception as ex:
@@ -227,8 +244,6 @@ class UnionData:
                 if (len(valA.strip()) == 0) or (
                     len(valA.replace(" ", "")) < len(valB.replace(" ", ""))
                 ):
-                    # if a[key]:
-                    #     logger.debug(f"{key_record} {key}:{a[key]} = {valB}")
                     a[key] = valB
         return a
 
@@ -244,13 +259,15 @@ class UnionData:
             jstr = json.dumps(data, indent=4, ensure_ascii=False)
             file.write(jstr)
         with open(f"{file_name}.csv", mode="w", encoding=ENCONING) as file:
-            names = [x for x in data[0].keys()]
+            names = [x for x in data[0].keys() if x[:2] != "__"]
             file_writer = csv.DictWriter(
                 file, delimiter=";", lineterminator="\r", fieldnames=names
             )
             file_writer.writeheader()
             for rec in data:
-                file_writer.writerow(rec)
+                file_writer.writerow(
+                    {key: x for key, x in rec.items() if key[:2] != "__"}
+                )
         return key
 
     @fatal_error
@@ -277,7 +294,9 @@ class UnionData:
                     )
                     if name:
                         if file.endswith(".csv") or file.endswith(".log"):
-                            if not (file == "pu.csv") or ([x for x in files if x == "puv.csv"]):
+                            if not (file == "pu.csv") or (
+                                [x for x in files if x == "puv.csv"]
+                            ):
                                 arch_zip.write(
                                     os.path.join(folder, file),
                                     os.path.join(name[0], file),

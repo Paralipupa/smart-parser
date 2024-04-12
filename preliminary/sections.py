@@ -96,16 +96,19 @@ def write_section_fias(**kwargs):
 
 def write_section_address(**kwargs):
     __write_section_head(**kwargs)
-    if kwargs.get("lines")["dic"].get(f"{kwargs.get('sec_name')}"):
+    kwargs["sec_prefix"] = __get_sec_prefix(**kwargs)
+    if kwargs.get("lines")["dic"].get(
+        f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix','')}"
+    ):
         kwargs.get("file").write("pattern=.+\n")
-        col = kwargs.get("lines")["dic"][f"{kwargs.get('sec_name')}"][0]["col"]
+        col = kwargs.get("lines")["dic"][f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix','')}"][0]["col"]
         kwargs.get("file").write(f"col_config={col}\n")
         kwargs.get("file").write("row_data=0\n")
         if (
-            kwargs.get("lines")["dic"].get(f"{kwargs.get('sec_name')}")
-            and kwargs.get("lines")["dic"][f"{kwargs.get('sec_name')}"][0]["func"]
+            kwargs.get("lines")["dic"].get(f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix','')}")
+            and kwargs.get("lines")["dic"][f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix','')}"][0]["func"]
         ):
-            func = kwargs.get("lines")["dic"][f"{kwargs.get('sec_name')}"][0]["func"][0]
+            func = kwargs.get("lines")["dic"][f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix','')}"][0]["func"][0]
             kwargs.get("file").write(f"func={func}\n")
         elif kwargs.get("lines")["dic"].get("room_number"):
             kwargs.get("file").write(
@@ -565,7 +568,7 @@ def __write_sec_func(**kwargs):
         kwargs.get("file").write(
             f"func={func_ident}+{ident}{suffix}{spacerepl}{hash}{dictionary}\n"
         )
-        if kwargs.get("sec_func_pattern") and  __is_first_service(**kwargs):
+        if kwargs.get("sec_func_pattern") and __is_first_service(**kwargs):
             kwargs.get("file").write(f"func_pattern={kwargs.get('sec_func_pattern')}\n")
     elif __is_sec_as_service_name(**kwargs) and not current_service is None:
         if (
