@@ -161,7 +161,7 @@ def parsing_lines(
                 file.write(
                     f'pattern{"_" if j >0 else ""}{str(j-1) if j >0 else ""}={x}\n'
                 )
-                if not any([y for y in patts if y == x]):
+                if not any([y for y in patts if re.sub(r"\(|\)|\+|-|\^|\$|\\|,|\s", "", y) == col_off]):
                     patts.append(x)
                 else:
                     is_duplicate = True
