@@ -75,12 +75,12 @@ class UnionData:
                         key = self.__write(inn, id_period, file_data)
                         save_directories[key] = self.path_input
         self.__make_archive(save_directories)
-        if os.path.isdir(self.path_input):
-            shutil.rmtree(self.path_input)
-            if os.path.isfile(
-                os.path.join(self.path_output, self.file_output + ".log")
-            ):
-                os.remove(os.path.join(self.path_output, self.file_output + ".log"))
+        # if os.path.isdir(self.path_input):
+        #     shutil.rmtree(self.path_input)
+        #     if os.path.isfile(
+        #         os.path.join(self.path_output, self.file_output + ".log")
+        #     ):
+        #         os.remove(os.path.join(self.path_output, self.file_output + ".log"))
         return self.file_output
 
     def __get_data_files(self, files: list) -> dict:
@@ -180,9 +180,7 @@ class UnionData:
 
             for key in keys_redefine:
                 self.dict_ids |= {
-                    x[key[2:]]: x[key]
-                    for x in data
-                    if x.get(key,"").strip()
+                    x[key[2:]]: x[key] for x in data if x.get(key, "").strip()
                 }
             keys = [
                 (
@@ -196,9 +194,7 @@ class UnionData:
                 for dic in data:
                     for key in keys_redefine:
                         key_old = key[2:]
-                        if dic.get(key_old) and self.dict_ids.get(
-                            dic.get(key_old) and self.dict_ids.get(dic.get(key_old))
-                        ):
+                        if dic.get(key_old) and self.dict_ids.get(dic.get(key_old)):
                             dic[key_old] = self.dict_ids.get(dic.get(key_old))
             self.__check_unique(file_name, keys)
             data = dict(zip(keys, data))

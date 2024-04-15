@@ -138,11 +138,13 @@ def write_section_address(**kwargs):
 def write_section_account_internal_id(**kwargs):
     __write_section_head(**kwargs)
     kwargs.get("file").write("row_data=0\n")
-    if kwargs.get("lines")["dic"].get(f"{kwargs.get('sec_name')}"):
-        col = kwargs.get("lines")["dic"][f"{kwargs.get('sec_name')}"][0]["col"]
+    kwargs["sec_prefix"] = __get_sec_prefix(**kwargs)
+    
+    if kwargs.get("lines")["dic"].get(f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix','')}"):
+        col = kwargs.get("lines")["dic"][f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix','')}"][0]["col"]
         kwargs.get("file").write(f"col_config={col}\n")
-        if kwargs.get("lines")["dic"]["account_internal_id"][0]["pattern"]:
-            pattern = kwargs.get("lines")["dic"]["account_internal_id"][0]["pattern"]
+        if kwargs.get("lines")["dic"][f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix','')}"][0]["pattern"]:
+            pattern = kwargs.get("lines")["dic"][f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix','')}"][0]["pattern"]
             kwargs.get("file").write(f"pattern={pattern}\n")
         else:
             kwargs.get("file").write("pattern=.+\n")
@@ -151,14 +153,13 @@ def write_section_account_internal_id(**kwargs):
         kwargs.get("file").write("col_config=0\n")
 
     if (
-        kwargs.get("lines")["dic"].get(f"{kwargs.get('sec_name')}")
-        and kwargs.get("lines")["dic"][f"{kwargs.get('sec_name')}"][0]["func"]
+        kwargs.get("lines")["dic"].get(f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix','')}")
+        and kwargs.get("lines")["dic"][f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix','')}"][0]["func"]
     ):
-        func = kwargs.get("lines")["dic"][f"{kwargs.get('sec_name')}"][0]["func"][0]
+        func = kwargs.get("lines")["dic"][f"{kwargs.get('sec_name')}{kwargs.get('sec_prefix','')}"][0]["func"][0]
         kwargs.get("file").write(f"func={func}\n")
     else:
         kwargs.get("file").write("func=spacerepl,hash\n")
-    # kwargs.get("file").write("\n")
     return
 
 
@@ -539,6 +540,8 @@ def __write_sec_type(**kwargs):
             else:
                 kwargs.get("file").write(f"type={oft}\n")
 
+def __get_func(func, **kwargs):
+    return func
 
 def __write_sec_func(**kwargs):
     current_service = __get_current_service(**kwargs)
@@ -548,7 +551,7 @@ def __write_sec_func(**kwargs):
     dictionary = ",dictionary" if kwargs.get("sec_is_func_dictionary") else ""
     spacerepl = ",spacerepl" if not kwargs.get("sec_is_func_dictionary") else ""
     if fld_param and fld_param[0]["func"] and __is_first_service(**kwargs):
-        func = fld_param[0]["func"][0]
+        func = __get_func(fld_param[0]["func"][0], **kwargs)
         kwargs.get("file").write(f"func={func}\n")
     elif kwargs.get("sec_func") and __is_first_service(**kwargs):
         if kwargs.get("sec_func")[0] != "!":
