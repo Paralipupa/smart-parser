@@ -21,7 +21,7 @@ def write_other_fields(**kwargs):
                 kwargs.get("file").write(f"col_config={fld['col']}\n")
                 kwargs.get("file").write("row_data=0\n")
                 if fld.get("func"):
-                    kwargs.get("file").write(f"func=fld['func'][0]\n")
+                    kwargs.get("file").write(f"func={fld['func'][0]}\n")
                 # kwargs.get("file").write("invisible=1\n")
                 # kwargs.get("file").write("func_is_no_return=true\n")
 

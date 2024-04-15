@@ -75,12 +75,12 @@ class UnionData:
                         key = self.__write(inn, id_period, file_data)
                         save_directories[key] = self.path_input
         self.__make_archive(save_directories)
-        # if os.path.isdir(self.path_input):
-        #     shutil.rmtree(self.path_input)
-        #     if os.path.isfile(
-        #         os.path.join(self.path_output, self.file_output + ".log")
-        #     ):
-        #         os.remove(os.path.join(self.path_output, self.file_output + ".log"))
+        if os.path.isdir(self.path_input):
+            shutil.rmtree(self.path_input)
+            if os.path.isfile(
+                os.path.join(self.path_output, self.file_output + ".log")
+            ):
+                os.remove(os.path.join(self.path_output, self.file_output + ".log"))
         return self.file_output
 
     def __get_data_files(self, files: list) -> dict:
@@ -105,9 +105,6 @@ class UnionData:
                 name: list = re.findall(
                     r"(?<=[0-9]{1}_)" + fn + r"(?=\.)", file, re.IGNORECASE
                 )
-                # name: list = re.findall(
-                #     r"(?<=[0-9]{1}_)" + fn + r"(?=\.json)", file, re.IGNORECASE
-                # )
                 if name:
                     inn: list = re.findall(r"^[0-9]{8,10}(?=_)", file, re.IGNORECASE)
                     if inn and inn[0] == "0000000000":
@@ -162,17 +159,31 @@ class UnionData:
         finally:
             return data
 
+    def __redefine_data(self, x: dict, keys_redefine: dict):
+        for key in keys_redefine:
+            key_old = key[2:]
+            if x[key]:
+                x[key_old] = x[key]
+        return x
+
     @fatal_error
     def __get_data(self, file_name: str) -> dict:
         data = dict()
         file_name = pathlib.Path(self.path_input, file_name)
         try:
             data = get_list_dict_from_csv(file_name)
-            self.dict_ids |= {
-                x["internal_id"]: x["__internal_id"]
-                for x in data
-                if x.get("__internal_id")
-            }
+            keys_redefine = [
+                key
+                for key in data[0].keys()
+                if key[:2] == "__" and data[0].get(key[2:])
+            ]
+
+            for key in keys_redefine:
+                self.dict_ids |= {
+                    x[key[2:]]: x[key]
+                    for x in data
+                    if x.get(key,"").strip()
+                }
             keys = [
                 (
                     self.dict_ids.get(x["internal_id"])
@@ -183,8 +194,12 @@ class UnionData:
             ]
             if self.dict_ids:
                 for dic in data:
-                    if dic.get('internal_id') and self.dict_ids.get(dic.get('internal_id')):
-                        dic['internal_id'] = self.dict_ids.get(dic.get('internal_id'))
+                    for key in keys_redefine:
+                        key_old = key[2:]
+                        if dic.get(key_old) and self.dict_ids.get(
+                            dic.get(key_old) and self.dict_ids.get(dic.get(key_old))
+                        ):
+                            dic[key_old] = self.dict_ids.get(dic.get(key_old))
             self.__check_unique(file_name, keys)
             data = dict(zip(keys, data))
         except Exception as ex:
