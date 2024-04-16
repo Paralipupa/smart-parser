@@ -194,7 +194,7 @@ class UnionData:
                 for dic in data:
                     for key in keys_redefine:
                         key_old = key[2:]
-                        if dic.get(key_old) and self.dict_ids.get(dic.get(key_old)):
+                        if dic.get(key_old) is not None and self.dict_ids.get(dic.get(key_old)):
                             dic[key_old] = self.dict_ids.get(dic.get(key_old))
             self.__check_unique(file_name, keys)
             data = dict(zip(keys, data))
