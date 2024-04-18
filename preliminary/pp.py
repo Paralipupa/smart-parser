@@ -51,7 +51,21 @@ def pp(lines: list, path: str):
             )
         )
 
-        write_section_account_internal_id(
+        # write_section_account_internal_id(
+        #     **dict(
+        #         file=file,
+        #         lines=lines,
+        #         sec_type=doc_type,
+        #         sec_number=2,
+        #         sec_title="Внутренний идентификатор ЛС",
+        #         sec_name="account_internal_id",
+        #         sec_func=(
+        #             ("id," if lines["param"].get("pattern_id_length") else "")
+        #             + "spacerepl,hash"
+        #         ),
+        #     )
+        # )
+        write_section(
             **dict(
                 file=file,
                 lines=lines,
@@ -59,6 +73,11 @@ def pp(lines: list, path: str):
                 sec_number=2,
                 sec_title="Внутренний идентификатор ЛС",
                 sec_name="account_internal_id",
+                sec_func=(
+                    ("id," if lines["param"].get("pattern_id_length") else "")
+                    + "spacerepl,hash"
+                ),
+                sec_is_service=False,
             )
         )
 

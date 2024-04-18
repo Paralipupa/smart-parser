@@ -53,7 +53,10 @@ def accounts(lines: list, path: str) -> str:
                 sec_number=2,
                 sec_title="Внутренний идентификатор ЛС",
                 sec_name="internal_id",
-                sec_func="spacerepl,hash",
+                sec_func=(
+                    ("id," if lines["param"].get("pattern_id_length") else "")
+                    + "spacerepl,hash"
+                ),
                 sec_is_service=False,
             )
         )

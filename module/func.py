@@ -42,6 +42,7 @@ class Func:
             "account_type": self.func_account_type,
             "fillzero9": self.func_fillzero9,
             "check_bank_accounts": self.func_bank_accounts,
+            "cap_rep": self.func_cap_rep,
         }
         self._current_value = list()
         self._current_id = ""
@@ -283,7 +284,7 @@ class Func:
     def func_id(self, current_id=None):
         d = self._parameters["period"]["value"][0]
         id = str(self._current_id).strip() if current_id is None else current_id
-        if self._parameters.get("id_length") is not None:
+        if id and self._parameters.get("id_length") is not None:
             id = id.rjust(int(self._parameters["id_length"]["value"][0]), "0")
         return f"{id}_{d[3:5]}{d[6:]}"  # _mmyyyy
 
@@ -384,7 +385,9 @@ class Func:
                     )
                     != 0
                     and parrent_account.search(
-                        self._parameters.get("account_number", {"value": [""]})["value"][-1]
+                        self._parameters.get("account_number", {"value": [""]})[
+                            "value"
+                        ][-1]
                     )
                     else ""
                 )
@@ -396,7 +399,9 @@ class Func:
                     )
                     != 0
                     and parrent_account.search(
-                        self._parameters.get("account_number", {"value": [""]})["value"][0]
+                        self._parameters.get("account_number", {"value": [""]})[
+                            "value"
+                        ][0]
                     )
                     else ""
                 )
@@ -499,3 +504,6 @@ class Func:
                 mess = "Конфликт в расчетном счете по капитальному ремонту"
                 self.parent.add_warning(mess)
         return ""
+
+    def func_cap_rep(self):
+        return "1" if str(self._current_value[-1]).strip() == "cr" else ""

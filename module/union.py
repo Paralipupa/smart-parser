@@ -67,7 +67,7 @@ class UnionData:
                                 elif record.get("account_type") == "":
                                     record["account_type"] = "uo"
                             file_data[key_record] = record
-                    if id_period.find("accounts") != -1:
+                    if re.search("^accounts",id_period):
                         is_separate_account_type = self.__write_account(
                             inn, id_period, file_data, save_directories
                         )
@@ -75,12 +75,17 @@ class UnionData:
                         key = self.__write(inn, id_period, file_data)
                         save_directories[key] = self.path_input
         self.__make_archive(save_directories)
-        # if os.path.isdir(self.path_input):
-        #     shutil.rmtree(self.path_input)
-        #     if os.path.isfile(
-        #         os.path.join(self.path_output, self.file_output + ".log")
-        #     ):
-        #         os.remove(os.path.join(self.path_output, self.file_output + ".log"))
+        if os.path.isdir(self.path_input):
+            shutil.rmtree(self.path_input)
+            if os.path.isfile(
+                os.path.join(self.path_output, self.file_output + ".log")
+            ):
+                os.remove(os.path.join(self.path_output, self.file_output + ".log"))
+        print_message(
+            "               Обработка завершена                                                 \r",
+            end="",
+            flush=True,
+        )
         return self.file_output
 
     def __get_data_files(self, files: list) -> dict:
@@ -175,7 +180,7 @@ class UnionData:
             keys_redefine = [
                 key
                 for key in data[0].keys()
-                if key[:2] == "__" and data[0].get(key[2:])
+                if key[:2] == "__" and data[0].get(key[2:]) is not None
             ]
 
             for key in keys_redefine:
