@@ -87,12 +87,6 @@ class ExcelBaseImporter:
         self.is_event = False
         self.row = 0
         self.team_index = 0
-        _Func: Func = Func(
-            self._parameters, self._dictionary, self._column_names, self.is_hash, self
-        )
-        self.func = _Func.func
-        self.func_id = _Func.func_id
-        self.func_inn = _Func.func_inn
 
         self.__init_page()
 
@@ -822,20 +816,19 @@ class ExcelBaseImporter:
 
     @warning_error
     def __get_condition_data(self, values: list, pattern: str) -> str:
+        """формирование идентификатора по приоритету шаблонов"""
         result = ""
-        for val in values:
-            if val["row"] == 0:
-                k = pattern.find("||")
-                if k != -1:
-                    patt = pattern[:k] if result == "" else pattern
-                else:
-                    patt = pattern
-                value = regular_calc(patt, val["value"])
-                if value == None:
-                    if result == "":
-                        return ""
-                else:
-                    result += value
+        values_tmp = [dict(value=x["value"], found=False) for x in values]
+        patterns_tmp = [x for x in pattern.split("||") if x]
+        for pattern in patterns_tmp:
+            for val in values_tmp:
+                if val["found"] is False:
+                    value = regular_calc(pattern, val["value"])
+                    if value is not None:
+                        result += value
+                        val["found"] = True
+            if not result:
+                return ""
         return result
 
     def __get_data_xls(self):
@@ -1053,6 +1046,10 @@ class ExcelBaseImporter:
             else:
                 try:
                     value += get_value(val[POS_VALUE], pattern, type_fld)
+                    if (
+                        value.strip() if isinstance(value, str) else value
+                    ) and "~" in pattern:
+                        break
                 except Exception as ex:
                     pass
         if not (type_fld == "float" or type_fld == "double" or type_fld == "int"):
@@ -1137,16 +1134,16 @@ class ExcelBaseImporter:
     def __build_global_dictionary(self, doc: dict):
         param = {}
         for fld, value in doc.items():
-            if fld == "key":
-                param = {"value": "key" + doc["key"], "func": "hash"}
+            if (fld == "key") or (fld == "__key"):
+                param = {"value": "key" + doc[fld], "func": "hash"}
                 param["key"] = self.func(fld_param=param)
-            elif regular_calc("^value", fld):
-                param["data"] = value
+            elif regular_calc("^value", fld) or regular_calc("^__value", fld):
+                param["data"] = dict(value=value, used=False)
             else:
                 index_key = get_index_key(fld)
                 self._dictionary.setdefault(index_key, [])
                 if not value in self._dictionary[index_key]:
-                    self._dictionary[index_key].append(value)
+                    self._dictionary[index_key].append(dict(value=value, used=False))
             if param.get("key") and param.get("data"):
                 index_key = get_index_key(param["key"])
                 self._dictionary.setdefault(index_key, [])
@@ -1295,12 +1292,15 @@ class ExcelBaseImporter:
         self._collections.setdefault(name, {key: list()})
         self._collections[name].setdefault(key, list())
         self._collections[name][key].append(doc)
-        if (
-            self.__get_doc_type(name) == "dictionary"
-            and doc.get("key")
-            and doc.get("value")
-        ):
-            self.__build_global_dictionary(doc)
+        # if (doc.get("key") or doc.get("__key")) and (
+        #     doc.get("value") or doc.get("__value")
+        # ):
+        #     # if (
+        #     #     self.__get_doc_type(name) == "dictionary"
+        #     #     and (doc.get("key") or doc.get("__key") )
+        #     #     and (doc.get("value") or doc.get("__value") )
+        #     # ):
+        #     self.__build_global_dictionary(doc)
         return
 
     # Формирование документа из части исходной таблицы - team (отдельной области или иерархии)
@@ -1461,71 +1461,28 @@ class ExcelBaseImporter:
                         )
                         or (
                             isinstance(fld_record["value"], str)
-                            and (fld_record["type"] == "float" or fld_record["offset_type"] == "float" )
+                            and (
+                                fld_record["type"] == "float"
+                                or fld_record["offset_type"] == "float"
+                            )
                             and fld_record["value"] == "0.0"
                         )
                         else str(fld_record["value"]).strip()
                     )
                     if fld_record["value_rows"]:
                         fld_record["value_rows"]["value"] = value
-                    doc[fld_record["name"]].append(
-                        {
-                            "row": len(doc[fld_record["name"]]),
-                            "col": col[0],
-                            "value": value,
-                            "value_rows": fld_record["value_rows"],
-                        }
-                    )
+                    if not fld_record["invisible"]:
+                        doc[fld_record["name"]].append(
+                            {
+                                "row": len(doc[fld_record["name"]]),
+                                "col": col[0],
+                                "value": value,
+                                "value_rows": fld_record["value_rows"],
+                            }
+                        )
         except Exception as ex:
             logger.error(f"{ex}")
         return doc
-
-# Разбиваем данные документа по-строчно
-    def __document_split_one_line_2(self, doc: dict, doc_param: dict) -> None:
-        try:
-            name = doc_param["name"]
-            # для каждого поля свой индекс прохода
-            index = {x: 0 for x in doc.keys()}
-            rows = [x[-1]["row"] for x in doc.values() if x]
-            counts = [len(x) for x in doc.values() if x]
-            rows = rows + counts
-            rows_count = max(rows) if rows else 0
-            rows_required = self.__get_required_rows(name, doc)
-            requeired_names = set(doc_param.get("required_fields","").split(","))
-            rows_exclude = [
-                x[0] if x[0] >= 0 else rows_count + 1 + x[0]
-                for x in doc_param["rows_exclude"]
-            ]
-            row = 0
-            elem_default = dict()
-            while row < rows_count:
-                elem = dict()
-                names = list()
-                is_empty = True
-                for key, values in doc.items():
-                    value = [x["value_rows"]["value"] for x in values if x["value_rows"] and x["value_rows"]["row"][POS_VALUE] == row]
-                    value = value[0] if value else None
-                    if value:
-                        elem[key] = value
-                        elem_default.setdefault(key, value)
-                        names.append(key)
-                        is_empty = False
-                    else:
-                        elem[key] = elem_default.get(key,"")
-                if (
-                    not is_empty
-                    and not (row in rows_exclude)
-                    and (not doc_param["required_fields"] or set(names) & requeired_names)
-                ):
-                    self.__append_to_collection(name, elem)
-                else:
-                    pass
-                row += 1
-
-        except Exception as ex:
-            logger.error(f"{ex}")
-        return
-
 
     # Разбиваем данные документа по-строчно
     def __document_split_one_line(self, doc: dict, doc_param: dict) -> None:
@@ -1571,6 +1528,10 @@ class ExcelBaseImporter:
                     self.__append_to_collection(name, elem)
                 else:
                     pass
+                if (elem.get("key") or elem.get("__key")) and (
+                    elem.get("value") or elem.get("__value")
+                ):
+                    self.__build_global_dictionary(elem)
         except Exception as ex:
             logger.error(f"{ex}")
         return
@@ -1641,7 +1602,7 @@ class ExcelBaseImporter:
                 await writer_head.writeheader()
             writer_body = AsyncWriter(f)
             for rec in records:
-                await writer_body.writerow(rec.values())
+                await writer_body.writerow([x for key, x in rec.items()])
 
     async def write_collections_async(
         self,
@@ -1841,7 +1802,7 @@ class ExcelBaseImporter:
 
     def __get_period_from_file_name(self):
         comp = re.compile(
-            f"(?:01|02|03|04|05|06|07|08|09|10|11|12)[.,_\s]?(?:202[0-9]|[2,3][0-9])"
+            r"(?:01|02|03|04|05|06|07|08|09|10|11|12)[.,_\s]?(?:202[0-9]|[2,3][0-9])"
         )
         period = comp.findall(self._parameters["filename"]["value"][0])
         if period:
@@ -2030,6 +1991,9 @@ class ExcelBaseImporter:
         else:
             return self._config._documents
 
+    def __init_dictionary(self, d: dict):
+        d["used"] = False
+
     def __init_data(self):
         self._col_start = 0
         self.colontitul["head"] = list()
@@ -2040,8 +2004,19 @@ class ExcelBaseImporter:
             col["active"] = False
         self._column_names = dict()
         self._teams = OrderedDict()
-        # self._teams = list()
         self._teams_ref = OrderedDict()
+
+        _ = [
+            list(map(self.__init_dictionary, value))
+            for value in self._dictionary.values()
+        ]
+
+        _Func: Func = Func(
+            self._parameters, self._dictionary, self._column_names, self.is_hash, self
+        )
+        self.func = _Func.func
+        self.func_id = _Func.func_id
+        self.func_inn = _Func.func_inn
 
     def add_warning(self, text: str):
         self.config_files[self.index_config - 1]["warning"].append(text)

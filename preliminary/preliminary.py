@@ -33,7 +33,11 @@ def read_from_config(file_name: str) -> list:
         i += 1
     return lines
 
-
+def add_to_previous(lines:list, text: str):
+    if len(lines) != 0:
+        lines[-1]["name"] += text.strip()
+    pass
+    
 def read_from_text(file_name: str) -> list:
     # 0 Данные пользователя и ОСВ (accounts, pp)
     # 1 Начисление платежей  (pp_charges)
@@ -48,11 +52,14 @@ def read_from_text(file_name: str) -> list:
         for line in file:
             if line[0] != ';':
                 if line[:2] == '0:':
-                    l = [{'name': x, 'is_unique': True, 'is_optional': False if len(
-                        lines['0']) == 0 else True} for x in line[2:].split('\t')
-                        if x.strip() != '' and not any(y for y in lines['9'] if y['name'].strip() == x.strip())]
-                    lines['0'].extend(l)
-                    lines['9'].extend(l)
+                    if line[2:3] == "@":
+                        add_to_previous(lines["0"], line[2:])
+                    else:
+                        l = [{'name': x.strip(), 'is_unique': True, 'is_optional': False if len(
+                            lines['0']) == 0 else True} for x in line[2:].split('\t')
+                            if x.strip() != '' and not any(y for y in lines['9'] if y['name'].strip() == x.strip())]
+                        lines['0'].extend(l)
+                        lines['9'].extend(l)
                 elif line[:2] == '1:':
                     l = [{'name': x.strip(), 'is_unique': False, 'is_optional': True} for x in line[2:].split('\t')
                          if x.strip() != '' and not any(y for y in lines['9'] if y['name'].strip() == x.strip())]
@@ -86,6 +93,13 @@ def read_from_text(file_name: str) -> list:
                         p = line[:k]
                         lines['param'].setdefault(p, [])
                         lines['param'][p].append(line[len(p)+1:].strip())
+                elif line[:6] == 'field:':
+                    k = line.find(':')
+                    p = line[k+1:]
+                    l = [{'name': x.strip(), 'is_unique': False, 'is_optional': True if len(
+                        lines['fields']) == 0 else True} for x in line[k+1:].split('\t')
+                        if x.strip() != '' and not any(y for y in lines['fields'] if y['name'].strip() == x.strip())]
+                    lines['fields'].extend(l)
                 elif line[:9] == 'required_':
                     k = line.find(':')
                     if k > 9:

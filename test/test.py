@@ -12,6 +12,7 @@ from module.utils import get_extract_files
 import unittest
 from shutil import rmtree
 
+IS_HASH = True
 
 class TestGisConfig(unittest.TestCase):
     def __diff(self, path_new: str, path_old: str, files: list) -> list:
@@ -155,7 +156,7 @@ class TestGisConfig(unittest.TestCase):
     # --------------------------------------------------------------------------------------
     def test_01_comfort(self):
         self.parser.name = os.path.join(BASE_DIR, "test", "input", "comfort.zip")
-        self.parser.is_hash = False
+        self.parser.is_hash = IS_HASH
         self.parser.download_file = (
             f"comfort{'_no_hash' if self.parser.is_hash is False else ''}.zip"
         )
@@ -167,7 +168,7 @@ class TestGisConfig(unittest.TestCase):
 
     def test_02_druzhba(self):
         self.parser.name = os.path.join(BASE_DIR, "test", "input", "druzhba.zip")
-        self.parser.is_hash = False
+        self.parser.is_hash = IS_HASH
         self.parser.download_file = (
             f"druzhba{'_no_hash' if self.parser.is_hash is False else ''}.zip"
         )
@@ -178,7 +179,7 @@ class TestGisConfig(unittest.TestCase):
 
     def test_03_molod(self):
         self.parser.name = os.path.join(BASE_DIR, "test", "input", "molod.zip")
-        self.parser.is_hash = False
+        self.parser.is_hash = IS_HASH
         self.parser.download_file = (
             f"molod{'_no_hash' if self.parser.is_hash is False else ''}.zip"
         )
@@ -190,19 +191,19 @@ class TestGisConfig(unittest.TestCase):
 
     def test_04_t414(self):
         self.parser.name = os.path.join(BASE_DIR, "test", "input", "414.zip")
-        self.parser.is_hash = False
+        self.parser.is_hash = IS_HASH
         self.parser.download_file = (
             f"414{'_no_hash' if self.parser.is_hash is False else ''}.zip"
         )
         self.parser.inn = "7825455026"
-        self.parser.is_hash = False
+        self.parser.is_hash = IS_HASH
         self.__remove_download()
         self.parser.start()
         hash_origin, hash_download = self.__check()
         self.assertEqual(hash_origin, hash_download)
 
     def test_05_t93(self):
-        self.parser.is_hash = False
+        self.parser.is_hash = IS_HASH
         self.parser.name = os.path.join(BASE_DIR, "test", "input", "93.zip")
         self.parser.download_file = (
             f"93{'_no_hash' if self.parser.is_hash is False else ''}.zip"
@@ -214,7 +215,7 @@ class TestGisConfig(unittest.TestCase):
         self.assertEqual(hash_origin, hash_download)
 
     def test_10_gefest(self):
-        self.parser.is_hash = False
+        self.parser.is_hash = IS_HASH
         self.parser.name = os.path.join(BASE_DIR, "test", "input", "gefest.zip")
         self.parser.download_file = (
             f"gefest{'_no_hash' if self.parser.is_hash is False else ''}.zip"
@@ -232,7 +233,7 @@ class TestGisConfig(unittest.TestCase):
         self.assertEqual(hash_origin, hash_download)
 
     def test_11_semiluki(self):
-        self.parser.is_hash = False
+        self.parser.is_hash = IS_HASH
         self.parser.name = os.path.join(BASE_DIR, "test", "input", "semiluki.zip")
         self.parser.download_file = (
             f"semiluki{'_no_hash' if self.parser.is_hash is False else ''}.zip"
@@ -249,7 +250,7 @@ class TestGisConfig(unittest.TestCase):
         self.assertEqual(hash_origin, hash_download)
 
     def test_12_7802064509(self):
-        self.parser.is_hash = True
+        self.parser.is_hash = IS_HASH
         self.parser.name = os.path.join(BASE_DIR, "test", "input", "7802064509.zip")
         self.parser.download_file = (
             f"7802064509{'_no_hash' if self.parser.is_hash is False else ''}.zip"
@@ -268,7 +269,7 @@ class TestGisConfig(unittest.TestCase):
 
     def test_99_shustoff(self):
         self.parser.name = os.path.join(BASE_DIR, "test", "input", "shustoff.zip")
-        self.parser.is_hash = False
+        self.parser.is_hash = IS_HASH
         self.parser.inn = "5044110874"
         self.parser.download_file = (
             f"shustoff{'_no_hash' if self.parser.is_hash is False else ''}.zip"

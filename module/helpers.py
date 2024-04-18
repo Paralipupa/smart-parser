@@ -70,7 +70,7 @@ def print_message(msg: str, end: str = "\n", flush: bool = False) -> None:
 def regular_calc(pattern: str, value: str) -> str:
     try:
         result = re.search(
-            pattern.replace("||", "|"), value.replace("\n", "").strip(), re.IGNORECASE
+            pattern.replace("~","").replace("||", "|"), value.replace("\n", "").strip(), re.IGNORECASE
         )
         if result is None or result.group(0).find("error") != -1:
             return None
@@ -357,12 +357,16 @@ def hashit(s):
 
 
 def check_tarif(data: list) -> str:
-    comp = re.compile(r"[0-9]{1,9}(?:[\.,][0-9]{1,3})?")
+    comp = re.compile(r"[0-9-]{1,9}(?:[\.,][0-9]{1,3})?")
     mess = ""
-    for index, item in enumerate(data):
-        res = comp.findall(item)
-        if len(res) != 1:
-            mess += f"{index+1}: {item}\n"
+    try:
+        for index, item in enumerate(data):
+            res = comp.findall(item["value"])
+            if len(res) != 1:
+                mess += f"{index+1}: {item['value']}\n"
+    except Exception as ex:
+        mess = f"{ex}"
+        logger.error(mess)
     return mess
 
 

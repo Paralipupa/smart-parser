@@ -38,6 +38,7 @@ class UnionData:
             "credit",
             "saldo",
         }
+        self.dict_ids = {}
 
     def start(self) -> list:
         save_directories = dict()
@@ -66,7 +67,7 @@ class UnionData:
                                 elif record.get("account_type") == "":
                                     record["account_type"] = "uo"
                             file_data[key_record] = record
-                    if id_period.find("accounts") != -1:
+                    if re.search("^accounts",id_period):
                         is_separate_account_type = self.__write_account(
                             inn, id_period, file_data, save_directories
                         )
@@ -80,6 +81,11 @@ class UnionData:
                 os.path.join(self.path_output, self.file_output + ".log")
             ):
                 os.remove(os.path.join(self.path_output, self.file_output + ".log"))
+        print_message(
+            "               Обработка завершена                                                 \r",
+            end="",
+            flush=True,
+        )
         return self.file_output
 
     def __get_data_files(self, files: list) -> dict:
@@ -104,9 +110,6 @@ class UnionData:
                 name: list = re.findall(
                     r"(?<=[0-9]{1}_)" + fn + r"(?=\.)", file, re.IGNORECASE
                 )
-                # name: list = re.findall(
-                #     r"(?<=[0-9]{1}_)" + fn + r"(?=\.json)", file, re.IGNORECASE
-                # )
                 if name:
                     inn: list = re.findall(r"^[0-9]{8,10}(?=_)", file, re.IGNORECASE)
                     if inn and inn[0] == "0000000000":
@@ -161,13 +164,43 @@ class UnionData:
         finally:
             return data
 
+    def __redefine_data(self, x: dict, keys_redefine: dict):
+        for key in keys_redefine:
+            key_old = key[2:]
+            if x[key]:
+                x[key_old] = x[key]
+        return x
+
     @fatal_error
     def __get_data(self, file_name: str) -> dict:
         data = dict()
         file_name = pathlib.Path(self.path_input, file_name)
         try:
             data = get_list_dict_from_csv(file_name)
-            keys = [x["internal_id"] + x.get("account_type", "") for x in data]
+            keys_redefine = [
+                key
+                for key in data[0].keys()
+                if key[:2] == "__" and data[0].get(key[2:]) is not None
+            ]
+
+            for key in keys_redefine:
+                self.dict_ids |= {
+                    x[key[2:]]: x[key] for x in data if x.get(key, "").strip()
+                }
+            keys = [
+                (
+                    self.dict_ids.get(x["internal_id"])
+                    if self.dict_ids.get(x["internal_id"])
+                    else x["internal_id"] + x.get("account_type", "")
+                )
+                for x in data
+            ]
+            if self.dict_ids:
+                for dic in data:
+                    for key in keys_redefine:
+                        key_old = key[2:]
+                        if dic.get(key_old) is not None and self.dict_ids.get(dic.get(key_old)):
+                            dic[key_old] = self.dict_ids.get(dic.get(key_old))
             self.__check_unique(file_name, keys)
             data = dict(zip(keys, data))
         except Exception as ex:
@@ -227,8 +260,6 @@ class UnionData:
                 if (len(valA.strip()) == 0) or (
                     len(valA.replace(" ", "")) < len(valB.replace(" ", ""))
                 ):
-                    # if a[key]:
-                    #     logger.debug(f"{key_record} {key}:{a[key]} = {valB}")
                     a[key] = valB
         return a
 
@@ -244,13 +275,15 @@ class UnionData:
             jstr = json.dumps(data, indent=4, ensure_ascii=False)
             file.write(jstr)
         with open(f"{file_name}.csv", mode="w", encoding=ENCONING) as file:
-            names = [x for x in data[0].keys()]
+            names = [x for x in data[0].keys() if x[:2] != "__"]
             file_writer = csv.DictWriter(
                 file, delimiter=";", lineterminator="\r", fieldnames=names
             )
             file_writer.writeheader()
             for rec in data:
-                file_writer.writerow(rec)
+                file_writer.writerow(
+                    {key: x for key, x in rec.items() if key[:2] != "__"}
+                )
         return key
 
     @fatal_error
@@ -277,7 +310,9 @@ class UnionData:
                     )
                     if name:
                         if file.endswith(".csv") or file.endswith(".log"):
-                            if not (file == "pu.csv") or ([x for x in files if x == "puv.csv"]):
+                            if not (file == "pu.csv") or (
+                                [x for x in files if x == "puv.csv"]
+                            ):
                                 arch_zip.write(
                                     os.path.join(folder, file),
                                     os.path.join(name[0], file),

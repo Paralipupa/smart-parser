@@ -14,6 +14,7 @@ def set_lines() -> list:
         "9": [],
         "param": {},
         "dic": {},
+        "fields": [],
         "required": {},
     }
 
@@ -29,15 +30,16 @@ def get_ident(name: str) -> str:
 
 
 def get_reg(pattern: str) -> str:
-    new_pattern = ''
+    new_pattern = ""
     for patt in pattern.split(";"):
         if patt and not patt[0] in ("+-("):
             patt = patt.replace("\\", "\\\\").replace("/", "\/")
             patt = patt.replace("[", "\[").replace("]", "\]")
-            patt = patt.replace("(", "\(").replace(")", "\)")
-            patt = patt.replace(".", "[.]").replace("*", "[*]")
-            patt = patt.replace("+", "[+]")
-        new_pattern += (patt + ";")
+            if not "(?" in patt:
+                patt = patt.replace("(", "\(").replace(")", "\)")
+                patt = patt.replace(".", "[.]").replace("*", "[*]")
+                patt = patt.replace("+", "[+]")
+        new_pattern += patt + ";"
     new_pattern = new_pattern.strip(";").strip()
     return (
         f'^{new_pattern.rstrip().replace(";","$;^")}$'
@@ -88,52 +90,56 @@ def sorted_lines(lines: list) -> list:
 
 
 def get_param_anchor(x: str) -> Tuple[str, list]:
-    anchor = re.findall("{{.+}}", x)
+    anchor = re.findall("{{.+?}}", x)
     if anchor:
         # проверяем наличие "якоря"
         x = x.replace(anchor[0], "")
         anchor = anchor[0].replace("{", "").replace("}", "").split(";")
     return x, anchor
 
+
 def get_param_offset(x: str) -> Tuple[str, list]:
-    param_off = re.findall('{offset{.+\}}', x)
+    param_off = re.findall("{offset{.+?\}}", x)
     if param_off:
         x = x.replace(param_off[0], "")
         param_off[0] = param_off[0].replace("{offset{", "").replace("}}", "")
     return x, param_off
 
+
 def get_param_function(x: str) -> Tuple[str, list]:
-    param_func = re.findall('{func{.+}}', x)
+    param_func = re.findall("{func{.+?}}", x)
     if param_func:
         x = x.replace(param_func[0], "")
-        param_func[0] = param_func[0].replace(
-            "{func{", "").replace("}}", "")
+        param_func[0] = param_func[0].replace("{func{", "").replace("}}", "")
     return x, param_func
 
+
 def get_param_function_is_no_return(x: str) -> Tuple[str, list]:
-    param_func_is_no = re.findall('{func_no{.+}}', x)
+    param_func_is_no = re.findall("{func_no{.+?}}", x)
     if param_func_is_no:
         x = x.replace(param_func_is_no[0], "")
-        param_func_is_no[0] = param_func_is_no[0].replace(
-            "{func_no{", "").replace("}}", "")
+        param_func_is_no[0] = (
+            param_func_is_no[0].replace("{func_no{", "").replace("}}", "")
+        )
     return x, param_func_is_no
 
+
 def get_param_type(x: str) -> Tuple[str, list]:
-    param_type = re.findall('{type{.+}}', x)
+    param_type = re.findall("{type{.+?}}", x)
     if param_type:
         x = x.replace(param_type[0], "")
-        param_type[0] = param_type[0].replace(
-            "{type{", "").replace("}}", "")
+        param_type[0] = param_type[0].replace("{type{", "").replace("}}", "")
     return x, param_type
 
 
-def get_pattern(x: str, default: str = '') -> Tuple[str, str]:
+def get_pattern(x: str, default: str = "") -> Tuple[str, str]:
     index = x.find("::")
-    pattern =  (x[index + 2:] if index != -1 else default).replace(r"^Прочие$", ".+")
+    pattern = (x[index + 2 :] if index != -1 else default).replace(r"^Прочие$", ".+")
     if pattern and pattern[0] == "!":
         pattern = "@" + pattern[1:]
-    x = x.replace('::'+pattern, '').strip()
+    x = x.replace("::" + pattern, "").strip()
     return x, pattern.strip()
 
+
 def get_func_name(x: str) -> str:
-    return re.sub("[\^\$\+]","",x.replace(","," ").replace("  "," ").rstrip())
+    return re.sub("[\^\$\+]", "", x.replace(",", " ").replace("  ", " ").rstrip())

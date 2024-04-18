@@ -7,6 +7,12 @@ def puv(lines: list, path: str) -> str:
     doc_type = "puv"
     file_name = f"{path}/ini/7_puv.ini"
     with open(file_name, "w") as file:
+        required_fields = (
+            ",".join(lines["required"]["required_puv"])
+            if lines["required"].get("required_puv")
+            else "rr1"
+        )
+
         write_section_caption(**dict(file=file, sec_type=doc_type))
         write_section_doc(
             **dict(
@@ -15,7 +21,7 @@ def puv(lines: list, path: str) -> str:
                 sec_number=5,
                 sec_title="ПУ показания",
                 sec_name=doc_type,
-                required_fields="rr1",
+                required_fields=required_fields,
             )
         )
 
@@ -51,6 +57,7 @@ def puv(lines: list, path: str) -> str:
                 sec_number=2,
                 sec_title="ГИС. Идентификатор ПУП GUID",
                 sec_name="gis_id",
+                sec_is_service=False,
             )
         )
         write_section(

@@ -43,7 +43,6 @@ def pp(lines: list, path: str):
                 sec_number=1,
                 sec_title="Внутренний идентификатор ПД",
                 sec_name="internal_id",
-                sec_suffix="ПУ",
                 sec_is_service=False,
                 sec_is_hash=True,
                 sec_is_ident=True,
@@ -52,7 +51,21 @@ def pp(lines: list, path: str):
             )
         )
 
-        write_section_account_internal_id(
+        # write_section_account_internal_id(
+        #     **dict(
+        #         file=file,
+        #         lines=lines,
+        #         sec_type=doc_type,
+        #         sec_number=2,
+        #         sec_title="Внутренний идентификатор ЛС",
+        #         sec_name="account_internal_id",
+        #         sec_func=(
+        #             ("id," if lines["param"].get("pattern_id_length") else "")
+        #             + "spacerepl,hash"
+        #         ),
+        #     )
+        # )
+        write_section(
             **dict(
                 file=file,
                 lines=lines,
@@ -60,6 +73,11 @@ def pp(lines: list, path: str):
                 sec_number=2,
                 sec_title="Внутренний идентификатор ЛС",
                 sec_name="account_internal_id",
+                sec_func=(
+                    ("id," if lines["param"].get("pattern_id_length") else "")
+                    + "spacerepl,hash"
+                ),
+                sec_is_service=False,
             )
         )
 
@@ -72,6 +90,7 @@ def pp(lines: list, path: str):
                 sec_title="ГИС. Идентификатор ПП GUID",
                 sec_name="gis_id",
                 required_fields=required_fields,
+                sec_is_service=False,
             )
         )
 
@@ -154,8 +173,7 @@ def pp(lines: list, path: str):
             )
         )
 
-
-        write_section_bank(
+        write_section(
             **dict(
                 file=file,
                 lines=lines,
@@ -164,12 +182,12 @@ def pp(lines: list, path: str):
                 sec_title="Номер расчетного счета",
                 sec_name="account_number",
                 required_fields=required_fields,
+                sec_func="!account_number",
                 sec_is_service=False,
-                sec_func="account_number",
             )
         )
 
-        write_section_bank(
+        write_section(
             **dict(
                 file=file,
                 lines=lines,
@@ -178,8 +196,8 @@ def pp(lines: list, path: str):
                 sec_title="БИК банка",
                 sec_name="bank_bik",
                 required_fields=required_fields,
+                sec_func="!bik,spacerepl",
                 sec_is_service=False,
-                sec_func="bik,spacerepl",
             )
         )
 
@@ -193,6 +211,12 @@ def pp(lines: list, path: str):
                 sec_name="account_type",
                 sec_is_service=False,
             )
+        )
+        write_other_fields(
+            file=file,
+            lines=lines,
+            sec_type=doc_type,
+            sec_number=13,
         )
 
     return file_name

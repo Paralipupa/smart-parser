@@ -5,6 +5,12 @@ def accounts(lines: list, path: str) -> str:
     doc_type = "accounts"
     file_name = f"{path}/ini/2_accounts.ini"
     with open(file_name, "w") as file:
+        required_fields = (
+            ",".join(lines["required"]["required_accounts"])
+            if lines["required"].get("required_accounts")
+            else "address,account_number,living_person_number,total_square"
+        )
+
         write_section_caption(**dict(file=file, sec_type=doc_type))
         write_section_doc(
             **dict(
@@ -13,7 +19,7 @@ def accounts(lines: list, path: str) -> str:
                 sec_number=0,
                 sec_title="Лицевые счета",
                 sec_name=doc_type,
-                required_fields="address,account_number,living_person_number,total_square",
+                required_fields=required_fields,
             )
         )
         write_section_org_ppa_guid(
@@ -47,7 +53,10 @@ def accounts(lines: list, path: str) -> str:
                 sec_number=2,
                 sec_title="Внутренний идентификатор ЛС",
                 sec_name="internal_id",
-                sec_func="spacerepl,hash",
+                sec_func=(
+                    ("id," if lines["param"].get("pattern_id_length") else "")
+                    + "spacerepl,hash"
+                ),
                 sec_is_service=False,
             )
         )
@@ -215,5 +224,11 @@ def accounts(lines: list, path: str) -> str:
             sec_title="Тип лицевого счета (uo|cr)",
             sec_name="account_type",
             sec_is_service=False,
+        )
+        write_other_fields(
+            file=file,
+            lines=lines,
+            sec_type=doc_type,
+            sec_number=20,
         )
     return file_name

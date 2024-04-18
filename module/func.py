@@ -7,7 +7,7 @@ from module.helpers import (
     get_value,
     regular_calc,
 )
-from module.settings import REG_KP_XLS
+from module.settings import REG_KP_XLS, REG_ACCOUNT_NUMBER_BANK, REG_BIK_BANK
 
 logger = logging.getLogger(__name__)
 
@@ -36,11 +36,13 @@ class Func:
             "opposite": self.func_opposite,
             "param": self.func_param,
             "dictionary": self.func_dictionary,
+            "dictionary_once": self.func_dictionaryOnce,
             "to_date": self.func_to_date,
             "id": self.func_id,
             "account_type": self.func_account_type,
             "fillzero9": self.func_fillzero9,
             "check_bank_accounts": self.func_bank_accounts,
+            "cap_rep": self.func_cap_rep,
         }
         self._current_value = list()
         self._current_id = ""
@@ -53,7 +55,7 @@ class Func:
 
     def __get_func_list(self, part: str, names: str):
         self._current_value_func.setdefault(part, {})
-        list_sub = re.findall(r"[a-z_0-9]+\(.+\)", names)
+        list_sub = re.findall(r"[a-z_0-9]+\(.+?\)", names)
         for item in list_sub:
             ind_s = item.find("(")
             ind_e = item.find(")")
@@ -100,6 +102,7 @@ class Func:
                 self._current_index = 0
                 name = self._current_value_func[part][hash]["name"]
                 if regular_calc(r"(?<=\[)\d(?=\])", name):
+                    # индекс значения словаря определен в квадратных скобках
                     self._current_index = int(re.findall(r"(?<=\[)\d(?=\])", name)[0])
                     name = re.findall(r".+(?=\[)", name)[0]
                 if self._current_value_func[part].get(name):
@@ -120,7 +123,7 @@ class Func:
                         value += x + " "
                 else:
                     if self._dictionary.get(get_index_key(name)):
-                        value = value.strip() + self._dictionary[get_index_key(name)][0]
+                        value = value.strip() + self.func_dictionary(name)
                     elif self._parameters.get(name):
                         value = value.strip() + (
                             self._parameters[name]["value"][-1]
@@ -163,16 +166,32 @@ class Func:
                 self._current_value_type = fld_param.get("type", "str")
             if bool(value) is False and not fld_param.get("func_is_empty", True):
                 return ""
-
-            self._current_value_pattern = (
-                fld_param["func_pattern"][0] if fld_param.get("func_pattern") else ""
+            if fld_param.get("func_pattern") and fld_param.get("func_pattern")[0]:
+                self._current_value_pattern = fld_param["func_pattern"][0]
+            else:
+                if fld_param.get("is_offset"):
+                    self._current_value_pattern = (
+                        fld_param["offset_pattern"][0]
+                        if fld_param.get("offset_pattern")
+                        and fld_param["offset_pattern"][0]
+                        else ".+"
+                    )
+                else:
+                    self._current_value_pattern = (
+                        fld_param["pattern"][0]
+                        if fld_param.get("pattern") and fld_param["pattern"][0]
+                        else ".+"
+                    )
+            self._current_value_empty = (
+                0
+                if self._current_value_type == "float"
+                and not "dictionary" in fld_param.get("func", "")
+                else ""
             )
-            self._current_value_empty = 0 if self._current_value_type == "float" else ""
             self._current_value_team = team
-            self._current_value_row = row 
-            # if fld_param.get("value_rows"):
-            #     if len(fld_param["value_rows"]) != 0:
-            #         self._current_value_row = fld_param["value_rows"][0]
+            self._current_value_row = (
+                row if not "dictionary" in fld_param.get("func", "") else 0
+            )
             self._current_value_col = col
             self._current_value_param = fld_param
             self._current_value_func_is_no_return = fld_param.get(
@@ -188,7 +207,7 @@ class Func:
                 self.__recalc_expression(part)
                 value = self._current_value.pop()
             except Exception as ex:
-                logger.exception("Func:")
+                logger.exception(f"Func:{ex}")
                 value = ""
             if self._current_value_func_is_no_return and str(value).strip():
                 for x in [
@@ -265,7 +284,7 @@ class Func:
     def func_id(self, current_id=None):
         d = self._parameters["period"]["value"][0]
         id = str(self._current_id).strip() if current_id is None else current_id
-        if self._parameters.get("id_length") is not None:
+        if id and self._parameters.get("id_length") is not None:
             id = id.rjust(int(self._parameters["id_length"]["value"][0]), "0")
         return f"{id}_{d[3:5]}{d[6:]}"  # _mmyyyy
 
@@ -275,15 +294,21 @@ class Func:
         return ""
 
     def func_column_value(self):
-        value = next(
-            (
-                x[self._current_value_row]["value"]
-                for x in self._current_value_team.values()
-                if x[self._current_value_row]["col"] == int(self._current_value[-1])
-            ),
-            "",
-        )
-        return value.strip() if isinstance(value, str) else value
+        try:
+            value = next(
+                (
+                    x[self._current_value_row]["value"]
+                    for x in self._current_value_team.values()
+                    if len(x) > self._current_value_row
+                    and x[self._current_value_row]["col"]
+                    == int(self._current_value[-1])
+                ),
+                "",
+            )
+            return value.strip() if isinstance(value, str) else value
+        except Exception as ex:
+            logger.error(f"{ex}")
+        return ""
 
     def func_param(self):
         m = ""
@@ -327,19 +352,26 @@ class Func:
 
     def func_account_number(self):
         pattern: re.compile = re.compile(REG_KP_XLS, re.IGNORECASE)
+        parrent_account: re.compile = re.compile(REG_ACCOUNT_NUMBER_BANK, re.IGNORECASE)
         if self._dictionary.get("account_number"):
             if pattern.search(
                 self._parameters["filename"]["value"][0].lower(), re.IGNORECASE
             ):
                 return (
-                    self._dictionary.get("account_number", [])[-1]
+                    self._dictionary.get("account_number", [])[-1]["value"]
                     if len(self._dictionary.get("account_number", [])) != 0
+                    and parrent_account.search(
+                        self._dictionary.get("account_number", [])[-1]["value"]
+                    )
                     else ""
                 )
             else:
                 return (
-                    self._dictionary.get("account_number", [])[0]
+                    self._dictionary.get("account_number", [])[0]["value"]
                     if len(self._dictionary.get("account_number", [])) != 0
+                    and parrent_account.search(
+                        self._dictionary.get("account_number", [])[-1]["value"]
+                    )
                     else ""
                 )
         elif self._parameters.get("account_number"):
@@ -352,6 +384,11 @@ class Func:
                         self._parameters.get("account_number", {"value": [""]})["value"]
                     )
                     != 0
+                    and parrent_account.search(
+                        self._parameters.get("account_number", {"value": [""]})[
+                            "value"
+                        ][-1]
+                    )
                     else ""
                 )
             else:
@@ -361,6 +398,11 @@ class Func:
                         self._parameters.get("account_number", {"value": [""]})["value"]
                     )
                     != 0
+                    and parrent_account.search(
+                        self._parameters.get("account_number", {"value": [""]})[
+                            "value"
+                        ][0]
+                    )
                     else ""
                 )
         else:
@@ -371,13 +413,13 @@ class Func:
         if self._dictionary.get("bik"):
             if pattern.search(self._parameters["filename"]["value"][0].lower()):
                 return (
-                    self._dictionary.get("bik", [])[-1]
+                    self._dictionary.get("bik", [])[-1]["value"]
                     if len(self._dictionary.get("bik", [])) != 0
                     else ""
                 )
             else:
                 return (
-                    self._dictionary.get("bik", [])[0]
+                    self._dictionary.get("bik", [])[0]["value"]
                     if len(self._dictionary.get("bik", [])) != 0
                     else ""
                 )
@@ -397,14 +439,33 @@ class Func:
         else:
             return ""
 
-    def func_dictionary(self):
-        dictionary = self._dictionary.get(get_index_key(self._current_value[-1]), [])
+    def func_dictionary(self, key: str = None):
+        return self.__func_dictionary(key, False)
+
+    def func_dictionaryOnce(self, key: str = None):
+        return self.__func_dictionary(key, True)
+
+    def __func_dictionary(self, key: str = None, is_not_used: bool = False):
+        name = get_index_key(self._current_value[-1] if key is None else key)
+        dictionary = self._dictionary.get(name, [])
+        value = ""
         if len(dictionary) > self._current_index:
-            return dictionary[self._current_index]
+            if is_not_used is False or dictionary[self._current_index]["used"] is False:
+                value = dictionary[self._current_index]["value"]
+                dictionary[self._current_index]["used"] = True
         elif len(dictionary) > 0:
-            return dictionary[-1]
-        else:
-            return ""
+            if is_not_used is False or dictionary[-1]["used"] is False:
+                value = dictionary[-1]["value"]
+                dictionary[self._current_index]["used"] = True
+
+        if len(dictionary) > 1 and not re.search(self._current_value_pattern, value):
+            for val in dictionary:
+                if (is_not_used is False or val["used"] is False) and re.search(
+                    self._current_value_pattern, val["value"]
+                ):
+                    val["used"] = True
+                    return val["value"]
+        return value
 
     def func_account_type(self):
         is_cap = False
@@ -443,3 +504,6 @@ class Func:
                 mess = "Конфликт в расчетном счете по капитальному ремонту"
                 self.parent.add_warning(mess)
         return ""
+
+    def func_cap_rep(self):
+        return "1" if str(self._current_value[-1]).strip() == "cr" else ""
