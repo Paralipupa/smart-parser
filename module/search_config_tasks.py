@@ -49,6 +49,7 @@ class SearchConfig:
         self.__extact_zip_files()
         self.__enumeration_config_files()
         self.write_configuration(data_alignment)
+        clear_manager()
         return self.list_files
 
     def __enumeration_config_files(self) -> None:

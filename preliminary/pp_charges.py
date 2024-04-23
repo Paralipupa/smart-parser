@@ -3,7 +3,7 @@ from sections import *
 from settings import *
 
 
-def pp_charges(lines: list, path: str) -> str:
+def pp_charges(lines: list, path: str, sec_number:int) -> str:
     names = []
     l = get_lines(lines)
     file_name = f"{path}/ini/4_pp_charges.ini"
@@ -19,7 +19,7 @@ def pp_charges(lines: list, path: str) -> str:
             **dict(
                 file=file,
                 sec_type="doc",
-                sec_number=2,
+                sec_number=sec_number,
                 sec_title="Документ Начисления платежей",
                 sec_name=doc_type,
                 required_fields=required_fields,

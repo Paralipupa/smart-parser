@@ -1,7 +1,7 @@
 from sections import *
 
 
-def pp(lines: list, path: str):
+def pp(lines: list, path: str, sec_number:int):
 
     file_name = f"{path}/ini/3_pp.ini"
     with open(file_name, "w") as file:
@@ -17,7 +17,7 @@ def pp(lines: list, path: str):
             **dict(
                 file=file,
                 sec_type="doc",
-                sec_number=1,
+                sec_number=sec_number,
                 sec_title="Платежный документ",
                 sec_name=doc_type,
                 required_fields=required_fields,

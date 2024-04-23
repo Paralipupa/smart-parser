@@ -1,7 +1,7 @@
 from sections import *
 
 
-def accounts(lines: list, path: str) -> str:
+def accounts(lines: list, path: str, sec_number:int) -> str:
     doc_type = "accounts"
     file_name = f"{path}/ini/2_accounts.ini"
     with open(file_name, "w") as file:
@@ -16,7 +16,7 @@ def accounts(lines: list, path: str) -> str:
             **dict(
                 file=file,
                 sec_type="doc",
-                sec_number=0,
+                sec_number=sec_number,
                 sec_title="Лицевые счета",
                 sec_name=doc_type,
                 required_fields=required_fields,

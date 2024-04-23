@@ -3,7 +3,7 @@ from logging import config as lgconfig
 
 ENCONING = "windows-1251"
 
-DOCUMENTS = "accounts pp pp_charges pp_service pu puv bank_accounts"
+DOCUMENTS = "contract accounts pp pp_charges pp_service pu puv bank_accounts"
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

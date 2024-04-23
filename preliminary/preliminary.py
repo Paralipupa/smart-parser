@@ -9,6 +9,7 @@ import configparser
 from pp_service import pp_service
 from pp_charges import pp_charges
 from pp import pp
+from contract import contract
 from accounts import accounts
 from columns import set_columns
 from header import header
@@ -135,15 +136,26 @@ if __name__ == "__main__":
     args = getArgs()
     namespace = args.parse_args(sys.argv[1:])
     lines = read_from_text(namespace.name)
+    os.makedirs(f"{os.path.dirname(__file__)}/ini",exist_ok=True)
     cols = set_columns(lines, os.path.dirname(__file__))
     names.append(header(lines, os.path.dirname(__file__)))
     names.append(cols)
-    names.append(accounts(lines, os.path.dirname(__file__)))
-    names.append(pp(lines, os.path.dirname(__file__)))
-    names.append(pp_charges(lines, os.path.dirname(__file__)))
-    names.append(pp_service(lines, os.path.dirname(__file__)))
-    names.append(pu(lines, os.path.dirname(__file__)))
-    names.append(puv(lines, os.path.dirname(__file__)))
+    sec_number = 0
+    names.append(accounts(lines, os.path.dirname(__file__), sec_number=sec_number))
+    sec_number += 1
+    names.append(pp(lines, os.path.dirname(__file__), sec_number=sec_number))
+    sec_number += 1
+    names.append(pp_charges(lines, os.path.dirname(__file__), sec_number=sec_number))
+    sec_number += 1
+    names.append(pp_service(lines, os.path.dirname(__file__), sec_number=sec_number))
+    sec_number += 1
+    names.append(pu(lines, os.path.dirname(__file__), sec_number=sec_number))
+    sec_number += 1
+    names.append(puv(lines, os.path.dirname(__file__), sec_number=sec_number))
+    sec_number += 1
+    if lines["required"].get("required_contract") is not None:
+        names.append(contract(lines, os.path.dirname(__file__), sec_number=sec_number))
+        sec_number += 1
     write_config(
         names, os.path.join(os.path.dirname(__file__), "ini"), "gis_config.ini"
     )

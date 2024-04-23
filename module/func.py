@@ -43,6 +43,7 @@ class Func:
             "fillzero9": self.func_fillzero9,
             "check_bank_accounts": self.func_bank_accounts,
             "cap_rep": self.func_cap_rep,
+            "services": self.func_services,
         }
         self._current_value = list()
         self._current_id = ""
@@ -507,3 +508,6 @@ class Func:
 
     def func_cap_rep(self):
         return "1" if str(self._current_value[-1]).strip() == "cr" else ""
+
+    def func_services(self):
+        return ""

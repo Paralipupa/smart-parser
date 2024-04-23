@@ -3,6 +3,7 @@ import re
 import logging
 import shutil
 import datetime
+import psutil
 from .excel_base_importer import ExcelBaseImporter
 from .helpers import get_config_files, write_list, check_tarif, write_log_time
 from .union import UnionData
@@ -44,6 +45,7 @@ class Parser:
         self.check_tarif = False
         self.is_daemon = is_daemon
         self.config_files = get_config_files()
+        self.mem = psutil.virtual_memory().available//1024**2
 
     def start(self) -> list:
         try:
@@ -99,8 +101,9 @@ class Parser:
                                 mess = check_tarif(rep._dictionary.get("tarif"))
                                 if mess:
                                     raise CheckTarifException(mess)
+                            free_mem = psutil.virtual_memory().available//1024**2
                             logger.info(
-                                f"Начало обработки файла '{os.path.basename(file_name['name'])}'"
+                                f"{free_mem}({self.mem})({int(100*free_mem/self.mem)}%) Начало обработки файла '{os.path.basename(file_name['name'])}'"
                             )
                             if rep.extract():
                                 logger.info(f"Обработка завершена      ")

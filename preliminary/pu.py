@@ -1,7 +1,7 @@
 from sections import *
 
 
-def pu(lines: list, path: str) -> str:
+def pu(lines: list, path: str, sec_number:int) -> str:
     doc_type = "pu"
     file_name = f"{path}/ini/6_pu.ini"
     with open(file_name, "w") as file:
@@ -15,7 +15,7 @@ def pu(lines: list, path: str) -> str:
             **dict(
                 file=file,
                 sec_type="doc",
-                sec_number=4,
+                sec_number=sec_number,
                 sec_title="Приборы учета (ПУ)",
                 sec_name=doc_type,
                 required_fields=required_fields,

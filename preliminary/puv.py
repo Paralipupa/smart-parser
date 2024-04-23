@@ -3,7 +3,7 @@ from utils import get_ident, get_name, get_lines
 from settings import *
 
 
-def puv(lines: list, path: str) -> str:
+def puv(lines: list, path: str, sec_number:int) -> str:
     doc_type = "puv"
     file_name = f"{path}/ini/7_puv.ini"
     with open(file_name, "w") as file:
@@ -18,7 +18,7 @@ def puv(lines: list, path: str) -> str:
             **dict(
                 file=file,
                 sec_type="doc",
-                sec_number=5,
+                sec_number=sec_number,
                 sec_title="ПУ показания",
                 sec_name=doc_type,
                 required_fields=required_fields,
