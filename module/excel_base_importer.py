@@ -466,9 +466,10 @@ class ExcelBaseImporter:
 
             if is_active_find:
                 self.add_warning(
-                    '\n{}:\nВ загружаемом файле "{}"\nне все колонки найдены \n'.format(
+                    '\n{0}:\nВ загружаемом файле "{1}"(Лист {2})\nне все колонки найдены \n'.format(
                         self._config._config_name,
                         self._parameters["filename"]["value"][0],
+                        self.num_page,
                     )
                 )
                 if s2:
@@ -480,7 +481,7 @@ class ExcelBaseImporter:
                 for key, value in self._column_names.items():
                     s += f"\n{key} - {value['indexes'][0][POS_INDEX_VALUE]}"
                 self.add_warning(
-                    '\n{0}:\nВ загружаемом файле "{1}" \
+                    '\n{0}:\nВ загружаемом файле "{1}(Лист {5})" \
                 \nневерен шаблон нахождения начала области данных(({3})condition_begin_team(\n{2}\n))\n{4}\n'.format(
                         self._config._config_name,
                         self._parameters["filename"]["value"][0],
@@ -495,6 +496,7 @@ class ExcelBaseImporter:
                             else ""
                         ),
                         s,
+                        self.num_page,
                     )
                 )
             return False

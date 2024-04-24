@@ -45,7 +45,7 @@ class Parser:
         self.check_tarif = False
         self.is_daemon = is_daemon
         self.config_files = get_config_files()
-        self.mem = round(psutil.virtual_memory().available/1024**3,2)
+        self.mem = round(psutil.virtual_memory().available / 1024**3, 2)
 
     def start(self) -> list:
         try:
@@ -101,7 +101,9 @@ class Parser:
                                 mess = check_tarif(rep._dictionary.get("tarif"))
                                 if mess:
                                     raise CheckTarifException(mess)
-                            free_mem = round(psutil.virtual_memory().available/1024**3,2)
+                            free_mem = round(
+                                psutil.virtual_memory().available / 1024**3, 2
+                            )
                             logger.info(
                                 f"{free_mem}({self.mem})({round(100*free_mem/self.mem,2)}%) Начало обработки файла '{os.path.basename(file_name['name'])}'"
                             )
@@ -109,9 +111,10 @@ class Parser:
                                 logger.info(f"Обработка завершена      ")
                                 isParser = True
                                 self._dictionary = rep._dictionary.copy()
-                                self._period = datetime.datetime.strptime(
-                                    rep._parameters["period"]["value"][0], "%d.%m.%Y"
-                                ).date()
+                                if rep._parameters.get("period"):
+                                    self._period = datetime.datetime.strptime(
+                                        rep._parameters["period"]["value"][0], "%d.%m.%Y"
+                                    ).date()
 
                             else:
                                 logger.info(f"Неудачное завершение обработки")
@@ -134,25 +137,29 @@ class Parser:
                         file_name = os.path.join(self.download_path, self.download_file)
                         write_log_time(file_name, True)
         except InnMismatchException as ex:
-            logger.exception(f"{ex}")
+            logger.error(f"{ex}")
             return f"{ex}"
         except FatalException as ex:
-            logger.exception(f"{ex}")
+            logger.error(f"{ex}")
             return f"{ex._message}"
         except ConfigNotFoundException as ex:
-            logger.exception(f"{ex}")
+            logger.error(f"{ex}")
             return f"{ex._message}"
         except CheckTarifException as ex:
-            logger.exception(f"{ex}")
+            logger.error(f"{ex}")
             return f"{ex._message}"
         except Exception as ex:
-            logger.exception(f"{ex}")
+            logger.error(f"{ex}")
             return f"{ex}"
         shutil.copy(
             os.path.join(BASE_DIR, "doc", "error.txt"),
             os.path.join(self.download_path, "error.txt"),
         )
-        return "error.txt"
+        if not self.is_daemon:
+            return "error.txt"
+        else:
+            file_name = os.path.join(self.download_path, self.download_file)
+            write_log_time(file_name, True)
 
     @staticmethod
     def get_path(pathname: str) -> str:
