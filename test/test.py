@@ -12,7 +12,7 @@ from module.utils import get_extract_files
 import unittest
 from shutil import rmtree
 
-IS_HASH = True
+IS_HASH = False
 
 class TestGisConfig(unittest.TestCase):
     def __diff(self, path_new: str, path_old: str, files: list) -> list:

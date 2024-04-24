@@ -45,7 +45,7 @@ class Parser:
         self.check_tarif = False
         self.is_daemon = is_daemon
         self.config_files = get_config_files()
-        self.mem = psutil.virtual_memory().available//1024**2
+        self.mem = round(psutil.virtual_memory().available/1024**3,2)
 
     def start(self) -> list:
         try:
@@ -101,9 +101,9 @@ class Parser:
                                 mess = check_tarif(rep._dictionary.get("tarif"))
                                 if mess:
                                     raise CheckTarifException(mess)
-                            free_mem = psutil.virtual_memory().available//1024**2
+                            free_mem = round(psutil.virtual_memory().available/1024**3,2)
                             logger.info(
-                                f"{free_mem}({self.mem})({int(100*free_mem/self.mem)}%) Начало обработки файла '{os.path.basename(file_name['name'])}'"
+                                f"{free_mem}({self.mem})({round(100*free_mem/self.mem,2)}%) Начало обработки файла '{os.path.basename(file_name['name'])}'"
                             )
                             if rep.extract():
                                 logger.info(f"Обработка завершена      ")
