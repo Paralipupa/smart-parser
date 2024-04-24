@@ -141,6 +141,9 @@ class ExcelBaseImporter:
                     f"\nОШИБКА чтения файла {self._parameters['filename']['value'][0]}"
                 )
                 return False
+            if self.config_files[self.index_config]["sheets"][0] == -1:
+                self.config_files[self.index_config]["sheets"] = [x for x in range(len(data_reader.get_sheets()))]
+                
             # создаются три потока (thread) для обработки данных
             # в основном потоке разбиваются табличные данные из MS Excel на блоки
             # (self.teams[team]) по идентификаторам (internal_id)

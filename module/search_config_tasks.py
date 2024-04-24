@@ -56,8 +56,9 @@ class SearchConfig:
         if len(self.list_files) == 0:
             return
         clear_manager()
-        with ThreadPoolExecutor(max_workers=None) as executor:
-            executor.map(self.put_data_file, self.list_files)
+        # with ThreadPoolExecutor(max_workers=None) as executor:
+        #     executor.map(self.put_data_file, self.list_files)
+        d = list(map(self.put_data_file, self.list_files))
         self.__to_collect_out_files()
         return
 
@@ -72,13 +73,20 @@ class SearchConfig:
     def __config_find(self, data_file: dict) -> dict:
         retrieved = set()
         try:
-            for conf_file in self.config_files:
-                if not conf_file["type"] in retrieved:
-                    data_file["config"][-1]["name"] = pathlib.Path(
-                        PATH_CONFIG, f"{conf_file['name']}"
-                    )
-                    if self.__check_config(data_file):
-                        retrieved.add(conf_file["type"])
+            if len(self.config_files) == 1:
+                data_file["config"][-1]["name"] = pathlib.Path(
+                    PATH_CONFIG, f"{self.config_files[0]['name']}"
+                )
+                data_file["config"][-1]["sheets"].append(-1)
+                man_list.append(data_file)
+            else:
+                for conf_file in self.config_files:
+                    if not conf_file["type"] in retrieved:
+                        data_file["config"][-1]["name"] = pathlib.Path(
+                            PATH_CONFIG, f"{conf_file['name']}"
+                        )
+                        if self.__check_config(data_file):
+                            retrieved.add(conf_file["type"])
         except Exception as ex:
             logger.info(
                 f"error  {conf_file['name']} \t {os.path.basename(data_file['name'])}  ${ex}"
