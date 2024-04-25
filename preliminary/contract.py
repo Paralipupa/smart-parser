@@ -2,14 +2,14 @@ from sections import *
 
 
 def contract(lines: list, path: str, sec_number:int) -> str:
-    doc_type = "contract"
-    file_name = f"{path}/ini/8_contract.ini"
+    doc_type = "contracts"
+    file_name = f"{path}/ini/8_contracts.ini"
     with open(file_name, "w") as file:
         required_fields = (
-            ",".join(lines["required"]["required_contract"])
-            if lines["required"].get("required_contract")
-            and len(lines["required"].get("required_contract")) != 0
-            and lines["required"].get("required_contract")[0]
+            ",".join(lines["required"]["required_contracts"])
+            if lines["required"].get("required_contracts")
+            and len(lines["required"].get("required_contracts")) != 0
+            and lines["required"].get("required_contracts")[0]
             else "offer,start_date"
         )
 

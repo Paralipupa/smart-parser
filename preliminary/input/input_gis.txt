@@ -18,14 +18,14 @@ pattern_ЛС:.+
 
 pattern_period:^[0-9]{2}[.][0-9]{4}$
 
-required_contract:
+required_contracts:
 required_pp:bill_value,payment_value,credit,saldo,account_number,(bank_bik)
 required_accounts:address,living_person_number,total_square
 required_pu:serial_number,manufacturer,model
 required_puv:rr1
 
 field:^Номер платежного документа@key(accounts)
-field:Идентификатор ЖКУ@value(accounts)@internal_id(accounts){func{hash}}@contract_internal_id(accounts){func{_+К,spacerepl,hash}}@internal_id(contract){func{_+К,spacerepl,hash}}
+field:Идентификатор ЖКУ@value(accounts)@internal_id(accounts){func{hash}}@contract_internal_id(accounts){func{_+К,spacerepl,hash}}@internal_id(contracts){func{_+К,spacerepl,hash}}
 field:^Оплачено денежных средств@value_0(accounts)
 
 

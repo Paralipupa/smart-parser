@@ -4,17 +4,17 @@ import logging
 import shutil
 import datetime
 import psutil
-from .excel_base_importer import ExcelBaseImporter
-from .helpers import get_config_files, write_list, check_tarif, write_log_time
-from .union import UnionData
-from .exceptions import (
+from module.excel_base_importer import ExcelBaseImporter
+from module.helpers import get_config_files, write_list, check_tarif, write_log_time
+from module.union import UnionData
+from module.exceptions import (
     InnMismatchException,
     FatalException,
     ConfigNotFoundException,
     CheckTarifException,
 )
-from .search_config_tasks import SearchConfig
-from .settings import *
+from module.search_config_tasks import SearchConfig
+from module.settings import *
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +92,7 @@ class Parser:
                                     if self.is_daemon
                                     else ""
                                 ),
+                                progress=round(((index-1)/len(list_files))*100,2)
                             )
                             if (
                                 self.check_tarif is False
@@ -105,7 +106,7 @@ class Parser:
                                 psutil.virtual_memory().available / 1024**3, 2
                             )
                             logger.info(
-                                f"{free_mem}({self.mem})({round(100*free_mem/self.mem,2)}%) Начало обработки файла '{os.path.basename(file_name['name'])}'"
+                                f"({index}/{len(list_files)}) {free_mem}/{self.mem}({round(100*free_mem/self.mem,2)}%) Начало обработки файла '{os.path.basename(file_name['name'])}'"
                             )
                             if rep.extract():
                                 logger.info(f"Обработка завершена      ")

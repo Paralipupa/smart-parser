@@ -153,7 +153,7 @@ if __name__ == "__main__":
     sec_number += 1
     names.append(puv(lines, os.path.dirname(__file__), sec_number=sec_number))
     sec_number += 1
-    if lines["required"].get("required_contract") is not None:
+    if lines["required"].get("required_contracts") is not None:
         names.append(contract(lines, os.path.dirname(__file__), sec_number=sec_number))
         sec_number += 1
     write_config(

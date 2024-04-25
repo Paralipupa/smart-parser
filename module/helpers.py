@@ -4,11 +4,12 @@ import hashlib
 import zipfile
 import logging
 import fileinput
+import argparse
 from typing import Union
 from datetime import datetime
-import argparse
-from .exceptions import InnMismatchException, FatalException
-from .settings import (
+from module.reversor import reversor
+from module.exceptions import InnMismatchException, FatalException
+from module.settings import (
     IS_MESSAGE_PRINT,
     POS_NUMERIC_VALUE,
     POS_NUMERIC_IS_ABSOLUTE,
@@ -70,7 +71,9 @@ def print_message(msg: str, end: str = "\n", flush: bool = False) -> None:
 def regular_calc(pattern: str, value: str) -> str:
     try:
         result = re.search(
-            pattern.replace("~","").replace("||", "|"), value.replace("\n", "").strip(), re.IGNORECASE
+            pattern.replace("~", "").replace("||", "|"),
+            value.replace("\n", "").strip(),
+            re.IGNORECASE,
         )
         if result is None or result.group(0).find("error") != -1:
             return None
@@ -104,9 +107,9 @@ def get_value_int(value: Union[list, str]) -> int:
             if isinstance(value, list):
                 return value[0]
             elif isinstance(value, str):
-                return int(value.replace(",", ".").replace(" ", "").replace(
-                    chr(160), ""
-                ))
+                return int(
+                    value.replace(",", ".").replace(" ", "").replace(chr(160), "")
+                )
         else:
             return 0
     except:
@@ -222,7 +225,7 @@ def get_config_files():
             files,
             key=lambda x: (
                 x[10:13],
-                x[14:17] if x[16:17] != "." else x[14:16] + "я",
+                reversor(x[14:]),
             ),
         )
         files = [{"name": x, "type": pattern.findall(x)[0]} for x in files]
@@ -402,12 +405,20 @@ def get_value(
     return result
 
 
-def write_log_time(file_name: str, is_error: bool=False):
+def write_log_time(file_name: str, is_error: bool = False, data: str = ""):
     with open(file_name + ".log", "w") as f:
         if is_error:
-            f.write(f"{file_name}\t" + "01-01-1900 00:00:00")
+            f.write(
+                f"{file_name}\t" + "01-01-1900 00:00:00" + f"\t{data}" if data else ""
+            )
         else:
-            f.write(f"{file_name}\t" + datetime.now().strftime("%d-%m-%Y %H:%M:%S"))
+            f.write(
+                f"{file_name}\t"
+                + datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+                + f"\t{data}"
+                if data
+                else ""
+            )
 
 
 def get_list_dict_from_csv(file_name: str) -> list:

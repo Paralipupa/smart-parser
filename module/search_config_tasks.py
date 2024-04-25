@@ -193,15 +193,18 @@ class SearchConfig:
     def checking_configuration(self) -> dict:
         """Проверка соответствия файлов конфигурации по ИНН"""
         data = dict()
-        if pathlib.Path.exists(pathlib.Path(CONFIGURATION_FILE)):
-            with open(
-                pathlib.Path(CONFIGURATION_FILE), mode="r", encoding=ENCONING
-            ) as file:
-                data = json.load(file)
-            if self.inn != "000000000" and data.get(self.inn):
-                self.config_files = [
-                    x for x in self.config_files if x["name"] in data[self.inn]
-                ]
+        try:
+            if pathlib.Path.exists(pathlib.Path(CONFIGURATION_FILE)):
+                with open(
+                    pathlib.Path(CONFIGURATION_FILE), mode="r", encoding=ENCONING
+                ) as file:
+                    data = json.load(file)
+                if self.inn != "000000000" and data.get(self.inn):
+                    self.config_files = [
+                        x for x in self.config_files if x["name"] in data[self.inn]
+                    ]
+        except Exception as ex:
+            logger.error(f"{ex}")
         return data
 
     def write_configuration(self, data: dict):

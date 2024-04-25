@@ -50,10 +50,12 @@ class ExcelBaseImporter:
         is_hash: bool = True,
         dictionary: dict = dict(),
         download_file: str = "",
+        progress: float = 0.0,
     ):
         self.num_file = index
         self.index_config: int = 0
         self.config_files = config_files
+        self.progress = progress
         self._output = output
         self.is_file_exists = True
         self.is_hash = is_hash
@@ -142,8 +144,10 @@ class ExcelBaseImporter:
                 )
                 return False
             if self.config_files[self.index_config]["sheets"][0] == -1:
-                self.config_files[self.index_config]["sheets"] = [x for x in range(len(data_reader.get_sheets()))]
-                
+                self.config_files[self.index_config]["sheets"] = [
+                    x for x in range(len(data_reader.get_sheets()))
+                ]
+
             # создаются три потока (thread) для обработки данных
             # в основном потоке разбиваются табличные данные из MS Excel на блоки
             # (self.teams[team]) по идентификаторам (internal_id)
@@ -304,7 +308,7 @@ class ExcelBaseImporter:
                 if self.download_file:
                     # при фоновой обработке отслеживаем процесс выполнения
                     # записывая текущее время в файл
-                    write_log_time(self.download_file, False)
+                    write_log_time(self.download_file, False, f"{self.progress}%")
                 sleep(0)
 
     def __make_collections(self, doc_param: dict, team: dict):
@@ -1147,12 +1151,16 @@ class ExcelBaseImporter:
             else:
                 index_key = get_index_key(fld)
                 self._dictionary.setdefault(index_key, [])
-                if not value in self._dictionary[index_key]:
+                if not [x for x in self._dictionary[index_key] if x["value"] == value]:
                     self._dictionary[index_key].append(dict(value=value, used=False))
             if param.get("key") and param.get("data"):
                 index_key = get_index_key(param["key"])
                 self._dictionary.setdefault(index_key, [])
-                if not param["data"] in self._dictionary[index_key]:
+                if not [
+                    x
+                    for x in self._dictionary[index_key]
+                    if x["value"] == param["data"]["value"]
+                ]:
                     self._dictionary[index_key].append(param["data"])
         return
 

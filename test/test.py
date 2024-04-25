@@ -220,7 +220,7 @@ class TestGisConfig(unittest.TestCase):
         self.parser.download_file = (
             f"gefest{'_no_hash' if self.parser.is_hash is False else ''}.zip"
         )
-        # self.parser.inn = "7801636143"
+        self.parser.inn = "7801636143"
         self.__remove_download()
         if os.path.exists(
             os.path.join(BASE_DIR, "test", "download", self.parser.download_file)
