@@ -25,6 +25,8 @@ class UnionData:
         path_input: str = "input",
         path_output: str = "output",
         file_output: str = "output",
+        is_daemon: bool = False,
+        inn: str = "",
     ):
         self.logs = list()
         self.isParser = isParser

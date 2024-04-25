@@ -8,7 +8,14 @@ import csv
 import zipfile
 import shutil
 from collections import Counter
-from .helpers import warning_error, fatal_error, print_message, get_list_dict_from_csv
+from .helpers import (
+    warning_error,
+    fatal_error,
+    print_message,
+    get_list_dict_from_csv,
+    get_folder,
+    write_log_time,
+)
 from .exceptions import ConfigNotFoundException
 from .settings import *
 
@@ -25,38 +32,83 @@ class UnionData:
         path_input: str = "input",
         path_output: str = "output",
         file_output: str = "output",
+        is_daemon: bool = False,
+        inn: str = "",
     ):
         self.logs = list()
         self.isParser = isParser
         self.file_log = file_log
         self.path_input = path_input
         self.path_output = path_output
-        self.file_output = file_output
+        self.file_output = (
+            file_output
+            if file_output
+            else (
+                (
+                    f'{inn if inn else "output"}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.zip'
+                )
+            )
+        )
+
         self.exclude = {
             "bill_value",
             "payment_value",
             "credit",
             "saldo",
         }
+        self.is_daemon = is_daemon
         self.dict_ids = {}
 
     def start(self) -> list:
-        print_message(
-            "               Финальная сборка                                                 \r",
-            end="",
-            flush=True,
-        )
         save_directories = dict()
         is_separate_account_type = True
         files_o: list[str] = self.__get_files()
-        files_s = self.__files_sorted(files_o)
-        if files_s:
+        if files_o:
+            files_s = self.__files_sorted(files_o)
             period, inn_common = self.__get_commom_data(files_s)
-            for fn in DOCUMENTS.split():
+            for index, fn in enumerate(DOCUMENTS.split()):
+                if self.is_daemon:
+                    # при фоновой обработке отслеживаем процесс выполнения
+                    # записывая текущее время в файл
+                    write_log_time(
+                        os.path.join(self.path_output, self.file_output),
+                        False,
+                        f"{round(index/len(DOCUMENTS.split()),2)}%",
+                    )
+                print_message(
+                    "         Загрузка: {}                          \r".format(
+                        fn,
+                    ),
+                    end="",
+                    flush=True,
+                )
                 data = self.__get_data_files(files_s, period, inn_common, fn)
+                if self.is_daemon:
+                    # при фоновой обработке отслеживаем процесс выполнения
+                    # записывая текущее время в файл
+                    write_log_time(
+                        os.path.join(self.path_output, self.file_output),
+                        False,
+                        f"{round(index/len(DOCUMENTS.split()),2)}%",
+                    )
+                print_message(
+                    "         Обработка: {}                          \r".format(
+                        fn,
+                    ),
+                    end="",
+                    flush=True,
+                )
                 for inn, item in data.items():
                     for id_period, files in item.items():
                         file_data = {}
+                        if self.is_daemon:
+                            # при фоновой обработке отслеживаем процесс выполнения
+                            # записывая текущее время в файл
+                            write_log_time(
+                                os.path.join(self.path_output, self.file_output),
+                                False,
+                                f"{round(index/len(DOCUMENTS.split()),2)}%",
+                            )
                         for file in files:
                             for key_record, record in file.items():
                                 if file_data.get(key_record):
@@ -76,19 +128,21 @@ class UnionData:
                         else:
                             key = self.__write(inn, id_period, file_data)
                             save_directories[key] = self.path_input
-        self.__make_archive(save_directories)
-        if os.path.isdir(self.path_input):
-            shutil.rmtree(self.path_input)
-            if os.path.isfile(
-                os.path.join(self.path_output, self.file_output + ".log")
-            ):
-                os.remove(os.path.join(self.path_output, self.file_output + ".log"))
-        print_message(
-            "               Обработка завершена                                                 \r",
-            end="",
-            flush=True,
-        )
-        return self.file_output
+            print_message(
+                "         Создание архива: {}                          \r".format(
+                    fn,
+                ),
+                end="",
+                flush=True,
+            )
+            self.__make_archive(save_directories)
+            if os.path.isdir(self.path_input):
+                shutil.rmtree(self.path_input)
+                if os.path.isfile(
+                    os.path.join(self.path_output, self.file_output + ".log")
+                ):
+                    os.remove(os.path.join(self.path_output, self.file_output + ".log"))
+        return self.file_output if os.path.exists(os.path.join(self.path_output, self.file_output)) else ""
 
     def __get_commom_data(self, files: list):
         period_current: list = [datetime.now().strftime("%m%Y")]
@@ -216,6 +270,10 @@ class UnionData:
     def __get_files(self) -> list:
         """Получить список файлов csv из папки"""
         files = list()
+        if not os.path.isdir(self.path_input):
+            self.path_input = get_folder(self.path_input)
+            if self.path_input:
+                self.file_output = os.path.basename(self.path_input) + ".zip"
         if os.path.isdir(self.path_input):
             for file in os.listdir(self.path_input):
                 if file.endswith(".csv"):
@@ -276,9 +334,9 @@ class UnionData:
         path = pathlib.Path(self.path_input, key)
         os.makedirs(path, exist_ok=True)
         file_name = pathlib.Path(path, file_name)
-        with open(f"{file_name}.json", mode="w", encoding=ENCONING) as file:
-            jstr = json.dumps(data, indent=4, ensure_ascii=False)
-            file.write(jstr)
+        # with open(f"{file_name}.json", mode="w", encoding=ENCONING) as file:
+        #     jstr = json.dumps(data, indent=4, ensure_ascii=False)
+        #     file.write(jstr)
         with open(f"{file_name}.csv", mode="w", encoding=ENCONING) as file:
             names = [x for x in data[0].keys() if x[:2] != "__"]
             file_writer = csv.DictWriter(

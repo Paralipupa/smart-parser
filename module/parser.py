@@ -39,7 +39,13 @@ class Parser:
         self.config = file_config
         self.union = union
         self.download_path = path_down
-        self.output_path = re.findall(".+(?=[.])", file_down)[0]
+        self.output_path = (
+            re.findall(".+(?=[.])", file_down)[0]
+            if re.findall(".+(?=[.])", file_down)
+            else ""
+        )
+        if not self.output_path:
+            self.output_path = inn if inn else "output"
         self.download_file = file_down
         self.is_hash = False if hash == "no" else True
         self.check_tarif = False
@@ -59,6 +65,7 @@ class Parser:
                         path_input=os.path.join(PATH_OUTPUT, self.output_path),
                         path_output=self.download_path,
                         file_output=self.download_file,
+                        inn=self.inn,
                     )
                     return u.start()
 
@@ -92,7 +99,9 @@ class Parser:
                                     if self.is_daemon
                                     else ""
                                 ),
-                                progress=round(((index-1)/len(list_files))*100,2)
+                                progress=round(
+                                    ((index - 1) / len(list_files)) * 100, 2
+                                ),
                             )
                             if (
                                 self.check_tarif is False
@@ -114,7 +123,8 @@ class Parser:
                                 self._dictionary = rep._dictionary.copy()
                                 if rep._parameters.get("period"):
                                     self._period = datetime.datetime.strptime(
-                                        rep._parameters["period"]["value"][0], "%d.%m.%Y"
+                                        rep._parameters["period"]["value"][0],
+                                        "%d.%m.%Y",
                                     ).date()
 
                             else:
@@ -124,14 +134,19 @@ class Parser:
                         files=list_files,
                     )
                     if self.union:
+                        logger.info(f"Сборка документов")
                         u = UnionData(
                             isParser=isParser,
                             file_log=file_log,
                             path_input=os.path.join(PATH_OUTPUT, self.output_path),
                             path_output=self.download_path,
                             file_output=self.download_file,
+                            is_daemon=self.is_daemon,
+                            inn=self.inn,
                         )
-                        return u.start()
+                        result = u.start()
+                        logger.info(f"Окончание сборки")
+                        return result
                 else:
                     logger.info(f"Данные в архиве не распознаны")
                     if self.is_daemon:

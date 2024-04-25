@@ -18,7 +18,7 @@ pattern_ЛС:.+
 
 pattern_period:^[0-9]{2}[.][0-9]{4}$
 
-required_contract:
+required_contracts:
 required_pp:bill_value,payment_value,credit,saldo,account_number,(bank_bik)
 required_accounts:address,living_person_number,total_square
 required_pu:serial_number,manufacturer,model
@@ -42,7 +42,6 @@ field:^Оплачено денежных средств@value_0(accounts)
 0:^Идентификатор дома(?:.+)?ГИС ЖКХ$@gis_premises_id
 
 0:^Номер ЛС;^Номер платежного документа@account_number_accounts::~.+@account_identifier_accounts::*
-;0:Единый лицевой счет;^Номер платежного документа
 0:^Адрес@address_accounts{func{_}}
 0:^Номер комнаты@room_number
 
@@ -52,6 +51,8 @@ field:^Оплачено денежных средств@value_0(accounts)
 ;contract
 0:^Договор не является публичным@offer
 0:^Дата заключения@start_date{{-1;-2;Договор ресурсоснабжения}}
+0:Идентификатор основания@gis_contract_id
+0:Номер@contract_number{{-1;-1;Договор ресурсоснабжения}}
 
 ;pp
 0:^Сумма к оплате;^Задолженность за предыдущие периоды@bill_value	

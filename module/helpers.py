@@ -449,3 +449,14 @@ def read_file(file_name):
     except FileNotFoundError:
         logger.error(f"Файл не найден {file_name}")
     return []
+
+def get_folder(folder)->str:
+    rootdir = pathlib.Path(folder).parent
+    name = pathlib.Path(folder).stem
+    for file in os.listdir(rootdir):
+        d = os.path.join(rootdir, file)
+        if os.path.isdir(d):
+            name_current = pathlib.Path(d).stem
+            if name in name_current:
+                return d
+    return ""

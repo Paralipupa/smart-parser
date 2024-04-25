@@ -542,7 +542,7 @@ def __write_sec_type(**kwargs):
                 kwargs.get("file").write(f"type={oft}\n")
 
 def __get_func(func, **kwargs):
-    columns = [ (x[0]["col"],x[0]["name"])  for x in kwargs["lines"]["dic"].values() if x and x[0]["name"] in func]
+    columns = [ (x[0]["col"],x[0]["name"])  for x in kwargs["lines"]["dic"].values() if x and f'({x[0]["name"]})' in func]
     if columns:
         func = func.replace(columns[0][1], str(columns[0][0]))
     return func
