@@ -275,7 +275,7 @@ class Func:
     def func_hash(self):
         return (
             hashit(str(get_index_key(self._current_value[-1])).encode("utf-8"))
-            if self.is_hash
+            if self.is_hash and self._current_value[-1]
             else self._current_value[-1]
         )
 

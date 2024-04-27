@@ -27,6 +27,7 @@ from module.helpers import (
     get_value,
     get_value_int,
     get_value_range,
+    get_value_str,
     get_months,
     get_absolute_index,
     get_index_key,
@@ -357,7 +358,7 @@ class ExcelBaseImporter:
                                 "row": size,
                                 "col": value["col"],
                                 "index": index[POS_INDEX_VALUE],
-                                "value": v,
+                                "value": get_value_str(v,""),
                                 "negative": index[POS_INDEX_IS_NEGATIVE],
                             }
                         )

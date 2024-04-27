@@ -98,7 +98,14 @@ def get_index_find_any(text: str, delimeters: str) -> int:
 
 
 def get_value_str(value: str, pattern: str) -> str:
-    return regular_calc(pattern, value)
+    try:
+        if pattern:
+            return regular_calc(pattern, value)
+        elif isinstance(value, str):
+            return value.replace("\\", "\\\\").replace(";", "\\;")
+    except Exception as ex:
+        logger.error(f"{ex}")
+    return value
 
 
 def get_value_int(value: Union[list, str]) -> int:
@@ -450,7 +457,8 @@ def read_file(file_name):
         logger.error(f"Файл не найден {file_name}")
     return []
 
-def get_folder(folder)->str:
+
+def get_folder(folder) -> str:
     rootdir = pathlib.Path(folder).parent
     name = pathlib.Path(folder).stem
     for file in os.listdir(rootdir):
