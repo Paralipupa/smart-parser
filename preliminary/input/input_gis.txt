@@ -27,7 +27,7 @@ required_puv:rr1
 field:^Номер платежного документа@key(accounts)
 field:Идентификатор ЖКУ@value(accounts)@internal_id(accounts){func{hash}}
 field:^Оплачено денежных средств@value_0(accounts)
-field:^Номер лицевого счета@account_internal_id(pu)
+field:^Номер лицевого счета@account_internal_id(pu){func{hash}}
 
 
 0:Идентификатор ЖКУ;^№ записи;^Номер платежного документа;^Номер платежного реквизита;^Услуга;Дата установки
