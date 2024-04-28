@@ -28,7 +28,7 @@ def set_columns(lines: list, path: str) -> str:
         file.write(
             ";########################################################################################################################\n"
         )
-        parsing_lines(file, lines["0"], lines["dic"], lines["param"], names, patts, 0)
+        parsing_lines(file, lines["0"], lines["dic"], lines["param"], names, patts, 0, False)
         parsing_lines(
             file,
             lines["2"],
@@ -37,6 +37,7 @@ def set_columns(lines: list, path: str) -> str:
             names,
             patts,
             len(lines["0"]),
+            False,
         )
         parsing_lines(
             file,
@@ -46,6 +47,7 @@ def set_columns(lines: list, path: str) -> str:
             names,
             patts,
             len(lines["0"]) + len(lines["2"]),
+            False,
         )
         parsing_lines(
             file,
@@ -55,9 +57,17 @@ def set_columns(lines: list, path: str) -> str:
             names,
             patts,
             len(lines["0"]) + len(lines["2"]),
+            True,
         )
         parsing_lines(
-            file, lines["1"], lines["dic"], lines["param"], names, patts, COLUMN_BEGIN
+            file,
+            lines["1"],
+            lines["dic"],
+            lines["param"],
+            names,
+            patts,
+            COLUMN_BEGIN,
+            False,
         )
         if not lines["dic"].get("service"):
             if lines["param"].get("main_border_column_left"):
@@ -98,6 +108,7 @@ def parsing_lines(
     names: list,
     patts: list,
     col_begin: int,
+    is_duplicate_default: bool,
 ):
     for idx_col, line in enumerate(lines):
         file.write("\n")
@@ -111,7 +122,7 @@ def parsing_lines(
             # проверяем правую границу Услуг
             lparam["main_border_column_right"] = [idx_col]
             line["name"] = line["name"][1:]
-        ls = line["name"].split("@")        
+        ls = line["name"].split("@")
         line["name"] = ls[0]
         line["fields"] = []
         pattern_default = ""
@@ -139,7 +150,15 @@ def parsing_lines(
                 func_is_no=param_func_is_no,
                 type=param_type,
             )
-            line["fields"].append(dict(name=x,col=col_begin+idx_col,pattern=param_pattern,func=param_func,type=param_type))
+            line["fields"].append(
+                dict(
+                    name=x,
+                    col=col_begin + idx_col,
+                    pattern=param_pattern,
+                    func=param_func,
+                    type=param_type,
+                )
+            )
 
         if col_begin + idx_col == 0:
             file.write(f"name=ЛС\n")
@@ -150,7 +169,7 @@ def parsing_lines(
         else:
             name = get_name(get_ident(line["name"].split(";")[0]), names)
             file.write(f"name={name}\n")
-        is_duplicate = False
+        is_duplicate = is_duplicate_default
         col_offset = ""
         for j, x in enumerate(get_reg(line["name"]).split(";")):
             col_off: str = re.sub(r"\(|\)|\+|-|\^|\$|\\|,|\s", "", x)
@@ -161,7 +180,13 @@ def parsing_lines(
                 file.write(
                     f'pattern{"_" if j >0 else ""}{str(j-1) if j >0 else ""}={x}\n'
                 )
-                if not any([y for y in patts if re.sub(r"\(|\)|\+|-|\^|\$|\\|,|\s", "", y) == col_off]):
+                if not any(
+                    [
+                        y
+                        for y in patts
+                        if re.sub(r"\(|\)|\+|-|\^|\$|\\|,|\s", "", y) == col_off
+                    ]
+                ):
                     patts.append(x)
                 else:
                     is_duplicate = True

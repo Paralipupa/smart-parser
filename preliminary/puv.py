@@ -117,5 +117,11 @@ def puv(lines: list, path: str, sec_number:int) -> str:
                 sec_name="rr3",
             )
         )
+        write_other_fields(
+            file=file,
+            lines=lines,
+            sec_type=doc_type,
+            sec_number=8,
+        )
 
     return file_name
