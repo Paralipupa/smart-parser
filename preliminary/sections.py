@@ -21,7 +21,8 @@ def write_other_fields(**kwargs):
                 kwargs.get("file").write(f"col_config={fld['col']}\n")
                 kwargs.get("file").write("row_data=0\n")
                 if fld.get("func"):
-                    kwargs.get("file").write(f"func={fld['func'][0]}\n")
+                    func = __get_func(fld['func'][0], **kwargs)
+                    kwargs.get("file").write(f"func={func}\n")
                 kwargs["sec_number"] += 1
 
 

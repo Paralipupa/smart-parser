@@ -25,7 +25,7 @@ required_pu:serial_number,manufacturer,model
 required_puv:rr1
 
 field:^Номер платежного документа;^№ записи@key(accounts)::~.+
-field:Идентификатор ЖКУ@value(accounts)@internal_id(accounts){func{hash}}
+field:Идентификатор ЖКУ@value(accounts)@internal_id(accounts){func{key+column_value(key(accounts)),hash,dictionary,hash}}
 field:^Оплачено денежных средств@value_0(accounts)
 field:^Номер лицевого счета@account_internal_id(pu){func{hash}}
 

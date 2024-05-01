@@ -1636,7 +1636,7 @@ class ExcelBaseImporter:
         async with aiofiles.open(filename, mode="a+", encoding=ENCONING) as f:
             if names:
                 writer_head = AsyncDictWriter(
-                    f, delimiter=";", lineterminator="\r", fieldnames=names
+                    f, delimiter=",", lineterminator="\r", fieldnames=names
                 )
                 await writer_head.writeheader()
             writer_body = AsyncWriter(f)

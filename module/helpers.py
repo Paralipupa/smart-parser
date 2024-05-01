@@ -430,7 +430,7 @@ def write_log_time(file_name: str, is_error: bool = False, data: str = ""):
 
 def get_list_dict_from_csv(file_name: str) -> list:
     file_list = read_file(file_name)
-    headers = file_list[0][0].split(";")
+    headers = file_list[0]
     values = file_list[1:]
     final_list = []
     for lists in values:
