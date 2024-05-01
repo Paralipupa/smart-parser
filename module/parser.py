@@ -4,6 +4,7 @@ import logging
 import shutil
 import datetime
 import psutil
+from pathlib import Path
 from module.excel_base_importer import ExcelBaseImporter
 from module.helpers import get_config_files, write_list, check_tarif, write_log_time
 from module.union import UnionData
@@ -115,7 +116,7 @@ class Parser:
                                 psutil.virtual_memory().available / 1024**3, 2
                             )
                             logger.info(
-                                f"({index}/{len(list_files)}) {free_mem}/{self.mem}({round(100*free_mem/self.mem,2)}%) Начало обработки файла '{os.path.basename(file_name['name'])}'"
+                                f"({index}/{len(list_files)}) {free_mem}/{self.mem}({round(100*free_mem/self.mem,2)}%) Начало обработки файла '{os.path.basename(file_name['name'])}'({Path(file_name['config'][0]['name']).stem})"
                             )
                             if rep.extract():
                                 logger.info(f"Обработка завершена      ")

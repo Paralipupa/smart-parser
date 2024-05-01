@@ -17,6 +17,7 @@ def contract(lines: list, path: str, sec_number:int) -> str:
         write_section_doc(
             **dict(
                 file=file,
+                lines=lines,
                 sec_type="doc",
                 sec_number=sec_number,
                 sec_title="Договоры",

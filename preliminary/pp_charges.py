@@ -3,7 +3,7 @@ from sections import *
 from settings import *
 
 
-def pp_charges(lines: list, path: str, sec_number:int) -> str:
+def pp_charges(lines: list, path: str, sec_number: int) -> str:
     names = []
     l = get_lines(lines)
     file_name = f"{path}/ini/4_pp_charges.ini"
@@ -18,6 +18,7 @@ def pp_charges(lines: list, path: str, sec_number:int) -> str:
         write_section_doc(
             **dict(
                 file=file,
+                lines=lines,
                 sec_type="doc",
                 sec_number=sec_number,
                 sec_title="Документ Начисления платежей",
@@ -50,18 +51,6 @@ def pp_charges(lines: list, path: str, sec_number:int) -> str:
                 sec_is_ident=True,
             )
         )
-
-        # file.write("\n")
-        # file.write("[pp_charges_2]\n")
-        # file.write("; Внутренний идентификатор платежного документа\n")
-        # file.write("name=pp_internal_id\n")
-        # file.write("pattern=@0\n")
-        # file.write("row_data=0\n")
-        # if lines["dic"].get("pp_internal_id"):
-        #     file.write(f'col_config={lines["dic"]["pp_internal_id"][0]["col"]}\n')
-        # else:
-        #     file.write("col_config=0\n")
-        # file.write("func=id+account_number,spacerepl,hash\n")
 
         write_section(
             **dict(

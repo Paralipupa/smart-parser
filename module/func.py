@@ -444,6 +444,9 @@ class Func:
         return self.__func_dictionary(key, False)
 
     def func_dictionaryOnce(self, key: str = None):
+        """ Берет значение словаря только один раз 
+            Повторный вызов с этим ключом игнорируется
+        """
         return self.__func_dictionary(key, True)
 
     def __func_dictionary(self, key: str = None, is_not_used: bool = False):

@@ -312,10 +312,35 @@ class ExcelBaseImporter:
                     write_log_time(self.download_file, False, f"{self.progress}%")
                 sleep(0)
 
+    def __reset_row(self, x: dict) -> dict:
+        y = x.copy()
+        y["row"] = 0
+        return y
+
     def __make_collections(self, doc_param: dict, team: dict):
         try:
-            doc = self.__set_document(doc_param, team)
-            self.__document_split_one_line(doc, doc_param)
+            if doc_param.get("type", "") == "single-line":
+                t = {}
+                count_rows = 0
+                for key, value in team.items():
+                    count_rows = (
+                        value[-1]["row"]
+                        if value and value[-1]["row"] > count_rows
+                        else count_rows
+                    )
+                for row in range(count_rows + 1):
+                    for key, value in team.items():
+                        t[key] = []
+                        a = [self.__reset_row(x) for x in value if x["row"] == row]
+                        if not a and key == "ЛС":
+                            a = [x for x in value if x["row"] == 0]
+                        if a:
+                            t[key].extend(a)
+                    doc = self.__set_document(doc_param, t)
+                    self.__document_split_one_line(doc, doc_param)
+            else:
+                doc = self.__set_document(doc_param, team)
+                self.__document_split_one_line(doc, doc_param)
         except Exception as ex:
             logger.error(f"{ex}")
 
@@ -358,7 +383,7 @@ class ExcelBaseImporter:
                                 "row": size,
                                 "col": value["col"],
                                 "index": index[POS_INDEX_VALUE],
-                                "value": get_value_str(v,""),
+                                "value": get_value_str(v, ""),
                                 "negative": index[POS_INDEX_IS_NEGATIVE],
                             }
                         )

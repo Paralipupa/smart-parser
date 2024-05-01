@@ -11,6 +11,7 @@ def pp_service(lines: list, path: str, sec_number:int):
         write_section_doc(
             **dict(
                 file=file,
+                lines=lines,
                 sec_type="doc",
                 sec_number=sec_number,
                 sec_title="Документ. Услуги ",

@@ -28,7 +28,9 @@ def set_columns(lines: list, path: str) -> str:
         file.write(
             ";########################################################################################################################\n"
         )
-        parsing_lines(file, lines["0"], lines["dic"], lines["param"], names, patts, 0, False)
+        parsing_lines(
+            file, lines["0"], lines["dic"], lines["param"], names, patts, 0, False
+        )
         parsing_lines(
             file,
             lines["2"],

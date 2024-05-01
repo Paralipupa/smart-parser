@@ -16,6 +16,7 @@ def set_lines() -> list:
         "dic": {},
         "fields": [],
         "required": {},
+        "type": {},
     }
 
 

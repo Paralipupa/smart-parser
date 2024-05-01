@@ -392,7 +392,7 @@ def get_value(
     except:
         pass
     result = regular_calc(pattern, value)
-    if result != None:
+    if result is not None:
         try:
             if type_value == "int":
                 result = get_value_int(value)

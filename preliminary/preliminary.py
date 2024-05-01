@@ -37,7 +37,6 @@ def read_from_config(file_name: str) -> list:
 def add_to_previous(lines:list, text: str):
     if len(lines) != 0:
         lines[-1]["name"] += text.strip()
-    pass
     
 def read_from_text(file_name: str) -> list:
     # 0 Данные пользователя и ОСВ (accounts, pp)
@@ -95,12 +94,21 @@ def read_from_text(file_name: str) -> list:
                         lines['param'].setdefault(p, [])
                         lines['param'][p].append(line[len(p)+1:].strip())
                 elif line[:6] == 'field:':
+                    if line[6:7] == "@":
+                        add_to_previous(lines["fields"], line[6:])
+                    else:
+                        k = line.find(':')
+                        p = line[k+1:]
+                        l = [{'name': x.strip(), 'is_unique': False, 'is_optional': True if len(
+                            lines['fields']) == 0 else True} for x in line[k+1:].split('\t')
+                            if x.strip() != '' and not any(y for y in lines['fields'] if y['name'].strip() == x.strip())]
+                        lines['fields'].extend(l)
+                elif line[:5] == 'type_':
                     k = line.find(':')
-                    p = line[k+1:]
-                    l = [{'name': x.strip(), 'is_unique': False, 'is_optional': True if len(
-                        lines['fields']) == 0 else True} for x in line[k+1:].split('\t')
-                        if x.strip() != '' and not any(y for y in lines['fields'] if y['name'].strip() == x.strip())]
-                    lines['fields'].extend(l)
+                    if k > 5:
+                        p = line[:k]
+                        lines['type'].setdefault(p, [])
+                        lines['type'][p].append(line[len(p)+1:].strip())
                 elif line[:9] == 'required_':
                     k = line.find(':')
                     if k > 9:
