@@ -1121,6 +1121,7 @@ class ExcelBaseImporter:
 
     def __get_required_rows(self, name: str, doc: dict) -> set:
         s = set()
+        a = set()
         m = set()
         is_main_field = False
         d = next((x for x in self.__get_config_documents() if x["name"] == name), None)
@@ -1143,8 +1144,11 @@ class ExcelBaseImporter:
                         s.add(item["row"])
                         if name_field.find("(") != -1:
                             m.add(item["row"])
+                        else:
+                            a.add(name_field)
         if is_main_field:
             return m & s
+            # return m & s if a else set()
         else:
             return s
 
