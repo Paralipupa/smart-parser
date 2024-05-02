@@ -1172,7 +1172,7 @@ class ExcelBaseImporter:
             if (fld == "key") or (fld == "__key"):
                 param = {"value": "key" + doc[fld], "func": "hash"}
                 param["key"] = self.func(fld_param=param)
-            elif regular_calc("^value", fld) or regular_calc("^__value", fld):
+            elif fld.startswith("value") or fld.startswith("__value"):
                 param["data"] = dict(value=value, used=False)
             else:
                 index_key = get_index_key(fld)
