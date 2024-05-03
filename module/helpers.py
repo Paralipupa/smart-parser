@@ -84,6 +84,46 @@ def regular_calc(pattern: str, value: str) -> str:
         return f"error in regular: '{pattern}' ({str(ex)})"
 
 
+def regular_calc_alt(pattern: str, value: str) -> str:
+    try:
+        reg_list = ["^", "$", "|", "?", r"\\", "~", "+", ".", "(", ")", "[", "]"]
+        if pattern and any([x in pattern for x in reg_list]) is True:
+            if "^{}$".format(
+                pattern.lstrip("^").rstrip("$")
+            ) == pattern and value == pattern.lstrip("^").rstrip("$"):
+                return value
+            elif "^{}".format(pattern.lstrip("^")) == pattern and value.startswith(
+                pattern.lstrip("^")
+            ):
+                return value
+            elif "{}$".format(pattern.rstrip("$")) == pattern and value.endswith(
+                pattern.rstrip("$")
+            ):
+                return value
+            else:
+                result = re.search(
+                    pattern.replace("~", "").replace("||", "|"),
+                    value.replace("\n", "").strip(),
+                    re.IGNORECASE,
+                )
+                if result is None or result.group(0).find("error") != -1:
+                    return None
+                else:
+                    return result.group(0).strip()
+        else:
+            if pattern:
+                if pattern in value:
+                    return pattern
+                else:
+                    return None
+            else:
+                return value
+
+    except Exception as ex:
+        logger.exception("Regular error")
+        return f"error in regular: '{pattern}' ({str(ex)})"
+
+
 def get_index_key(line: str) -> str:
     return re.sub(r"[-.,()+ ]", "", line).lower()
 
