@@ -40,13 +40,13 @@ def get_reg(pattern: str) -> str:
                 patt = patt.replace("(", "\(").replace(")", "\)")
                 patt = patt.replace(".", "[.]").replace("*", "[*]")
                 patt = patt.replace("+", "[+]")
+        if any(([x in patt for x in ["^", "$", "?"]])) is False and patt:
+            patt = f"^{patt}$"
+        if patt.startswith(r"^(?:.+)?"):
+            patt = patt[8:]
         new_pattern += patt + ";"
     new_pattern = new_pattern.strip(";").strip()
-    return (
-        f'^{new_pattern.rstrip().replace(";","$;^")}$'
-        if new_pattern.find("^") == -1 and new_pattern.find("$") == -1
-        else new_pattern.rstrip()
-    )
+    return new_pattern
 
 
 def get_name(name: str, names: list = None) -> str:
