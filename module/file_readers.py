@@ -66,6 +66,9 @@ class XlsFile(DataFile):
         else:
             self._page_indexes = range(len(self._wb.sheets()))
         return self._page_current
+    
+    def get_sheets(self):
+        return self._wb.sheets()
 
     def get_sheet(self) -> object:
         try:
@@ -121,6 +124,9 @@ class XlsxFile(DataFile):
             self._page_indexes = range(len(self._wb.worksheets))
         return self._page_current
 
+    def get_sheets(self):
+        return self._wb.worksheets
+    
     def get_sheet(self) -> object:
         try:
             if self._page_current < len(self._page_indexes):

@@ -2,7 +2,7 @@ from utils import get_lines
 from sections import *
 
 
-def pp_service(lines: list, path: str):
+def pp_service(lines: list, path: str, sec_number:int):
     l = get_lines(lines)
     doc_type = "pp_service"
     file_name = f"{path}/ini/5_pp_service.ini"
@@ -11,8 +11,9 @@ def pp_service(lines: list, path: str):
         write_section_doc(
             **dict(
                 file=file,
+                lines=lines,
                 sec_type="doc",
-                sec_number=3,
+                sec_number=sec_number,
                 sec_title="Документ. Услуги ",
                 sec_name=doc_type,
                 required_fields="name",
@@ -80,6 +81,12 @@ def pp_service(lines: list, path: str):
                 sec_name="gis_code",
                 sec_is_service=False,
             )
+        )
+        write_other_fields(
+            file=file,
+            lines=lines,
+            sec_type=doc_type,
+            sec_number=5,
         )
 
     return file_name

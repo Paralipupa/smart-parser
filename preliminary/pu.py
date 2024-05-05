@@ -1,7 +1,7 @@
 from sections import *
 
 
-def pu(lines: list, path: str) -> str:
+def pu(lines: list, path: str, sec_number:int) -> str:
     doc_type = "pu"
     file_name = f"{path}/ini/6_pu.ini"
     with open(file_name, "w") as file:
@@ -14,8 +14,9 @@ def pu(lines: list, path: str) -> str:
         write_section_doc(
             **dict(
                 file=file,
+                lines=lines,
                 sec_type="doc",
-                sec_number=4,
+                sec_number=sec_number,
                 sec_title="Приборы учета (ПУ)",
                 sec_name=doc_type,
                 required_fields=required_fields,
@@ -46,7 +47,7 @@ def pu(lines: list, path: str) -> str:
                 sec_is_func_name_no_ident=False,
             )
         )
-        write_section_account_internal_id(
+        write_section(
             **dict(
                 file=file,
                 lines=lines,
@@ -54,8 +55,14 @@ def pu(lines: list, path: str) -> str:
                 sec_number=2,
                 sec_title="Внутренний идентификатор ЛС",
                 sec_name="account_internal_id",
+                sec_func=(
+                    ("id," if lines["param"].get("pattern_id_length") else "")
+                    + "spacerepl,hash"
+                ),
+                sec_is_service=False,
             )
         )
+        
         write_section(
             **dict(
                 file=file,
@@ -64,6 +71,7 @@ def pu(lines: list, path: str) -> str:
                 sec_number=3,
                 sec_title="ГИС. Идентификатор ПУ GUID",
                 sec_name="gis_id",
+                sec_is_service=False,
                 required_fields=required_fields,
             )
         )
@@ -236,5 +244,11 @@ def pu(lines: list, path: str) -> str:
                 sec_name="account_type",
                 required_fields=required_fields,
             )
+        )
+        write_other_fields(
+            file=file,
+            lines=lines,
+            sec_type=doc_type,
+            sec_number=19,
         )
     return file_name

@@ -9,6 +9,7 @@ import configparser
 from pp_service import pp_service
 from pp_charges import pp_charges
 from pp import pp
+from contract import contract
 from accounts import accounts
 from columns import set_columns
 from header import header
@@ -33,7 +34,10 @@ def read_from_config(file_name: str) -> list:
         i += 1
     return lines
 
-
+def add_to_previous(lines:list, text: str):
+    if len(lines) != 0:
+        lines[-1]["name"] += text.strip()
+    
 def read_from_text(file_name: str) -> list:
     # 0 Данные пользователя и ОСВ (accounts, pp)
     # 1 Начисление платежей  (pp_charges)
@@ -48,11 +52,14 @@ def read_from_text(file_name: str) -> list:
         for line in file:
             if line[0] != ';':
                 if line[:2] == '0:':
-                    l = [{'name': x, 'is_unique': True, 'is_optional': False if len(
-                        lines['0']) == 0 else True} for x in line[2:].split('\t')
-                        if x.strip() != '' and not any(y for y in lines['9'] if y['name'].strip() == x.strip())]
-                    lines['0'].extend(l)
-                    lines['9'].extend(l)
+                    if line[2:3] == "@":
+                        add_to_previous(lines["0"], line[2:])
+                    else:
+                        l = [{'name': x.strip(), 'is_unique': True, 'is_optional': False if len(
+                            lines['0']) == 0 else True} for x in line[2:].split('\t')
+                            if x.strip() != '' and not any(y for y in lines['9'] if y['name'].strip() == x.strip())]
+                        lines['0'].extend(l)
+                        lines['9'].extend(l)
                 elif line[:2] == '1:':
                     l = [{'name': x.strip(), 'is_unique': False, 'is_optional': True} for x in line[2:].split('\t')
                          if x.strip() != '' and not any(y for y in lines['9'] if y['name'].strip() == x.strip())]
@@ -86,6 +93,22 @@ def read_from_text(file_name: str) -> list:
                         p = line[:k]
                         lines['param'].setdefault(p, [])
                         lines['param'][p].append(line[len(p)+1:].strip())
+                elif line[:6] == 'field:':
+                    if line[6:7] == "@":
+                        add_to_previous(lines["fields"], line[6:])
+                    else:
+                        k = line.find(':')
+                        p = line[k+1:]
+                        l = [{'name': x.strip(), 'is_unique': False, 'is_optional': True if len(
+                            lines['fields']) == 0 else True} for x in line[k+1:].split('\t')
+                            if x.strip() != '' and not any(y for y in lines['fields'] if y['name'].strip() == x.strip())]
+                        lines['fields'].extend(l)
+                elif line[:5] == 'type_':
+                    k = line.find(':')
+                    if k > 5:
+                        p = line[:k]
+                        lines['type'].setdefault(p, [])
+                        lines['type'][p].append(line[len(p)+1:].strip())
                 elif line[:9] == 'required_':
                     k = line.find(':')
                     if k > 9:
@@ -121,15 +144,26 @@ if __name__ == "__main__":
     args = getArgs()
     namespace = args.parse_args(sys.argv[1:])
     lines = read_from_text(namespace.name)
+    os.makedirs(f"{os.path.dirname(__file__)}/ini",exist_ok=True)
     cols = set_columns(lines, os.path.dirname(__file__))
     names.append(header(lines, os.path.dirname(__file__)))
     names.append(cols)
-    names.append(accounts(lines, os.path.dirname(__file__)))
-    names.append(pp(lines, os.path.dirname(__file__)))
-    names.append(pp_charges(lines, os.path.dirname(__file__)))
-    names.append(pp_service(lines, os.path.dirname(__file__)))
-    names.append(pu(lines, os.path.dirname(__file__)))
-    names.append(puv(lines, os.path.dirname(__file__)))
+    sec_number = 0
+    names.append(accounts(lines, os.path.dirname(__file__), sec_number=sec_number))
+    sec_number += 1
+    names.append(pp(lines, os.path.dirname(__file__), sec_number=sec_number))
+    sec_number += 1
+    names.append(pp_charges(lines, os.path.dirname(__file__), sec_number=sec_number))
+    sec_number += 1
+    names.append(pp_service(lines, os.path.dirname(__file__), sec_number=sec_number))
+    sec_number += 1
+    names.append(pu(lines, os.path.dirname(__file__), sec_number=sec_number))
+    sec_number += 1
+    names.append(puv(lines, os.path.dirname(__file__), sec_number=sec_number))
+    sec_number += 1
+    if lines["required"].get("required_contracts") is not None:
+        names.append(contract(lines, os.path.dirname(__file__), sec_number=sec_number))
+        sec_number += 1
     write_config(
         names, os.path.join(os.path.dirname(__file__), "ini"), "gis_config.ini"
     )

@@ -8,14 +8,7 @@ import csv
 import zipfile
 import shutil
 from collections import Counter
-from .helpers import (
-    warning_error,
-    fatal_error,
-    print_message,
-    get_list_dict_from_csv,
-    get_folder,
-    write_log_time,
-)
+from .helpers import warning_error, fatal_error, print_message, get_list_dict_from_csv
 from .exceptions import ConfigNotFoundException
 from .settings import *
 
@@ -40,111 +33,66 @@ class UnionData:
         self.file_log = file_log
         self.path_input = path_input
         self.path_output = path_output
-        self.file_output = (
-            file_output
-            if file_output
-            else (
-                (
-                    f'{inn if inn else "output"}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.zip'
-                )
-            )
-        )
-
+        self.file_output = file_output
         self.exclude = {
             "bill_value",
             "payment_value",
             "credit",
             "saldo",
         }
-        self.is_daemon = is_daemon
         self.dict_ids = {}
 
     def start(self) -> list:
         save_directories = dict()
         is_separate_account_type = True
         files_o: list[str] = self.__get_files()
-        if files_o:
-            files_s = self.__files_sorted(files_o)
-            period, inn_common = self.__get_commom_data(files_s)
-            for index, fn in enumerate(DOCUMENTS.split()):
-                if self.is_daemon:
-                    # при фоновой обработке отслеживаем процесс выполнения
-                    # записывая текущее время в файл
-                    write_log_time(
-                        os.path.join(self.path_output, self.file_output),
-                        False,
-                        f"{round(index/len(DOCUMENTS.split()),2)}%",
-                    )
-                print_message(
-                    "         Загрузка: {}                          \r".format(
-                        fn,
-                    ),
-                    end="",
-                    flush=True,
-                )
-                data = self.__get_data_files(files_s, period, inn_common, fn)
-                if self.is_daemon:
-                    # при фоновой обработке отслеживаем процесс выполнения
-                    # записывая текущее время в файл
-                    write_log_time(
-                        os.path.join(self.path_output, self.file_output),
-                        False,
-                        f"{round(index/len(DOCUMENTS.split()),2)}%",
-                    )
-                print_message(
-                    "         Обработка: {}                          \r".format(
-                        fn,
-                    ),
-                    end="",
-                    flush=True,
-                )
-                for inn, item in data.items():
-                    for id_period, files in item.items():
-                        file_data = {}
-                        if self.is_daemon:
-                            # при фоновой обработке отслеживаем процесс выполнения
-                            # записывая текущее время в файл
-                            write_log_time(
-                                os.path.join(self.path_output, self.file_output),
-                                False,
-                                f"{round(index/len(DOCUMENTS.split()),2)}%",
-                            )
-                        for file in files:
-                            for key_record, record in file.items():
-                                if file_data.get(key_record):
-                                    record = self.__merge(
-                                        record, file_data.get(key_record), key_record
-                                    )
-                                if not record.get("account_type") is None:
-                                    if is_separate_account_type is False:
-                                        record.pop("account_type", None)
-                                    elif record.get("account_type") == "":
-                                        record["account_type"] = "uo"
-                                file_data[key_record] = record
-                        if re.search("^accounts", id_period):
-                            is_separate_account_type = self.__write_account(
-                                inn, id_period, file_data, save_directories
-                            )
-                        else:
-                            key = self.__write(inn, id_period, file_data)
-                            save_directories[key] = self.path_input
+        files = self.__files_sorted(files_o)
+        if files:
+            data = self.__get_data_files(files)
             print_message(
-                "         Создание архива: {}                          \r".format(
-                    fn,
-                ),
+                "               Финальная сборка                                                 \r",
                 end="",
                 flush=True,
             )
-            self.__make_archive(save_directories)
-            if os.path.isdir(self.path_input):
-                shutil.rmtree(self.path_input)
-                if os.path.isfile(
-                    os.path.join(self.path_output, self.file_output + ".log")
-                ):
-                    os.remove(os.path.join(self.path_output, self.file_output + ".log"))
-        return self.file_output if os.path.exists(os.path.join(self.path_output, self.file_output)) else ""
+            for inn, item in data.items():
+                for id_period, files in item.items():
+                    file_data = {}
+                    for file in files:
+                        for key_record, record in file.items():
+                            if file_data.get(key_record):
+                                record = self.__merge(
+                                    record, file_data.get(key_record), key_record
+                                )
+                            if not record.get("account_type") is None:
+                                if is_separate_account_type is False:
+                                    record.pop("account_type", None)
+                                elif record.get("account_type") == "":
+                                    record["account_type"] = "uo"
+                            file_data[key_record] = record
+                    if re.search("^accounts",id_period):
+                        is_separate_account_type = self.__write_account(
+                            inn, id_period, file_data, save_directories
+                        )
+                    else:
+                        key = self.__write(inn, id_period, file_data)
+                        save_directories[key] = self.path_input
+        self.__make_archive(save_directories)
+        if os.path.isdir(self.path_input):
+            shutil.rmtree(self.path_input)
+            if os.path.isfile(
+                os.path.join(self.path_output, self.file_output + ".log")
+            ):
+                os.remove(os.path.join(self.path_output, self.file_output + ".log"))
+        print_message(
+            "               Обработка завершена                                                 \r",
+            end="",
+            flush=True,
+        )
+        return self.file_output
 
-    def __get_commom_data(self, files: list):
+    def __get_data_files(self, files: list) -> dict:
+        data = dict()
+        self.del_files = list()
         period_current: list = [datetime.now().strftime("%m%Y")]
         period_common: list = period_current
         inn_common: str = ["0000000000"]
@@ -158,26 +106,23 @@ class UnionData:
             inn_file: list = re.findall(r"^[0-9]{8,10}(?=_)", file, re.IGNORECASE)
             if inn_file and inn_file[0] != "0000000000":
                 inn_common = inn_file
-        return period_common, inn_common
-
-    def __get_data_files(
-        self, files: list, period: list, inn_common: str, fn: str
-    ) -> dict:
-        data = dict()
-        self.del_files = list()
+        period = period_common
         for file in files:
-            name: list = re.findall(
-                r"(?<=[0-9]{1}_)" + fn + r"(?=\.)", file, re.IGNORECASE
-            )
-            if name:
-                inn: list = re.findall(r"^[0-9]{8,10}(?=_)", file, re.IGNORECASE)
-                if inn and inn[0] == "0000000000":
-                    inn = inn_common
-                if inn and name and period:
-                    self.del_files.append(file)
-                    data.setdefault(inn[0], dict())
-                    data[inn[0]].setdefault(f"{name[0]}@{period[0]}", [])
-                    data[inn[0]][f"{name[0]}@{period[0]}"].append(self.__get_data(file))
+            for fn in DOCUMENTS.split():
+                name: list = re.findall(
+                    r"(?<=[0-9]{1}_)" + fn + r"(?=\.)", file, re.IGNORECASE
+                )
+                if name:
+                    inn: list = re.findall(r"^[0-9]{8,10}(?=_)", file, re.IGNORECASE)
+                    if inn and inn[0] == "0000000000":
+                        inn = inn_common
+                    if inn and name and period:
+                        self.del_files.append(file)
+                        data.setdefault(inn[0], dict())
+                        data[inn[0]].setdefault(f"{name[0]}@{period[0]}", [])
+                        data[inn[0]][f"{name[0]}@{period[0]}"].append(
+                            self.__get_data(file)
+                        )
         return data
 
     def __write_account(
@@ -256,9 +201,7 @@ class UnionData:
                 for dic in data:
                     for key in keys_redefine:
                         key_old = key[2:]
-                        if dic.get(key_old) is not None and self.dict_ids.get(
-                            dic.get(key_old)
-                        ):
+                        if dic.get(key_old) is not None and self.dict_ids.get(dic.get(key_old)):
                             dic[key_old] = self.dict_ids.get(dic.get(key_old))
             self.__check_unique(file_name, keys)
             data = dict(zip(keys, data))
@@ -268,15 +211,11 @@ class UnionData:
 
     @fatal_error
     def __get_files(self) -> list:
-        """Получить список файлов csv из папки"""
         files = list()
-        if not os.path.isdir(self.path_input):
-            self.path_input = get_folder(self.path_input)
-            if self.path_input:
-                self.file_output = os.path.basename(self.path_input) + ".zip"
         if os.path.isdir(self.path_input):
             for file in os.listdir(self.path_input):
                 if file.endswith(".csv"):
+                    # if file.endswith(".json"):
                     files.append(file)
         return files
 
@@ -334,9 +273,9 @@ class UnionData:
         path = pathlib.Path(self.path_input, key)
         os.makedirs(path, exist_ok=True)
         file_name = pathlib.Path(path, file_name)
-        # with open(f"{file_name}.json", mode="w", encoding=ENCONING) as file:
-        #     jstr = json.dumps(data, indent=4, ensure_ascii=False)
-        #     file.write(jstr)
+        with open(f"{file_name}.json", mode="w", encoding=ENCONING) as file:
+            jstr = json.dumps(data, indent=4, ensure_ascii=False)
+            file.write(jstr)
         with open(f"{file_name}.csv", mode="w", encoding=ENCONING) as file:
             names = [x for x in data[0].keys() if x[:2] != "__"]
             file_writer = csv.DictWriter(

@@ -3,17 +3,19 @@ import re
 import logging
 import shutil
 import datetime
-from .excel_base_importer import ExcelBaseImporter
-from .helpers import get_config_files, write_list, check_tarif, write_log_time
-from .union import UnionData
-from .exceptions import (
+import psutil
+from pathlib import Path
+from module.excel_base_importer import ExcelBaseImporter
+from module.helpers import get_config_files, write_list, check_tarif, write_log_time
+from module.union import UnionData
+from module.exceptions import (
     InnMismatchException,
     FatalException,
     ConfigNotFoundException,
     CheckTarifException,
 )
-from .search_config_tasks import SearchConfig
-from .settings import *
+from module.search_config_tasks import SearchConfig
+from module.settings import *
 
 logger = logging.getLogger(__name__)
 
@@ -38,12 +40,19 @@ class Parser:
         self.config = file_config
         self.union = union
         self.download_path = path_down
-        self.output_path = re.findall(".+(?=[.])", file_down)[0]
+        self.output_path = (
+            re.findall(".+(?=[.])", file_down)[0]
+            if re.findall(".+(?=[.])", file_down)
+            else ""
+        )
+        if not self.output_path:
+            self.output_path = inn if inn else "output"
         self.download_file = file_down
         self.is_hash = False if hash == "no" else True
         self.check_tarif = False
         self.is_daemon = is_daemon
         self.config_files = get_config_files()
+        self.mem = round(psutil.virtual_memory().available / 1024**3, 2)
 
     def start(self) -> list:
         try:
@@ -57,6 +66,7 @@ class Parser:
                         path_input=os.path.join(PATH_OUTPUT, self.output_path),
                         path_output=self.download_path,
                         file_output=self.download_file,
+                        inn=self.inn,
                     )
                     return u.start()
 
@@ -90,6 +100,9 @@ class Parser:
                                     if self.is_daemon
                                     else ""
                                 ),
+                                progress=round(
+                                    ((index - 1) / len(list_files)) * 100, 2
+                                ),
                             )
                             if (
                                 self.check_tarif is False
@@ -99,16 +112,21 @@ class Parser:
                                 mess = check_tarif(rep._dictionary.get("tarif"))
                                 if mess:
                                     raise CheckTarifException(mess)
+                            free_mem = round(
+                                psutil.virtual_memory().available / 1024**3, 2
+                            )
                             logger.info(
-                                f"Начало обработки файла '{os.path.basename(file_name['name'])}'"
+                                f"({index}/{len(list_files)}) {free_mem}/{self.mem}({round(100*free_mem/self.mem,2)}%) Начало обработки файла '{os.path.basename(file_name['name'])}'({Path(file_name['config'][0]['name']).stem})"
                             )
                             if rep.extract():
                                 logger.info(f"Обработка завершена      ")
                                 isParser = True
                                 self._dictionary = rep._dictionary.copy()
-                                self._period = datetime.datetime.strptime(
-                                    rep._parameters["period"]["value"][0], "%d.%m.%Y"
-                                ).date()
+                                if rep._parameters.get("period"):
+                                    self._period = datetime.datetime.strptime(
+                                        rep._parameters["period"]["value"][0],
+                                        "%d.%m.%Y",
+                                    ).date()
 
                             else:
                                 logger.info(f"Неудачное завершение обработки")
@@ -117,39 +135,48 @@ class Parser:
                         files=list_files,
                     )
                     if self.union:
+                        logger.info(f"Сборка документов")
                         u = UnionData(
                             isParser=isParser,
                             file_log=file_log,
                             path_input=os.path.join(PATH_OUTPUT, self.output_path),
                             path_output=self.download_path,
                             file_output=self.download_file,
+                            is_daemon=self.is_daemon,
+                            inn=self.inn,
                         )
-                        return u.start()
+                        result = u.start()
+                        logger.info(f"Окончание сборки")
+                        return result
                 else:
                     logger.info(f"Данные в архиве не распознаны")
                     if self.is_daemon:
                         file_name = os.path.join(self.download_path, self.download_file)
                         write_log_time(file_name, True)
         except InnMismatchException as ex:
-            logger.exception(f"{ex}")
+            logger.error(f"{ex}")
             return f"{ex}"
         except FatalException as ex:
-            logger.exception(f"{ex}")
+            logger.error(f"{ex}")
             return f"{ex._message}"
         except ConfigNotFoundException as ex:
-            logger.exception(f"{ex}")
+            logger.error(f"{ex}")
             return f"{ex._message}"
         except CheckTarifException as ex:
-            logger.exception(f"{ex}")
+            logger.error(f"{ex}")
             return f"{ex._message}"
         except Exception as ex:
-            logger.exception(f"{ex}")
+            logger.error(f"{ex}")
             return f"{ex}"
         shutil.copy(
             os.path.join(BASE_DIR, "doc", "error.txt"),
             os.path.join(self.download_path, "error.txt"),
         )
-        return "error.txt"
+        if not self.is_daemon:
+            return "error.txt"
+        else:
+            file_name = os.path.join(self.download_path, self.download_file)
+            write_log_time(file_name, True)
 
     @staticmethod
     def get_path(pathname: str) -> str:

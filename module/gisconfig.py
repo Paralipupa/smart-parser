@@ -531,6 +531,12 @@ class GisConfig:
                 fld["func_is_empty"] = False if x.lower() in ("0", "false") else True
             else:
                 fld.setdefault("func_is_empty", True)
+            # True = невидимый
+            x = self.read_config(f"{name}", "invisible")
+            if x:
+                fld["invisible"] = False if x.lower() in ("0", "false") else True
+            else:
+                fld.setdefault("invisible", False)
         except Exception as ex:
             logger.error(f'{ex}')
             raise Exception(ex)

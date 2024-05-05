@@ -3,7 +3,7 @@ from logging import config as lgconfig
 
 ENCONING = "windows-1251"
 
-DOCUMENTS = "accounts pp pp_charges pp_service pu puv bank_accounts"
+DOCUMENTS = "contracts accounts pp pp_charges pp_service pu puv bank_accounts"
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -44,6 +44,8 @@ COLOR_CONSOLE = {
 }
 # регулярное выражение для определения капитального ремонта  по названию файлов и полей
 REG_KP_XLS = "\sкап|кап(?:.+)?рем|кап[.]|\sкр\s|кр_|Капрем"
+REG_ACCOUNT_NUMBER_BANK = "[0-9]{20}"
+REG_BIK_BANK = "[0-9]{9}"
 
 LOGGING = {
     "version": 1,
@@ -84,24 +86,9 @@ LOGGING = {
             "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
             "datefmt": "%Y-%m-%d %H:%M:%S",
             "format": """
-                    levelno: %(levelno)s
-                    levelname: %(levelname)s
-                    asctime: %(asctime)s
-                    name: %(name)s
-                    module: %(module)s
-                    lineno: %(lineno)d
-                    message: %(message)s
-                    created: %(created)f
-                    filename: %(filename)s
-                    funcName: %(funcName)s
-                    msec: %(msecs)d
-                    pathname: %(pathname)s
-                    process: %(process)d
-                    processName: %(processName)s
-                    relativeCreated: %(relativeCreated)d
-                    thread: %(thread)d
-                    threadName: %(threadName)s
-                    exc_info: %(exc_info)s
+                    \nasctime: %(asctime)s
+                    \nname: %(name)s
+                    \nlineno: %(lineno)d
                 """,
             "datefmt": "%Y-%m-%d %H:%M:%S",
         },
@@ -150,12 +137,13 @@ LOGGING = {
             "filters": ["ErrorFilter"],
             "formatter": "verbose",
             "level": "WARNING",
-            "class": "logging.handlers.RotatingFileHandler",
+            "class": 'logging.FileHandler',
             "encoding": ENCONING,
             "filename": ERROR_LOG_FILENAME,
-            "maxBytes": 100 * 2**10,
-            "backupCount": 2,
-            "delay": True,
+            # "maxBytes": 100 * 2**10,
+            # "backupCount": 2,
+            # "delay": True,
+            "mode": "w",
         },
         "json": {
             "filters": ["ErrorFilter"],

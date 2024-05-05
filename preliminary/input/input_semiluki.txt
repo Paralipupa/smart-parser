@@ -22,24 +22,29 @@ required_pu:serial_number,device_type
 
 3:Статус шкалы ПУ@checking_rows::Работоспособен
 
-0:Л/С;Л/c;Лицевой счет;Услуга;Зав.№@internal_id_accounts::^11[0-9]{8}$@account_internal_id::*@contract_internal_id::*@account_identifier::*@account_number_accounts::*
+0:^Л/С;^Л/c;^Лицевой счет;^Услуга;^Зав(?:.+)№$
+0:@internal_id_accounts::^11[0-9]{8}$
+0:@account_internal_id::*
+0:@contract_internal_id::*
+0:@account_identifier::*
+0:@account_number_accounts::*
 
 0:Адрес@address{func{_}}
-0:Общ. площадь л/с@total_square
-0:Кол-во проживающих@living_person_number
-0:Номер помещения@room_number
-0:Начислено с учетом корректировок, руб.@bill_value{type{float}}{func{round2}}::*currency
-0:Итого начислено в тек. периоде, руб.@accounting_period_total{type{float}}{func{round2}}::*currency
+0:^О(?:.+)?площадь@total_square
+;0:^Общ(?:.+)? площадь@total_square
+0:^Кол(?:.+)?проживающих@living_person_number
+0:^Номер помещения|^Помещение@room_number
+0:^Начислено с учетом корректировок@bill_value{type{float}}{func{round2}}::*currency
+0:^Итого начислено в тек@accounting_period_total{type{float}}{func{round2}}::*currency
 0:Тариф@tariff
 
-0:Показание@rr1_puv{type{float}}{func{round6}}
-0:Дата фактической поверки@first_verification_date
+0:^Показание@rr1_puv{type{float}}{func{round6}}
+0:^Дата фактической поверки@first_verification_date
 0:Дата планируемой поверки (указанная на ПУ)@next_verification_date
-0:Межповерочный интервал, мес.@checking_interval
+0:^Межповерочный интервал@checking_interval
 0:Тип ПУ@device_type
-0:Зав.№@serial_number
-0:Дата планируемой поверки (указанная на ПУ)@next_verification_date
-0:Дата@date_puv
+0:^Зав(?:.+)№$@serial_number
+0:^Дата$|^Дата показания@date_puv
 
-1:Услуга@service@name_pp_service@kind
+1:^Услуга@service@name_pp_service@kind
 

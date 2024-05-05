@@ -3,7 +3,7 @@ from sections import *
 from settings import *
 
 
-def pp_charges(lines: list, path: str) -> str:
+def pp_charges(lines: list, path: str, sec_number: int) -> str:
     names = []
     l = get_lines(lines)
     file_name = f"{path}/ini/4_pp_charges.ini"
@@ -18,8 +18,9 @@ def pp_charges(lines: list, path: str) -> str:
         write_section_doc(
             **dict(
                 file=file,
+                lines=lines,
                 sec_type="doc",
-                sec_number=2,
+                sec_number=sec_number,
                 sec_title="Документ Начисления платежей",
                 sec_name=doc_type,
                 required_fields=required_fields,
@@ -51,17 +52,21 @@ def pp_charges(lines: list, path: str) -> str:
             )
         )
 
-        file.write("\n")
-        file.write("[pp_charges_2]\n")
-        file.write("; Внутренний идентификатор платежного документа\n")
-        file.write("name=pp_internal_id\n")
-        file.write("pattern=@0\n")
-        file.write("row_data=0\n")
-        if lines["dic"].get("pp_internal_id"):
-            file.write(f'col_config={lines["dic"]["pp_internal_id"][0]["col"]}\n')
-        else:
-            file.write("col_config=0\n")
-        file.write("func=id+account_number,spacerepl,hash\n")
+        write_section(
+            **dict(
+                file=file,
+                lines=lines,
+                sec_type=doc_type,
+                sec_number=2,
+                sec_title="Внутренний идентификатор платежного документа",
+                sec_name="pp_internal_id",
+                sec_is_service=False,
+                sec_is_hash=True,
+                sec_is_ident=True,
+                sec_is_func_name_no_ident=False,
+                sec_func="id+account_number,spacerepl,hash",
+            )
+        )
 
         names = []
         file.write("\n")
@@ -117,6 +122,7 @@ def pp_charges(lines: list, path: str) -> str:
                 sec_is_ident=True if not lines["dic"].get("service") else False,
                 sec_is_func_name=True if not lines["dic"].get("service") else False,
                 sec_func_ident="key+fias",
+                sec_func_pattern="[0-9-]+(?:[.,][0-9]*)?",
                 sec_is_func_dictionary=True,
             )
         )
@@ -213,4 +219,11 @@ def pp_charges(lines: list, path: str) -> str:
             else:
                 file.write(f"offset_col_config={COLUMN_BEGIN+1+i}\n")
             file.write("\n")
+
+        write_other_fields(
+            file=file,
+            lines=lines,
+            sec_type=doc_type,
+            sec_number=9,
+        )
     return file_name

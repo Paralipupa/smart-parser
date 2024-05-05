@@ -49,14 +49,16 @@ class SearchConfig:
         self.__extact_zip_files()
         self.__enumeration_config_files()
         self.write_configuration(data_alignment)
+        clear_manager()
         return self.list_files
 
     def __enumeration_config_files(self) -> None:
         if len(self.list_files) == 0:
             return
         clear_manager()
-        with ThreadPoolExecutor(max_workers=None) as executor:
-            executor.map(self.put_data_file, self.list_files)
+        # with ThreadPoolExecutor(max_workers=None) as executor:
+        #     executor.map(self.put_data_file, self.list_files)
+        d = list(map(self.put_data_file, self.list_files))
         self.__to_collect_out_files()
         return
 
@@ -71,13 +73,20 @@ class SearchConfig:
     def __config_find(self, data_file: dict) -> dict:
         retrieved = set()
         try:
-            for conf_file in self.config_files:
-                if not conf_file["type"] in retrieved:
-                    data_file["config"][-1]["name"] = pathlib.Path(
-                        PATH_CONFIG, f"{conf_file['name']}"
-                    )
-                    if self.__check_config(data_file):
-                        retrieved.add(conf_file["type"])
+            if len(self.config_files) == 1:
+                data_file["config"][-1]["name"] = pathlib.Path(
+                    PATH_CONFIG, f"{self.config_files[0]['name']}"
+                )
+                data_file["config"][-1]["sheets"].append(-1)
+                man_list.append(data_file)
+            else:
+                for conf_file in self.config_files:
+                    if not conf_file["type"] in retrieved:
+                        data_file["config"][-1]["name"] = pathlib.Path(
+                            PATH_CONFIG, f"{conf_file['name']}"
+                        )
+                        if self.__check_config(data_file):
+                            retrieved.add(conf_file["type"])
         except Exception as ex:
             logger.info(
                 f"error  {conf_file['name']} \t {os.path.basename(data_file['name'])}  ${ex}"
@@ -184,15 +193,18 @@ class SearchConfig:
     def checking_configuration(self) -> dict:
         """Проверка соответствия файлов конфигурации по ИНН"""
         data = dict()
-        if pathlib.Path.exists(pathlib.Path(CONFIGURATION_FILE)):
-            with open(
-                pathlib.Path(CONFIGURATION_FILE), mode="r", encoding=ENCONING
-            ) as file:
-                data = json.load(file)
-            if self.inn != "000000000" and data.get(self.inn):
-                self.config_files = [
-                    x for x in self.config_files if x["name"] in data[self.inn]
-                ]
+        try:
+            if pathlib.Path.exists(pathlib.Path(CONFIGURATION_FILE)):
+                with open(
+                    pathlib.Path(CONFIGURATION_FILE), mode="r", encoding=ENCONING
+                ) as file:
+                    data = json.load(file)
+                if self.inn != "000000000" and data.get(self.inn):
+                    self.config_files = [
+                        x for x in self.config_files if x["name"] in data[self.inn]
+                    ]
+        except Exception as ex:
+            logger.error(f"{ex}")
         return data
 
     def write_configuration(self, data: dict):
