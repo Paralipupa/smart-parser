@@ -20,10 +20,10 @@ pattern_ЛС:.+
 pattern_period:^[0-9]{2}[.][0-9]{4}$
 
 required_contracts:
-required_pp:bill_value,payment_value,credit,saldo,account_number,(bank_bik)
-required_accounts:address,living_person_number,total_square,(internal_id)
-required_pu:serial_number,manufacturer,model
-required_puv:rr1
+required_pp:bill_value,payment_value,credit,saldo,account_number,(bank_bik),(file_name)
+required_accounts:address,living_person_number,total_square,(internal_id),(file_name)
+required_pu:serial_number,manufacturer,model,(file_name)
+required_puv:rr1,(file_name)
 
 field:^(?:.+)?Идентификатор ЖКУ@__key(accounts)::~.+
 field:@__account_internal_id(pp){func{key+column_value(__key(accounts)),hash,dictionary,hash}}

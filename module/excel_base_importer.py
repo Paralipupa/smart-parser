@@ -1122,11 +1122,12 @@ class ExcelBaseImporter:
         s = set()
         a = set()
         m = set()
-        is_main_field = False
+        main_fields = set()
         d = next((x for x in self.__get_config_documents() if x["name"] == name), None)
         if d and d["required_fields"]:
             for name_field in d["required_fields"].split(","):
-                is_main_field = is_main_field or (name_field.find("(") != -1)
+                if name_field.find("(") != -1:
+                    main_fields.add(name_field)
                 fld_type = next(
                     (
                         x["type"] + x["offset_type"]
@@ -1142,12 +1143,11 @@ class ExcelBaseImporter:
                     ) or ((fld_type == "float" or fld_type == "int") and val != 0):
                         s.add(item["row"])
                         if name_field.find("(") != -1:
-                            m.add(item["row"])
+                            m.add(name_field)
                         else:
                             a.add(name_field)
-        if is_main_field:
-            return m & s
-            # return m & s if a else set()
+        if main_fields:
+            return s if a and len(m) == len(main_fields) else set()
         else:
             return s
 
@@ -1873,7 +1873,7 @@ class ExcelBaseImporter:
             return False
 
     def __set_page_indexes_order(self, data_reader):
-        """ Определяем в каком порядке читать листы Excel"""
+        """Определяем в каком порядке читать листы Excel"""
         if self._config._page_names:
             sheets_name = {
                 x: index for index, x in enumerate(self._config._page_names.split("|"))
