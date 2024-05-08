@@ -19,22 +19,24 @@ def pp_service(lines: list, path: str, sec_number:int):
                 required_fields="name",
             )
         )
+        sec_number = 0
         write_section_org_ppa_guid(
             **dict(
                 file=file,
                 lines=lines,
                 sec_type=doc_type,
-                sec_number=0,
+                sec_number=sec_number,
                 sec_title="ИНН, ОГРН или OrgID",
                 sec_name="org_ppa_guid",
             )
         )
+        sec_number += 1
         write_section_internal_id(
             **dict(
                 file=file,
                 lines=lines,
                 sec_type=doc_type,
-                sec_number=1,
+                sec_number=sec_number,
                 sec_title="Внутренний идентификатор услуги",
                 sec_name="internal_id",
                 sec_is_service=True,
@@ -43,12 +45,13 @@ def pp_service(lines: list, path: str, sec_number:int):
                 sec_is_func_name=True,
             )
         )
+        sec_number += 1
         write_section_internal_id(
             **dict(
                 file=file,
                 lines=lines,
                 sec_type=doc_type,
-                sec_number=2,
+                sec_number=sec_number,
                 sec_title="наименование в 1с",
                 sec_name="name",
                 sec_is_service=True,
@@ -57,12 +60,13 @@ def pp_service(lines: list, path: str, sec_number:int):
                 sec_is_func_name=True,
             )
         )
+        sec_number += 1
         write_section_internal_id(
             **dict(
                 file=file,
                 lines=lines,
                 sec_type=doc_type,
-                sec_number=3,
+                sec_number=sec_number,
                 sec_title="вид в 1с (полное наименование)",
                 sec_name="kind",
                 sec_is_service=True,
@@ -71,17 +75,19 @@ def pp_service(lines: list, path: str, sec_number:int):
                 sec_is_func_name=True,
             )
         )
+        sec_number += 1
         write_section(
             **dict(
                 file=file,
                 lines=lines,
                 sec_type=doc_type,
-                sec_number=4,
+                sec_number=sec_number,
                 sec_title="код услуги в ГИС",
                 sec_name="gis_code",
                 sec_is_service=False,
             )
         )
+        sec_number += 1
         write_other_fields(
             file=file,
             lines=lines,

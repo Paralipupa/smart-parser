@@ -10,7 +10,7 @@ def write_other_fields(**kwargs):
             key = re.findall(".+(?=\()", fld["name"])
             title = item["name"]
             if key and title and name and kwargs.get("sec_type") == name[0]:
-                kwargs["sec_name"] = "__" + key[0]
+                kwargs["sec_name"] = key[0]
                 kwargs["sec_title"] = title
                 kwargs.get("file").write("\n")
                 write_section_doc(**kwargs)

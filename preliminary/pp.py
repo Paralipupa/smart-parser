@@ -25,23 +25,25 @@ def pp(lines: list, path: str, sec_number: int):
             )
         )
 
+        sec_number = 0
         write_section_org_ppa_guid(
             **dict(
                 file=file,
                 lines=lines,
                 sec_type=doc_type,
-                sec_number=0,
+                sec_number=sec_number,
                 sec_title="ИНН, ОГРН или OrgID",
                 sec_name="org_ppa_guid",
             )
         )
 
+        sec_number += 1
         write_section(
             **dict(
                 file=file,
                 lines=lines,
                 sec_type=doc_type,
-                sec_number=1,
+                sec_number=sec_number,
                 sec_title="Внутренний идентификатор ПД",
                 sec_name="internal_id",
                 sec_is_service=False,
@@ -52,12 +54,13 @@ def pp(lines: list, path: str, sec_number: int):
             )
         )
 
+        sec_number += 1
         write_section(
             **dict(
                 file=file,
                 lines=lines,
                 sec_type=doc_type,
-                sec_number=2,
+                sec_number=sec_number,
                 sec_title="Внутренний идентификатор ЛС",
                 sec_name="account_internal_id",
                 sec_func=(
@@ -68,12 +71,13 @@ def pp(lines: list, path: str, sec_number: int):
             )
         )
 
+        sec_number += 1
         write_section(
             **dict(
                 file=file,
                 lines=lines,
                 sec_type=doc_type,
-                sec_number=3,
+                sec_number=sec_number,
                 sec_title="ГИС. Идентификатор ПП GUID",
                 sec_name="gis_id",
                 required_fields=required_fields,
@@ -81,12 +85,13 @@ def pp(lines: list, path: str, sec_number: int):
             )
         )
 
+        sec_number += 1
         write_section(
             **dict(
                 file=file,
                 lines=lines,
                 sec_type=doc_type,
-                sec_number=4,
+                sec_number=sec_number,
                 sec_title="Месяц (первый день месяца)",
                 sec_name="month",
                 required_fields=required_fields,
@@ -95,12 +100,13 @@ def pp(lines: list, path: str, sec_number: int):
             )
         )
 
+        sec_number += 1
         write_section_calculation(
             **dict(
                 file=file,
                 lines=lines,
                 sec_type=doc_type,
-                sec_number=5,
+                sec_number=sec_number,
                 sec_title="Сальдо на начало месяца (<0 переплата, >0 задолженность)",
                 sec_name="credit",
                 required_fields=required_fields,
@@ -108,12 +114,13 @@ def pp(lines: list, path: str, sec_number: int):
             )
         )
 
+        sec_number += 1
         write_section_calculation(
             **dict(
                 file=file,
                 lines=lines,
                 sec_type=doc_type,
-                sec_number=6,
+                sec_number=sec_number,
                 sec_title="Сальдо на конец месяца (<0 переплата, >0 задолженность)",
                 sec_name="saldo",
                 required_fields=required_fields,
@@ -121,12 +128,13 @@ def pp(lines: list, path: str, sec_number: int):
             )
         )
 
+        sec_number += 1
         write_section_calculation(
             **dict(
                 file=file,
                 lines=lines,
                 sec_type=doc_type,
-                sec_number=7,
+                sec_number=sec_number,
                 sec_title="Оплачено денежных средств в расчетный период",
                 sec_name="payment_value",
                 required_fields=required_fields,
@@ -134,12 +142,13 @@ def pp(lines: list, path: str, sec_number: int):
             )
         )
 
+        sec_number += 1
         write_section_date_payment(
             **dict(
                 file=file,
                 lines=lines,
                 sec_type=doc_type,
-                sec_number=8,
+                sec_number=sec_number,
                 sec_title="Учтены платежи, поступившие до указанного числа расчетного периода включительно",
                 sec_name="payment_date",
                 required_fields=required_fields,
@@ -147,12 +156,13 @@ def pp(lines: list, path: str, sec_number: int):
             )
         )
 
+        sec_number += 1
         write_section_calculation(
             **dict(
                 file=file,
                 lines=lines,
                 sec_type=doc_type,
-                sec_number=9,
+                sec_number=sec_number,
                 sec_title="Сумма счета, учетом задолженности/переплаты",
                 sec_name="bill_value",
                 required_fields=required_fields,
@@ -160,12 +170,13 @@ def pp(lines: list, path: str, sec_number: int):
             )
         )
 
+        sec_number += 1
         write_section(
             **dict(
                 file=file,
                 lines=lines,
                 sec_type=doc_type,
-                sec_number=10,
+                sec_number=sec_number,
                 sec_title="Номер расчетного счета",
                 sec_name="account_number",
                 required_fields=required_fields,
@@ -174,12 +185,13 @@ def pp(lines: list, path: str, sec_number: int):
             )
         )
 
+        sec_number += 1
         write_section(
             **dict(
                 file=file,
                 lines=lines,
                 sec_type=doc_type,
-                sec_number=11,
+                sec_number=sec_number,
                 sec_title="БИК банка",
                 sec_name="bank_bik",
                 required_fields=required_fields,
@@ -188,22 +200,24 @@ def pp(lines: list, path: str, sec_number: int):
             )
         )
 
+        sec_number += 1
         write_section(
             **dict(
                 file=file,
                 lines=lines,
                 sec_type=doc_type,
-                sec_number=12,
+                sec_number=sec_number,
                 sec_title="Тип лицевого счета (uo|cr)",
                 sec_name="account_type",
                 sec_is_service=False,
             )
         )
+        sec_number += 1
         write_other_fields(
             file=file,
             lines=lines,
             sec_type=doc_type,
-            sec_number=13,
+            sec_number=sec_number,
         )
 
     return file_name

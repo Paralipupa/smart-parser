@@ -26,6 +26,8 @@ def pp_charges(lines: list, path: str, sec_number: int) -> str:
                 required_fields=required_fields,
             )
         )
+        
+        sec_number = 0
         write_section_org_ppa_guid(
             **dict(
                 file=file,
@@ -36,7 +38,7 @@ def pp_charges(lines: list, path: str, sec_number: int) -> str:
                 sec_name="org_ppa_guid",
             )
         )
-
+        sec_number += 1
         write_section(
             **dict(
                 file=file,
@@ -52,6 +54,7 @@ def pp_charges(lines: list, path: str, sec_number: int) -> str:
             )
         )
 
+        sec_number += 1
         write_section(
             **dict(
                 file=file,
@@ -68,6 +71,7 @@ def pp_charges(lines: list, path: str, sec_number: int) -> str:
             )
         )
 
+        sec_number += 1
         names = []
         file.write("\n")
         file.write("[pp_charges_3]\n")
@@ -109,6 +113,7 @@ def pp_charges(lines: list, path: str, sec_number: int) -> str:
                 file.write(f"offset_col_config={COLUMN_BEGIN+1+i}\n")
             file.write("\n")
 
+        sec_number += 1
         write_section(
             **dict(
                 file=file,
@@ -127,12 +132,13 @@ def pp_charges(lines: list, path: str, sec_number: int) -> str:
             )
         )
 
+        sec_number += 1
         write_section(
             **dict(
                 file=file,
                 lines=lines,
                 sec_type=doc_type,
-                sec_number=5,
+                sec_number=sec_number,
                 sec_title="Идентификатор услуги",
                 sec_name="service_internal_id",
                 sec_is_service=True,
@@ -144,11 +150,13 @@ def pp_charges(lines: list, path: str, sec_number: int) -> str:
             )
         )
 
+        sec_number += 1
         file.write("\n")
         file.write("[pp_charges_6]\n")
         file.write("; кол-во услуги  при однотарифном начислении\n")
         file.write("name=rr\n")
 
+        sec_number += 1
         names = []
         file.write("\n")
         file.write("[pp_charges_7]\n")
@@ -182,6 +190,7 @@ def pp_charges(lines: list, path: str, sec_number: int) -> str:
         else:
             file.write("\n")
 
+        sec_number += 1
         names = []
         file.write("\n")
         file.write("[pp_charges_8]\n")
@@ -220,10 +229,11 @@ def pp_charges(lines: list, path: str, sec_number: int) -> str:
                 file.write(f"offset_col_config={COLUMN_BEGIN+1+i}\n")
             file.write("\n")
 
+        sec_number += 1
         write_other_fields(
             file=file,
             lines=lines,
             sec_type=doc_type,
-            sec_number=9,
+            sec_number=sec_number,
         )
     return file_name

@@ -1,4 +1,4 @@
-import re, logging, datetime, uuid
+import re, logging, datetime, uuid, os
 from threading import Lock
 from module.helpers import (
     hashit,
@@ -44,6 +44,7 @@ class Func:
             "check_bank_accounts": self.func_bank_accounts,
             "cap_rep": self.func_cap_rep,
             "services": self.func_services,
+            "source_file_name": self.func_source_file_name,
         }
         self._current_value = list()
         self._current_id = ""
@@ -444,8 +445,8 @@ class Func:
         return self.__func_dictionary(key, False)
 
     def func_dictionaryOnce(self, key: str = None):
-        """ Берет значение словаря только один раз 
-            Повторный вызов с этим ключом игнорируется
+        """Берет значение словаря только один раз
+        Повторный вызов с этим ключом игнорируется
         """
         return self.__func_dictionary(key, True)
 
@@ -514,3 +515,9 @@ class Func:
 
     def func_services(self):
         return ""
+
+    def func_source_file_name(self):
+        try:
+            return os.path.basename(self._parameters['filename']['value'][0])
+        except Exception as ex:
+            return f"{ex}"
