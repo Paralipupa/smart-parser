@@ -87,6 +87,8 @@ class ExcelBaseImporter:
         self._parameters["filename"] = {"fixed": True, "value": [file_name]}
         self._column_names = dict()  # колонки таблицы
         self._column_service = list()
+        self._page_indexes = list()
+        self._page_indexes_selected = set()
         self.is_event = False
         self.row = 0
         self.team_index = 0
@@ -160,15 +162,12 @@ class ExcelBaseImporter:
                 # для данного входного файла MS Excel
                 # как правило на один файл MS Excel приходится один файл конфигурации,
                 # но может быть и несколько конф.файлов распределенные по листам MS Excel
-
-                self.num_config = data_reader.set_config(self._page_index)
-                self.config_files[self.num_config]["warning"] = []
-                is_init = True
+                self.__set_page_indexes_order(data_reader)
+                data_reader.set_config(self._page_indexes)
                 while True:
                     # перебираем все листы исходного Excel файла
-                    if not is_init:
-                        self.__read_config()
-                    is_init = False
+                    self._page_name = ""
+                    self._col_start = 0
                     page = data_reader.get_sheet()
                     if page is None:
                         break
@@ -1863,12 +1862,36 @@ class ExcelBaseImporter:
 
     def __init_config(self) -> bool:
         if self.index_config < len(self.config_files):
-            self._page_index = self.config_files[self.index_config]["sheets"]
+            self._page_indexes = self.config_files[self.index_config]["sheets"]
+            self._page_indexes_selected = set()
+            self.num_config = self.index_config
+            self.config_files[self.num_config]["warning"] = []
             self.index_config += 1
             self.__read_config()
             return True
         else:
             return False
+
+    def __set_page_indexes_order(self, data_reader):
+        """ Определяем в каком порядке читать листы Excel"""
+        if self._config._page_names:
+            sheets_name = {
+                x: index for index, x in enumerate(self._config._page_names.split("|"))
+            }
+            index_title = [
+                (index, x.title) for index, x in enumerate(data_reader.get_sheets())
+            ]
+            index_title_0 = [
+                (x[0], x[1], sheets_name.get(x[1]))
+                for x in index_title
+                if sheets_name.get(x[1]) is not None
+            ]
+            index_title_0 = sorted(index_title_0, key=lambda x: x[2])
+            index_title_1 = [x[0] for x in index_title if sheets_name.get(x[1]) is None]
+            indexes = [x[0] for x in index_title_0]
+            indexes.extend(index_title_1)
+            self._page_indexes = indexes
+        return
 
     def __read_config(self) -> None:
         index = self.index_config - 1

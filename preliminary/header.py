@@ -32,6 +32,7 @@ def header(lines: list, path: str) -> str:
         )
         file.write(f"row_start={lines['param'].get('main_row_start',['0'])[0]}\n")
         file.write(f"page_name={lines['param'].get('main_page_name',[''])[0]}\n")
+        file.write(f"page_names={lines['param'].get('main_page_names',[''])[0]}\n")
         file.write(f"page_index={lines['param'].get('main_page_index',['0'])[0]}\n")
         file.write(f"max_columns={lines['param'].get('main_max_columns',[150])[0]}\n")
         file.write(

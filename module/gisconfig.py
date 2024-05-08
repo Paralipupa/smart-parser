@@ -58,7 +58,8 @@ class GisConfig:
         self._row_start = self.read_config("main", "row_start", isNumeric=True)  #
         self._col_start = self.read_config("main", "col_start", isNumeric=True)  #
         self._page_name = self.read_config("main", "page_name")
-        self._page_index = self.read_config("main", "page_index", isNumeric=True)  #
+        self._page_names = self.read_config("main", "page_names")
+        self._page_indexes = self.read_config("main", "page_index", isNumeric=True)  #
         # максимальное кол-во просматриваемых колонок
         self._max_cols = self.read_config("main", "max_columns", isNumeric=True)
         if len(self._max_cols) == 0:

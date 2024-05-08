@@ -23,17 +23,19 @@ def accounts(lines: list, path: str, sec_number:int) -> str:
                 required_fields=required_fields,
             )
         )
+        sec_number = 0
         write_section_org_ppa_guid(
             **dict(
                 file=file,
                 lines=lines,
                 sec_type=doc_type,
-                sec_number=0,
+                sec_number=sec_number,
                 sec_title="ИНН, ОГРН или OrgID",
                 sec_name="org_ppa_guid",
                 sec_is_service=False,
             )
         )
+        sec_number += 1
         write_section(
             **dict(
                 file=file,
@@ -46,6 +48,7 @@ def accounts(lines: list, path: str, sec_number:int) -> str:
                 sec_is_service=False,
             )
         )
+        sec_number += 1
         write_section(
             **dict(
                 file=file,
@@ -61,6 +64,7 @@ def accounts(lines: list, path: str, sec_number:int) -> str:
                 sec_is_service=False,
             )
         )
+        sec_number += 1
         write_section(
             **dict(
                 file=file,
@@ -73,6 +77,7 @@ def accounts(lines: list, path: str, sec_number:int) -> str:
                 sec_is_service=False,
             )
         )
+        sec_number += 1
         write_section_address(
             **dict(
                 file=file,
@@ -84,6 +89,7 @@ def accounts(lines: list, path: str, sec_number:int) -> str:
                 sec_is_service=False,
             )
         )
+        sec_number += 1
         write_section(
             **dict(
                 file=file,
@@ -95,6 +101,7 @@ def accounts(lines: list, path: str, sec_number:int) -> str:
                 sec_is_service=False,
             )
         )
+        sec_number += 1
         write_section(
             **dict(
                 file=file,
@@ -106,6 +113,7 @@ def accounts(lines: list, path: str, sec_number:int) -> str:
                 sec_is_service=False,
             )
         )
+        sec_number += 1
         write_section(
             file=file,
             lines=lines,
@@ -115,6 +123,7 @@ def accounts(lines: list, path: str, sec_number:int) -> str:
             sec_name="gis_block_id",
             sec_is_service=False,
         )
+        sec_number += 1
         write_section(
             file=file,
             lines=lines,
@@ -124,6 +133,7 @@ def accounts(lines: list, path: str, sec_number:int) -> str:
             sec_name="gis_room_id",
             sec_is_service=False,
         )
+        sec_number += 1
         write_section(
             file=file,
             lines=lines,
@@ -133,6 +143,7 @@ def accounts(lines: list, path: str, sec_number:int) -> str:
             sec_name="gis_account_id",
             sec_is_service=False,
         )
+        sec_number += 1
         write_section(
             file=file,
             lines=lines,
@@ -143,6 +154,7 @@ def accounts(lines: list, path: str, sec_number:int) -> str:
             sec_func="spacerepl",
             sec_is_service=False,
         )
+        sec_number += 1
         write_section(
             file=file,
             lines=lines,
@@ -152,6 +164,7 @@ def accounts(lines: list, path: str, sec_number:int) -> str:
             sec_name="gis_account_service_id",
             sec_is_service=False,
         )
+        sec_number += 1
         write_section(
             file=file,
             lines=lines,
@@ -161,6 +174,7 @@ def accounts(lines: list, path: str, sec_number:int) -> str:
             sec_name="gis_account_unified_number",
             sec_is_service=False,
         )
+        sec_number += 1
         write_section(
             file=file,
             lines=lines,
@@ -170,6 +184,7 @@ def accounts(lines: list, path: str, sec_number:int) -> str:
             sec_name="total_square",
             sec_is_service=False,
         )
+        sec_number += 1
         write_section(
             file=file,
             lines=lines,
@@ -179,6 +194,7 @@ def accounts(lines: list, path: str, sec_number:int) -> str:
             sec_name="residential_square",
             sec_is_service=False,
         )
+        sec_number += 1
         write_section(
             file=file,
             lines=lines,
@@ -188,6 +204,7 @@ def accounts(lines: list, path: str, sec_number:int) -> str:
             sec_name="living_person_number",
             sec_is_service=False,
         )
+        sec_number += 1
         write_section(
             file=file,
             lines=lines,
@@ -198,6 +215,7 @@ def accounts(lines: list, path: str, sec_number:int) -> str:
             sec_func="!timezone",
             sec_is_service=False,
         )
+        sec_number += 1
         write_section(
             file=file,
             lines=lines,
@@ -208,6 +226,7 @@ def accounts(lines: list, path: str, sec_number:int) -> str:
             sec_func="spacerepl",
             sec_is_service=False,
         )
+        sec_number += 1
         write_section(
             file=file,
             lines=lines,
@@ -217,6 +236,7 @@ def accounts(lines: list, path: str, sec_number:int) -> str:
             sec_name="not_residential",
             sec_is_service=False,
         )
+        sec_number += 1
         write_section(
             file=file,
             lines=lines,
@@ -226,6 +246,7 @@ def accounts(lines: list, path: str, sec_number:int) -> str:
             sec_name="account_type",
             sec_is_service=False,
         )
+        sec_number += 1
         write_other_fields(
             file=file,
             lines=lines,
