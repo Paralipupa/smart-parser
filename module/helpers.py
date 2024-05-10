@@ -451,8 +451,11 @@ def get_value(
             result = ""
     return result
 
-
+def mkdir(file_name):
+    pathlib.Path(pathlib.Path(file_name).parent).mkdir(parents=True, exist_ok=True)
+    
 def write_log_time(file_name: str, is_error: bool = False, data: str = ""):
+    mkdir(file_name)
     with open(file_name + ".log", "w") as f:
         if is_error:
             f.write(

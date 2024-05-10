@@ -6,6 +6,9 @@ import aiofiles
 import asyncio
 import json
 import logging
+import concurrent.futures
+
+from threading import Lock
 from copy import deepcopy
 from time import sleep
 from threading import Thread
@@ -92,6 +95,7 @@ class ExcelBaseImporter:
         self.is_event = False
         self.row = 0
         self.team_index = 0
+        self.lock = Lock()
 
         self.__init_page()
 
@@ -218,6 +222,7 @@ class ExcelBaseImporter:
                                     end="",
                                     flush=True,
                                 )
+                                sleep(0)
                     except Exception as ex:
                         logger.error(f"{self.row}:{ex}")
                     finally:
@@ -230,11 +235,28 @@ class ExcelBaseImporter:
         self.__process_finish()
 
         return True
-
     def stage_build_documents(self):
         while self.is_event:
             if len(self._teams) > 50:
                 self.__process_record()
+        self.__done()
+
+    def stage_build_documents_new(self):
+        while self.is_event:
+            if len(self._teams) > 50:
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                # with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+                    future_to_url = {
+                        executor.submit(self.__process_record()): x
+                        for x in range(len(self._teams))
+                    }
+
+                    for future in concurrent.futures.as_completed(future_to_url):
+                        try:
+                            result = future.result()
+                        except Exception as ex:
+                            pass
+
         self.__done()
 
     def stage_print_documents(self):
@@ -282,12 +304,14 @@ class ExcelBaseImporter:
             self.__process_record()
 
     def __process_record(self) -> None:
-        if len(self._teams) == 0:
-            return
         try:
-            key = next(iter(self._teams))
-            team = self._teams[key]
-
+            self.lock.acquire()
+            if len(self._teams) == 0:
+                return
+            team = self._teams.popitem(last=False)[1]
+        finally:
+            self.lock.release()
+        try:
             if not self.colontitul["is_parameters"]:
                 self.__set_parameters()
             for doc_param in self.__get_config_documents():
@@ -296,7 +320,6 @@ class ExcelBaseImporter:
         except Exception as ex:
             logger.error(f"{ex}")
         finally:
-            self._teams.popitem(last=False)
             if not self.is_event and len(self._teams) % 10 == 0:
                 print_message(
                     "         {} {} Осталось обработать: {}                          \r".format(
@@ -1141,10 +1164,10 @@ class ExcelBaseImporter:
                     if (
                         (fld_type == "" or fld_type == "str") and val.strip() != ""
                     ) or ((fld_type == "float" or fld_type == "int") and val != 0):
-                        s.add(item["row"])
                         if name_field.find("(") != -1:
                             m.add(name_field)
                         else:
+                            s.add(item["row"])
                             a.add(name_field)
         if main_fields:
             return s if a and len(m) == len(main_fields) else set()

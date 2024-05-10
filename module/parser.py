@@ -4,6 +4,7 @@ import logging
 import shutil
 import datetime
 import psutil
+from time import time, gmtime, strftime
 from pathlib import Path
 from module.excel_base_importer import ExcelBaseImporter
 from module.helpers import get_config_files, write_list, check_tarif, write_log_time
@@ -71,6 +72,7 @@ class Parser:
                     return u.start()
 
             else:
+                nstart = time()
                 logger.info(
                     f"Архив: {COLOR_CONSOLE['red']}'{os.path.basename(self.name) }'{COLOR_CONSOLE['end']}"
                 )
@@ -146,7 +148,7 @@ class Parser:
                             inn=self.inn,
                         )
                         result = u.start()
-                        logger.info(f"Окончание сборки")
+                        logger.info(f"Окончание сборки {strftime('%H:%M:%S', gmtime(time()-nstart))}")
                         return result
                 else:
                     logger.info(f"Данные в архиве не распознаны")
