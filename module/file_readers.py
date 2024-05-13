@@ -102,7 +102,8 @@ class XlsFile(DataFile):
         raise StopIteration
 
     def __del__(self):
-        pass
+        self._wb.release_resources()
+        del self._wb
 
 
 class XlsxFile(DataFile):
@@ -156,6 +157,7 @@ class XlsxFile(DataFile):
 
     def __del__(self):
         self._wb.close()
+        del self._wb
 
     def get_index(self, cell):
         try:
