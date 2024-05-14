@@ -1,6 +1,6 @@
 import pathlib, logging, re, json
 from multiprocessing import Manager
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from multiprocessing.managers import ListProxy, DictProxy
 from typing import List
 from time import sleep
@@ -56,9 +56,9 @@ class SearchConfig:
         if len(self.list_files) == 0:
             return
         clear_manager()
-        # with ThreadPoolExecutor(max_workers=None) as executor:
-        #     executor.map(self.put_data_file, self.list_files)
-        d = list(map(self.put_data_file, self.list_files))
+        with ProcessPoolExecutor() as executor:
+            executor.map(self.put_data_file, self.list_files)
+        # d = list(map(self.put_data_file, self.list_files))
         self.__to_collect_out_files()
         return
 

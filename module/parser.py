@@ -18,6 +18,8 @@ from module.exceptions import (
 from module.search_config_tasks import SearchConfig
 from module.settings import *
 
+from multiprocessing import Process
+
 logger = logging.getLogger(__name__)
 
 
@@ -69,8 +71,18 @@ class Parser:
                 )
                 self.list_files = self.get_config()
                 if self.list_files:
-                    self.stage_extract()
-                    return self.final_union(nstart)
+                    if self.is_daemon:
+                        proc = Process(
+                            target=self.stage_extract,
+                            args=(nstart,),
+                            daemon=True,
+                            name="SmartParser",
+                        )
+                        proc.start()
+                        proc.join(0.1)
+                        return self.download_file
+                    else:
+                        return self.stage_extract(nstart)
                 else:
                     logger.info(
                         f"Данные в архиве не распознаны {strftime('%H:%M:%S', gmtime(time()-nstart))}"
@@ -120,14 +132,14 @@ class Parser:
                 return os.path.join(BASE_DIR, pathname)
         return ""
 
-    def stage_extract(self):
+    def stage_extract(self, nstart):
         for index, file_name in enumerate(self.list_files, 1):
             self.run(file_name, index, len(self.list_files))
         self.file_log = write_list(
             path_output=os.path.join(PATH_LOG, self.output_path),
             files=self.list_files,
         )
-        return
+        return self.final_union(nstart)
 
     def run(self, file_name: dict, index: int, count):
         if file_name["config"] and file_name["config"][0]["sheets"]:
