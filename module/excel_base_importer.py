@@ -160,7 +160,7 @@ class ExcelBaseImporter:
             # (self.teams[team]) по идентификаторам (internal_id)
             # во втором потоке из блоков формируются выходные документы (self._collections[document])
             # в третьем потоке документы сохраняются в файлах csv и json
-            thread_modules = [self.stage_build_documents, self.stage_print_documents]
+            # thread_modules = [self.stage_build_documents, self.stage_print_documents]
             while self.__init_config():
                 # перебираем все файлы конфигурации
                 # для данного входного файла MS Excel
@@ -182,10 +182,10 @@ class ExcelBaseImporter:
                     if not self.__get_header("pattern"):
                         self.colontitul["status"] = 1
                     try:
-                        self.is_event = True
-                        threads = [Thread(target=x) for x in thread_modules]
-                        for t in threads:
-                            t.start()
+                        # self.is_event = True
+                        # threads = [Thread(target=x) for x in thread_modules]
+                        # for t in threads:
+                        #     t.start()
 
                         for self.row, record in enumerate(data_reader):
                             if self.row < 100 and self.row % 10 == 0:
@@ -227,8 +227,10 @@ class ExcelBaseImporter:
                         logger.error(f"{self.row}:{ex}")
                     finally:
                         self.is_event = False
-                        for t in threads:
-                            t.join()
+                        self.stage_build_documents()
+                        self.stage_print_documents()
+                        # for t in threads:
+                        #     t.join()
         except Exception as ex:
             logger.error(f"{ex}")
 
@@ -283,13 +285,15 @@ class ExcelBaseImporter:
                 end="",
                 flush=True,
             )
+            collections = self._collections.copy()
+            self._collections.clear()
             loop.run_until_complete(
                 self.write_all_results_async(
                     num_config=self.num_config + 1,
                     num_page=self.num_page + 1,
                     num_file=self.num_file + 1,
                     path_output=self._output,
-                    collections=self._collections.copy(),
+                    collections=collections,
                     output_format="csv",
                 )
             )
