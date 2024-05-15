@@ -19,15 +19,17 @@ from module.exceptions import (
 from module.search_config_tasks import SearchConfig
 from module.settings import *
 
-from multiprocessing import Process, Pool, Manager, Lock, Value
+from multiprocessing import Process, Pool, Manager, Lock, Value, Queue, Semaphore
 
 logger = logging.getLogger(__name__)
 manager = Manager()
 man_list = manager.list()
 COUNTER = Value("i", 0)
+ACTIVEPROC = Value("i", 0)
 FLAG = Value("b", True)
 DOWNLOAD_FILE = manager.dict()
 DOWNLOAD_FILE["name"] = ""
+DOWNLOAD_FILE["period"] = ""
 lock = Lock()
 
 
@@ -72,6 +74,7 @@ class Parser:
     def start(self) -> list:
         try:
             DOWNLOAD_FILE["name"] = self.download_file
+            DOWNLOAD_FILE["period"] = self._period
             nstart = time()
             if not self.name:
                 self.final_union(nstart)
@@ -83,24 +86,16 @@ class Parser:
                 self.list_files = self.get_config()
                 if self.list_files:
                     self.count = len(self.list_files)
-                    self.stage_extract(nstart)
-                    # if self.is_daemon:
-                    #     proc = Process(
-                    #         target=self.stage_extract,
-                    #         args=(nstart,),
-                    #         daemon=True,
-                    #         name="SmartParser",
-                    #     )
-                    #     proc.start()
-                    #     proc.join(0.1)
-                    # else:
+                    self.manage_tasks(nstart)
                     return DOWNLOAD_FILE["name"]
                 else:
                     logger.info(
                         f"Данные в архиве не распознаны {strftime('%H:%M:%S', gmtime(time()-nstart))}"
                     )
                     if self.is_daemon:
-                        file_name = os.path.join(self.download_path, DOWNLOAD_FILE["name"])
+                        file_name = os.path.join(
+                            self.download_path, DOWNLOAD_FILE["name"]
+                        )
                         write_log_time(file_name, True)
                     shutil.copy(
                         os.path.join(BASE_DIR, "doc", "error.txt"),
@@ -109,7 +104,9 @@ class Parser:
                     if not self.is_daemon:
                         return "error.txt"
                     else:
-                        file_name = os.path.join(self.download_path, DOWNLOAD_FILE["name"])
+                        file_name = os.path.join(
+                            self.download_path, DOWNLOAD_FILE["name"]
+                        )
                         write_log_time(file_name, True)
                         return file_name
 
@@ -144,55 +141,52 @@ class Parser:
                 return os.path.join(BASE_DIR, pathname)
         return ""
 
-    def stage_extract(self, nstart):
+    def manage_tasks(self, nstart):
         processes_0 = list()
         processes_1 = list()
+        queue = Queue()
         for index, file_name in enumerate(self.list_files):
+            process = Process(
+                target=self.stage_extract,
+                args=(
+                    file_name,
+                    queue,
+                ),
+                daemon=True,
+                name=f"smart_parser_extract_{index}",
+            )
             if "_000_" in str(file_name["config"][0]["name"]):
-                processes_0.append(file_name)
+                processes_0.append(process)
+                process.start()
+                process.join()
+                # processes_0.append(file_name)
             else:
-                # processes_1.append(file_name)
-                process = Process(
-                    target=self.run,
-                    args=(file_name,),
-                    daemon=True,
-                    name=f"smart_parser_extract_{index}",
-                )
                 processes_1.append(process)
 
-        _ = list(map(self.run, processes_0))
+        # _ = list(map(partial(self.stage_extract, queue=queue), processes_0))
+        for process in processes_0:
+            process.join()
         for process in processes_1:
             process.start()
-        for process in processes_1:
-            process.join(0)
-        # _ = list(map(self.run, processes_1))
-
-        # проверяем, что все процессы обработки завершены
-        while any(
-            [
-                x.is_alive()
-                for x in processes_1
-                if x.name.startswith("smart_parser_extract_")
-            ]
-        ) and (time() - nstart < 60 * 60 * 5):
-            sleep(0)
-        FLAG.value = False  # даем отмашку финальному процессу сборки
+        if not self.is_daemon:
+            for process in processes_1:
+                process.join(0)
         process = Process(
             target=self.stage_finish,
-            args=(nstart, ),
+            args=(
+                nstart,
+                queue,
+            ),
             daemon=True,
             name="smart_parser_finish",
         )
         process.start()
-        process.join()
-        while any([x.is_alive() for x in processes_1]) and (
-            time() - nstart < 60 * 60 * 5
-        ):
-            sleep(0)
+        if not self.is_daemon:
+            process.join()
         return
 
-    def stage_finish(self, nstart):
-        while FLAG.value and (time() - nstart < 60 * 60 * 5):
+    def stage_finish(self, nstart, queue):
+        while ACTIVEPROC.value>0 and (time() - nstart < 60 * 60 * 5):
             sleep(0)
         self.file_log = write_list(
             path_output=os.path.join(PATH_LOG, self.output_path),
@@ -201,50 +195,73 @@ class Parser:
         self.final_union(nstart)
         return
 
-    def run(self, file_name: dict):
-        if file_name["config"] and file_name["config"][0]["sheets"]:
-            dictionary = get_dictionary_manager()
-            # print("{} -{}".format(COUNTER.value, len(dictionary)))
-            rep: ExcelBaseImporter = ExcelBaseImporter(
-                file_name=file_name["name"],
-                inn=file_name["inn"],
-                config_files=file_name["config"],
-                index=COUNTER.value,
-                output=self.output_path,
-                period=self._period,
-                is_hash=self.is_hash,
-                dictionary=dictionary,
-                download_file=(
-                    os.path.join(self.download_path, DOWNLOAD_FILE["name"])
-                    if self.is_daemon
-                    else ""
-                ),
-                progress=round(((COUNTER.value - 1) / self.count) * 100, 2),
-            )
-            if self.check_tarif is False and not rep._dictionary.get("tarif") is None:
-                self.check_tarif = True
-                mess = check_tarif(rep._dictionary.get("tarif"))
-                if mess:
-                    raise CheckTarifException(mess)
-            free_mem = round(psutil.virtual_memory().available / 1024**3, 2)
-            logger.info(
-                f"({COUNTER.value}/{self.count}) {free_mem}/{self.mem}({round(100*free_mem/self.mem,2)}%) "
-                + f"Начало обработки файла '{os.path.basename(file_name['name'])}'({Path(file_name['config'][0]['name']).stem})"
-            )
-            self.inn = rep.extract()
-            if self.inn:
-                DOWNLOAD_FILE["name"] = self.get_file_output(DOWNLOAD_FILE["name"])
-                logger.info(f"Обработка завершена      ")
-                set_dictionary_manager(rep._dictionary)
-                self.isParser = True
-                if rep._parameters.get("period"):
-                    self._period = datetime.datetime.strptime(
-                        rep._parameters["period"]["value"][0],
-                        "%d.%m.%Y",
-                    ).date()
+    def stage_extract(self, file_name: dict, queue):
+        try:
+            while ACTIVEPROC.value>2:
+                sleep(0)
+            with lock:
+                queue.put(0)
+                ACTIVEPROC.value +=1
+                COUNTER.value += 1
+            if file_name["config"] and file_name["config"][0]["sheets"]:
+                dictionary = get_dictionary_manager()
+                print("{} -{}".format(COUNTER.value, len(dictionary)))
+                rep: ExcelBaseImporter = ExcelBaseImporter(
+                    file_name=file_name["name"],
+                    inn=file_name["inn"],
+                    config_files=file_name["config"],
+                    index=COUNTER.value,
+                    output=self.output_path,
+                    period=self._period,
+                    is_hash=self.is_hash,
+                    dictionary=dictionary,
+                    download_file=(
+                        os.path.join(self.download_path, DOWNLOAD_FILE["name"])
+                        if self.is_daemon
+                        else ""
+                    ),
+                    progress=round(((COUNTER.value - 1) / self.count) * 100, 2),
+                )
+                if (
+                    self.check_tarif is False
+                    and not rep._dictionary.get("tarif") is None
+                ):
+                    self.check_tarif = True
+                    mess = check_tarif(rep._dictionary.get("tarif"))
+                    if mess:
+                        raise CheckTarifException(mess)
+                free_mem = round(psutil.virtual_memory().available / 1024**3, 2)
+                logger.info(
+                    f"({COUNTER.value}/{self.count}) {free_mem}/{self.mem}({round(100*free_mem/self.mem,2)}%) "
+                    + f"Начало обработки файла '{os.path.basename(file_name['name'])}'({Path(file_name['config'][0]['name']).stem})"
+                )
+                self.inn = rep.extract()
+                if self.inn:
+                    if not self.is_daemon:
+                        DOWNLOAD_FILE["name"] = self.get_file_output(
+                            DOWNLOAD_FILE["name"]
+                        )
+                    logger.info(f"Обработка завершена      ")
+                    set_dictionary_manager(rep._dictionary)
+                    self.isParser = True
+                    if rep._parameters.get("period"):
+                        if (
+                            DOWNLOAD_FILE["period"]
+                            > datetime.datetime.strptime(
+                                rep._parameters["period"]["value"][0],
+                                "%d.%m.%Y",
+                            ).date()
+                        ):
+                            DOWNLOAD_FILE["period"] > datetime.datetime.strptime(
+                                rep._parameters["period"]["value"][0],
+                                "%d.%m.%Y",
+                            ).date()
 
-            else:
-                logger.info(f"Неудачное завершение обработки")
+                else:
+                    logger.info(f"Неудачное завершение обработки")
+        finally:
+            queue.get()
+            ACTIVEPROC.value -=1
 
     def get_config(self):
         search_conf = SearchConfig(
@@ -305,6 +322,7 @@ class Parser:
 def clear_manager():
     del man_list[:]
     COUNTER.value = 0
+    ACTIVEPROC.value = 0
     FLAG.value = True
 
 
@@ -318,7 +336,6 @@ def set_dictionary_manager(l: list):
 def get_dictionary_manager() -> list:
     d: dict = dict()
     with lock:
-        COUNTER.value += 1
         for i in range(len(man_list)):
             x = man_list[i]
             d[x[0]] = x[1]

@@ -816,6 +816,7 @@ class ExcelBaseImporter:
             "%d-%m-%y",
             "%d.%m.%y",
             "%d/%m/%y",
+            "%Y_%m",
             "%B %Y",
             "%m_%Y",
             "%m%Y",
@@ -1872,7 +1873,8 @@ class ExcelBaseImporter:
 
     def __get_period_from_file_name(self):
         comp = re.compile(
-            r"(?:01|02|03|04|05|06|07|08|09|10|11|12)[.,_\s]?(?:202[0-9]|[2,3][0-9])"
+            r"(?:01|02|03|04|05|06|07|08|09|10|11|12)[.,_\s]?(?:202[0-9]|[2,3][0-9])|"+
+            r"(?:202[0-9]|[2,3][0-9])[,_\s-](?:01|02|03|04|05|06|07|08|09|10|11|12)"
         )
         period = comp.findall(self._parameters["filename"]["value"][0])
         if period:
