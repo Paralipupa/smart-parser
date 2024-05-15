@@ -4,6 +4,7 @@ import logging
 import shutil
 import datetime
 import psutil
+from functools import partial
 from time import time, gmtime, strftime
 from pathlib import Path
 from module.excel_base_importer import ExcelBaseImporter
@@ -18,9 +19,13 @@ from module.exceptions import (
 from module.search_config_tasks import SearchConfig
 from module.settings import *
 
-from multiprocessing import Process
+from multiprocessing import Process, Pool, Manager, Lock, Value
 
 logger = logging.getLogger(__name__)
+manager = Manager()
+man_list = manager.list()
+COUNTER = Value("i", 0)
+lock = Lock()
 
 
 class Parser:
@@ -36,7 +41,6 @@ class Parser:
         is_daemon: bool = False,
     ) -> None:
         self.logs = list()
-        self._dictionary = dict()
         self.name = file_name
         self._period = datetime.date.today().replace(day=1)
         self.inn = inn
@@ -59,6 +63,8 @@ class Parser:
         self.list_files = None
         self.isParser = False
         self.file_log = ""
+        self.count = 0
+        clear_manager()
 
     def start(self) -> list:
         try:
@@ -71,6 +77,7 @@ class Parser:
                 )
                 self.list_files = self.get_config()
                 if self.list_files:
+                    self.count = len(self.list_files)
                     if self.is_daemon:
                         proc = Process(
                             target=self.stage_extract,
@@ -133,31 +140,52 @@ class Parser:
         return ""
 
     def stage_extract(self, nstart):
-        for index, file_name in enumerate(self.list_files, 1):
-            self.run(file_name, index, len(self.list_files))
+        processes_0 = list()
+        processes_1 = list()
+        for index, file_name in enumerate(self.list_files):
+            if "_000_" in str(file_name["config"][0]["name"]):
+                processes_0.append(file_name)
+            else:
+                # processes_1.append(file_name)
+                process = Process(
+                    target=self.run,
+                    args=(file_name,),
+                    daemon=False,
+                    name=f"smart_parser_{index}",
+                )
+                processes_1.append(process)
+
+        _ = list(map(self.run, processes_0))
+        for process in processes_1:
+            process.start()
+        for process in processes_1:
+            process.join()
+        # _ = list(map(self.run, processes_1))
         self.file_log = write_list(
             path_output=os.path.join(PATH_LOG, self.output_path),
             files=self.list_files,
         )
         return self.final_union(nstart)
 
-    def run(self, file_name: dict, index: int, count):
+    def run(self, file_name: dict):
         if file_name["config"] and file_name["config"][0]["sheets"]:
+            dictionary = get_dictionary_manager()
+            print("{} -{}".format(COUNTER.value, len(dictionary)))
             rep: ExcelBaseImporter = ExcelBaseImporter(
                 file_name=file_name["name"],
                 inn=file_name["inn"],
                 config_files=file_name["config"],
-                index=index,
+                index=COUNTER.value,
                 output=self.output_path,
                 period=self._period,
                 is_hash=self.is_hash,
-                dictionary=self._dictionary,
+                dictionary=dictionary,
                 download_file=(
                     os.path.join(self.download_path, self.download_file)
                     if self.is_daemon
                     else ""
                 ),
-                progress=round(((index - 1) / count) * 100, 2),
+                progress=round(((COUNTER.value - 1) / self.count) * 100, 2),
             )
             if self.check_tarif is False and not rep._dictionary.get("tarif") is None:
                 self.check_tarif = True
@@ -166,10 +194,12 @@ class Parser:
                     raise CheckTarifException(mess)
             free_mem = round(psutil.virtual_memory().available / 1024**3, 2)
             logger.info(
-                f"({index}/{count}) {free_mem}/{self.mem}({round(100*free_mem/self.mem,2)}%) Начало обработки файла '{os.path.basename(file_name['name'])}'({Path(file_name['config'][0]['name']).stem})"
+                f"({COUNTER.value}/{self.count}) {free_mem}/{self.mem}({round(100*free_mem/self.mem,2)}%) "
+                + f"Начало обработки файла '{os.path.basename(file_name['name'])}'({Path(file_name['config'][0]['name']).stem})"
             )
             if rep.extract():
                 logger.info(f"Обработка завершена      ")
+                set_dictionary_manager(rep._dictionary)
                 self.isParser = True
                 if rep._parameters.get("period"):
                     self._period = datetime.datetime.strptime(
@@ -223,3 +253,25 @@ class Parser:
                 inn=self.inn,
             )
             return u.start()
+
+
+def clear_manager():
+    del man_list[:]
+    COUNTER.value = 0
+
+
+def set_dictionary_manager(l: list):
+    with lock:
+        if l:
+            for key, value in l.items():
+                man_list.append((key, value))
+
+
+def get_dictionary_manager() -> list:
+    d: dict = dict()
+    with lock:
+        COUNTER.value += 1
+        for i in range(len(man_list)):
+            x = man_list[i]
+            d[x[0]] = x[1]
+    return d

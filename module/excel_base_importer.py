@@ -1206,12 +1206,12 @@ class ExcelBaseImporter:
                 param["data"] = dict(value=value, used=False)
             elif fld.startswith("key_"):
                 index_key = get_index_key(fld[4:])
-                self._dictionary.setdefault(index_key, [])
+                self._dictionary.setdefault(index_key, list())
                 if not [x for x in self._dictionary[index_key] if x["value"] == value]:
                     self._dictionary[index_key].append(dict(value=value, used=False))
             if param.get("key") and param.get("data"):
                 index_key = get_index_key(param["key"])
-                self._dictionary.setdefault(index_key, [])
+                self._dictionary.setdefault(index_key, list())
                 if not [
                     x
                     for x in self._dictionary[index_key]

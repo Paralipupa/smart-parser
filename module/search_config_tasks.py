@@ -225,8 +225,7 @@ class SearchConfig:
 
 def clear_manager():
     man_dict.headers.clear()
-    for _ in range(len(man_list)):
-        man_list.pop()
+    del man_list[:]
 
 
 def get_manager_list() -> list:
