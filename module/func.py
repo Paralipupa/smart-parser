@@ -229,9 +229,9 @@ class Func:
 
     def func_inn(self):
         if self._parameters["inn"]["value"][0] != "0000000000":
-            return self._parameters["inn"]["value"][0]
+            return self._parameters["inn"]["value"][0].split("|")[-1]
         else:
-            return self._parameters["inn"]["value"][-1]
+            return self._parameters["inn"]["value"][-1].split("|")[-1]
 
     def func_period_first(self):
         period = datetime.datetime.strptime(

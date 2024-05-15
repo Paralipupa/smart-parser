@@ -40,16 +40,7 @@ class UnionData:
         self.file_log = file_log
         self.path_input = path_input
         self.path_output = path_output
-        self.file_output = (
-            file_output
-            if file_output
-            else (
-                (
-                    f'{inn if inn else "output"}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.zip'
-                )
-            )
-        )
-
+        self.file_output = os.path.basename(file_output)
         self.exclude = {
             "bill_value",
             "payment_value",

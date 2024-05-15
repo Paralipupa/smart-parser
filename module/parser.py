@@ -5,7 +5,7 @@ import shutil
 import datetime
 import psutil
 from functools import partial
-from time import time, gmtime, strftime
+from time import time, gmtime, strftime, sleep
 from pathlib import Path
 from module.excel_base_importer import ExcelBaseImporter
 from module.helpers import get_config_files, write_list, check_tarif, write_log_time
@@ -25,6 +25,9 @@ logger = logging.getLogger(__name__)
 manager = Manager()
 man_list = manager.list()
 COUNTER = Value("i", 0)
+FLAG = Value("b", True)
+DOWNLOAD_FILE = manager.dict()
+DOWNLOAD_FILE["name"] = ""
 lock = Lock()
 
 
@@ -35,7 +38,7 @@ class Parser:
         inn: str = "",
         file_config: str = "",
         union: str = PATH_OUTPUT,
-        path_down: str = PATH_OUTPUT,
+        path_down: str = PATH_DOWNLOAD,
         file_down: str = "output",
         hash: str = "yes",
         is_daemon: bool = False,
@@ -47,14 +50,13 @@ class Parser:
         self.config = file_config
         self.union = union
         self.download_path = path_down
-        self.output_path = (
+        self.output_path = os.path.basename(
             re.findall(".+(?=[.])", file_down)[0]
             if re.findall(".+(?=[.])", file_down)
             else ""
         )
         if not self.output_path:
             self.output_path = inn if inn else "output"
-        self.download_file = file_down
         self.is_hash = False if hash == "no" else True
         self.check_tarif = False
         self.is_daemon = is_daemon
@@ -64,13 +66,16 @@ class Parser:
         self.isParser = False
         self.file_log = ""
         self.count = 0
+        self.download_file = self.get_file_output(file_down)
         clear_manager()
 
     def start(self) -> list:
         try:
+            DOWNLOAD_FILE["name"] = self.download_file
             nstart = time()
             if not self.name:
-                return self.final_union(nstart)
+                self.final_union(nstart)
+                return DOWNLOAD_FILE["name"]
             else:
                 logger.info(
                     f"Архив: {COLOR_CONSOLE['red']}'{os.path.basename(self.name) }'{COLOR_CONSOLE['end']}"
@@ -78,24 +83,24 @@ class Parser:
                 self.list_files = self.get_config()
                 if self.list_files:
                     self.count = len(self.list_files)
-                    if self.is_daemon:
-                        proc = Process(
-                            target=self.stage_extract,
-                            args=(nstart,),
-                            daemon=True,
-                            name="SmartParser",
-                        )
-                        proc.start()
-                        proc.join(0.1)
-                        return self.download_file
-                    else:
-                        return self.stage_extract(nstart)
+                    self.stage_extract(nstart)
+                    # if self.is_daemon:
+                    #     proc = Process(
+                    #         target=self.stage_extract,
+                    #         args=(nstart,),
+                    #         daemon=True,
+                    #         name="SmartParser",
+                    #     )
+                    #     proc.start()
+                    #     proc.join(0.1)
+                    # else:
+                    return DOWNLOAD_FILE["name"]
                 else:
                     logger.info(
                         f"Данные в архиве не распознаны {strftime('%H:%M:%S', gmtime(time()-nstart))}"
                     )
                     if self.is_daemon:
-                        file_name = os.path.join(self.download_path, self.download_file)
+                        file_name = os.path.join(self.download_path, DOWNLOAD_FILE["name"])
                         write_log_time(file_name, True)
                     shutil.copy(
                         os.path.join(BASE_DIR, "doc", "error.txt"),
@@ -104,7 +109,7 @@ class Parser:
                     if not self.is_daemon:
                         return "error.txt"
                     else:
-                        file_name = os.path.join(self.download_path, self.download_file)
+                        file_name = os.path.join(self.download_path, DOWNLOAD_FILE["name"])
                         write_log_time(file_name, True)
                         return file_name
 
@@ -150,8 +155,8 @@ class Parser:
                 process = Process(
                     target=self.run,
                     args=(file_name,),
-                    daemon=False,
-                    name=f"smart_parser_{index}",
+                    daemon=True,
+                    name=f"smart_parser_extract_{index}",
                 )
                 processes_1.append(process)
 
@@ -159,18 +164,47 @@ class Parser:
         for process in processes_1:
             process.start()
         for process in processes_1:
-            process.join()
+            process.join(0)
         # _ = list(map(self.run, processes_1))
+
+        # проверяем, что все процессы обработки завершены
+        while any(
+            [
+                x.is_alive()
+                for x in processes_1
+                if x.name.startswith("smart_parser_extract_")
+            ]
+        ) and (time() - nstart < 60 * 60 * 5):
+            sleep(0)
+        FLAG.value = False  # даем отмашку финальному процессу сборки
+        process = Process(
+            target=self.stage_finish,
+            args=(nstart, ),
+            daemon=True,
+            name="smart_parser_finish",
+        )
+        process.start()
+        process.join()
+        while any([x.is_alive() for x in processes_1]) and (
+            time() - nstart < 60 * 60 * 5
+        ):
+            sleep(0)
+        return
+
+    def stage_finish(self, nstart):
+        while FLAG.value and (time() - nstart < 60 * 60 * 5):
+            sleep(0)
         self.file_log = write_list(
             path_output=os.path.join(PATH_LOG, self.output_path),
             files=self.list_files,
         )
-        return self.final_union(nstart)
+        self.final_union(nstart)
+        return
 
     def run(self, file_name: dict):
         if file_name["config"] and file_name["config"][0]["sheets"]:
             dictionary = get_dictionary_manager()
-            print("{} -{}".format(COUNTER.value, len(dictionary)))
+            # print("{} -{}".format(COUNTER.value, len(dictionary)))
             rep: ExcelBaseImporter = ExcelBaseImporter(
                 file_name=file_name["name"],
                 inn=file_name["inn"],
@@ -181,7 +215,7 @@ class Parser:
                 is_hash=self.is_hash,
                 dictionary=dictionary,
                 download_file=(
-                    os.path.join(self.download_path, self.download_file)
+                    os.path.join(self.download_path, DOWNLOAD_FILE["name"])
                     if self.is_daemon
                     else ""
                 ),
@@ -197,7 +231,9 @@ class Parser:
                 f"({COUNTER.value}/{self.count}) {free_mem}/{self.mem}({round(100*free_mem/self.mem,2)}%) "
                 + f"Начало обработки файла '{os.path.basename(file_name['name'])}'({Path(file_name['config'][0]['name']).stem})"
             )
-            if rep.extract():
+            self.inn = rep.extract()
+            if self.inn:
+                DOWNLOAD_FILE["name"] = self.get_file_output(DOWNLOAD_FILE["name"])
                 logger.info(f"Обработка завершена      ")
                 set_dictionary_manager(rep._dictionary)
                 self.isParser = True
@@ -230,13 +266,13 @@ class Parser:
                 file_log=self.file_log,
                 path_input=os.path.join(PATH_OUTPUT, self.output_path),
                 path_output=self.download_path,
-                file_output=self.download_file,
+                file_output=DOWNLOAD_FILE["name"],
                 is_daemon=self.is_daemon,
                 inn=self.inn,
             )
             result = u.start()
             logger.info(
-                f"Окончание сборки {strftime('%H:%M:%S', gmtime(time()-nstart))}"
+                f"Окончание сборки {strftime('%H:%M:%S', gmtime(time()-nstart))} {'. Архив не сформирован' if bool(result) is False else ''}"
             )
         return result
 
@@ -249,15 +285,27 @@ class Parser:
             u = UnionData(
                 path_input=os.path.join(PATH_OUTPUT, self.output_path),
                 path_output=self.download_path,
-                file_output=self.download_file,
+                file_output=DOWNLOAD_FILE["name"],
                 inn=self.inn,
             )
             return u.start()
+
+    def get_file_output(self, file_name) -> str:
+        return (
+            file_name
+            if file_name and not file_name.startswith("output")
+            else (
+                (
+                    f'{self.inn if self.inn else "output"}_{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.zip'
+                )
+            )
+        )
 
 
 def clear_manager():
     del man_list[:]
     COUNTER.value = 0
+    FLAG.value = True
 
 
 def set_dictionary_manager(l: list):

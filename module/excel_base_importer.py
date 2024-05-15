@@ -149,7 +149,7 @@ class ExcelBaseImporter:
                 self.add_warning(
                     f"\nОШИБКА чтения файла {self._parameters['filename']['value'][0]}"
                 )
-                return False
+                return None
             if self.config_files[self.index_config]["sheets"][0] == -1:
                 self.config_files[self.index_config]["sheets"] = [
                     x for x in range(len(data_reader.get_sheets()))
@@ -236,7 +236,8 @@ class ExcelBaseImporter:
 
         self.__process_finish()
 
-        return True
+        return self.func_inn()
+
     def stage_build_documents(self):
         while self.is_event:
             if len(self._teams) > 50:
@@ -247,7 +248,7 @@ class ExcelBaseImporter:
         while self.is_event:
             if len(self._teams) > 50:
                 with concurrent.futures.ThreadPoolExecutor() as executor:
-                # with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+                    # with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
                     future_to_url = {
                         executor.submit(self.__process_record()): x
                         for x in range(len(self._teams))
