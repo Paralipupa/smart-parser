@@ -22,6 +22,7 @@ from module.settings import *
 from multiprocessing import Process, Pool, Manager, Lock, Value, Queue, Semaphore
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 
+
 logger = logging.getLogger(__name__)
 manager = Manager()
 man_list = manager.list()
@@ -74,47 +75,23 @@ class Parser:
         try:
             DOWNLOAD_FILE["name"] = self.download_file
             DOWNLOAD_FILE["period"] = self._period
-            man_queue.put(self.download_file)
+            put_queue(DOWNLOAD_FILE["name"])
             nstart = time()
             if not self.name:
                 self.final_union(nstart)
-                return DOWNLOAD_FILE["name"]
             else:
                 logger.info(
                     f"Архив: {COLOR_CONSOLE['red']}'{os.path.basename(self.name) }'{COLOR_CONSOLE['end']}"
                 )
                 self.run_background(nstart)
-                return man_queue.get()
-        except InnMismatchException as ex:
+        except (FatalException, ConfigNotFoundException, CheckTarifException) as ex:
             logger.error(f"{ex}")
-            return f"{ex}"
-        except FatalException as ex:
+            put_queue(f"{ex._message}")
+        except (InnMismatchException, Exception) as ex:
             logger.error(f"{ex}")
-            return f"{ex._message}"
-        except ConfigNotFoundException as ex:
-            logger.error(f"{ex}")
-            return f"{ex._message}"
-        except CheckTarifException as ex:
-            logger.error(f"{ex}")
-            return f"{ex._message}"
-        except Exception as ex:
-            logger.error(f"{ex}")
-            return f"{ex}"
+            put_queue(f"{ex}")
+        return get_queue()
 
-    @staticmethod
-    def get_path(pathname: str) -> str:
-        if pathname == "logs":
-            return PATH_LOG
-        elif pathname == "output":
-            return PATH_OUTPUT
-        elif pathname == "tmp":
-            return PATH_TMP
-        else:
-            if pathname.find("log") != -1 and os.path.exists(
-                os.path.join(BASE_DIR, pathname)
-            ):
-                return os.path.join(BASE_DIR, pathname)
-        return ""
 
     def run_background(self, nstart):
         main_process = Process(target=self.manage_tasks, args=(nstart,))
@@ -159,13 +136,11 @@ class Parser:
                 os.path.join(self.download_path, "error.txt"),
             )
             if not self.is_daemon:
-                man_queue.get()
-                man_queue.put("error.txt")
+                put_queue("error.txt")
             else:
                 file_name = os.path.join(self.download_path, DOWNLOAD_FILE["name"])
                 write_log_time(file_name, True)
-                man_queue.get()
-                man_queue.put("error.txt")
+                put_queue("error.txt")
         return
 
     def stage_finish(self, nstart):
@@ -179,7 +154,6 @@ class Parser:
     def stage_extract(self, file_name: dict, counter: int):
         if file_name["config"] and file_name["config"][0]["sheets"]:
             dictionary = get_dictionary_manager()
-            # print("{} -{}".format(counter, len(dictionary)))
             rep: ExcelBaseImporter = ExcelBaseImporter(
                 file_name=file_name["name"],
                 inn=file_name["inn"],
@@ -203,13 +177,14 @@ class Parser:
                     raise CheckTarifException(mess)
             free_mem = round(psutil.virtual_memory().available / 1024**3, 2)
             logger.info(
-                f"({counter}/{self.count}) {free_mem}/{self.mem}({round(100*free_mem/self.mem,2)}%) "
+                f"({counter}/{self.count}) (dict={len(dictionary)}) {free_mem}/{self.mem}({round(100*free_mem/self.mem,2)}%) "
                 + f"Начало обработки файла '{os.path.basename(file_name['name'])}'({Path(file_name['config'][0]['name']).stem})"
             )
             self.inn = rep.extract()
             if self.inn:
                 if not self.is_daemon:
                     DOWNLOAD_FILE["name"] = self.get_file_output(DOWNLOAD_FILE["name"])
+                    put_queue(DOWNLOAD_FILE["name"])
                 logger.info(f"Обработка завершена      ")
                 set_dictionary_manager(rep._dictionary)
                 self.isParser = True
@@ -276,7 +251,11 @@ class Parser:
     def get_file_output(self, file_name) -> str:
         return (
             file_name
-            if file_name and not file_name.startswith("output")
+            if file_name
+            and (
+                not file_name.startswith("output")
+                or (self.inn and self.inn.startswith("0000"))
+            )
             else (
                 (
                     f'{self.inn if self.inn else "output"}_{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.zip'
@@ -284,9 +263,36 @@ class Parser:
             )
         )
 
+def get_path(pathname: str) -> str:
+    if pathname == "logs":
+        return PATH_LOG
+    elif pathname == "output":
+        return PATH_OUTPUT
+    elif pathname == "tmp":
+        return PATH_TMP
+    else:
+        if pathname.find("log") != -1 and os.path.exists(
+            os.path.join(BASE_DIR, pathname)
+        ):
+            return os.path.join(BASE_DIR, pathname)
+    return ""
 
 def clear_manager():
     del man_list[:]
+
+
+def put_queue(val):
+    try:
+        while True:
+            man_queue.get_nowait()
+    except:
+        pass
+    finally:
+        man_queue.put(val)
+
+
+def get_queue():
+    return man_queue.get()
 
 
 def set_dictionary_manager(l: list):

@@ -56,7 +56,7 @@ class SearchConfig:
         if len(self.list_files) == 0:
             return
         clear_manager()
-        with ProcessPoolExecutor() as executor:
+        with ProcessPoolExecutor(max_workers=8) as executor:
             executor.map(self.put_data_file, self.list_files)
         # d = list(map(self.put_data_file, self.list_files))
         self.__to_collect_out_files()
