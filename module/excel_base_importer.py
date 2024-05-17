@@ -305,21 +305,12 @@ class ExcelBaseImporter:
         return
 
     def __done(self):
-        # while len(self._teams) != 0:
-        #     team = self._teams.popitem(last=False)[1]
-        #     self.__process_record(team)
-        # for i, team in enumerate(self._teams.values()):
-        #     # self.__process_record(team, i)
-        #     self.__run_process_record((team,i))
         _ = list(
             map(
                 self.__run_process_record,
-                [(x, i) for i, x in enumerate(self._teams.values())],
+                [(x, i) for i, x in enumerate(self._teams.values(), 1)],
             )
         )
-        # while len(self._teams) != 0:
-        #     team = self._teams.popitem(last=False)[1]
-        #     self.__process_record(team)
         self._teams.clear()
 
     def __run_process_record(self, data):
@@ -1367,21 +1358,11 @@ class ExcelBaseImporter:
     ################################################################################################################################################
     def __append_to_collection(self, name: str, doc: dict) -> None:
         key = self._page_name if self._page_name else "noname"
-        # man.collections.setdefault(name, {key: list()})
-        # man.collections[name].setdefault(key, list())
-        # man.collections[name][key].append(doc)
-        self._collections.setdefault(name, {key: list()})
-        self._collections[name].setdefault(key, list())
-        self._collections[name][key].append(doc)
-        # if (doc.get("key") or doc.get("__key")) and (
-        #     doc.get("value") or doc.get("__value")
-        # ):
-        #     # if (
-        #     #     self.__get_doc_type(name) == "dictionary"
-        #     #     and (doc.get("key") or doc.get("__key") )
-        #     #     and (doc.get("value") or doc.get("__value") )
-        #     # ):
-        #     self.__build_global_dictionary(doc)
+        self._collections.setdefault(name, list())
+        # self._collections.setdefault(name, {key: list()})
+        # self._collections[name].setdefault(key, list())
+        self._collections[name].append(doc)
+        # self._collections[name][key].append(doc)
         return
 
     # Формирование документа из части исходной таблицы - team (отдельной области или иерархии)
@@ -1707,22 +1688,20 @@ class ExcelBaseImporter:
         try:
             id = self.func_id("")
             inn = self.func_inn()
-            for name, pages in collections.items():
-                for key, records in pages.items():
-                    file_output = pathlib.Path(
-                        PATH_OUTPUT,
-                        path_output,
-                        f'{inn}{"_"+str(num_file) if num_file != 0 else ""}'
-                        + f'{"_"+key.replace(" ","_") if key != "noname" else ""}'
-                        + f'{"_"+str(num_page) if num_page!=0 else ""}'
-                        + f'{"_"+str(num_config) if num_config!=0 else ""}'
-                        + f"{id}_{name}",
-                    )
-                    if output_format is None or output_format == "json":
-                        await self.write_json_async(f"{file_output}.json", records)
+            for name, records in collections.items():
+                file_output = pathlib.Path(
+                    PATH_OUTPUT,
+                    path_output,
+                    f'{inn}{"_"+str(num_file) if num_file != 0 else ""}'
+                    + f'{"_"+str(num_page) if num_page!=0 else ""}'
+                    + f'{"_"+str(num_config) if num_config!=0 else ""}'
+                    + f"{id}_{name}",
+                )
+                if output_format is None or output_format == "json":
+                    await self.write_json_async(f"{file_output}.json", records)
 
-                    if output_format is None or output_format == "csv":
-                        await self.write_csv_async(f"{file_output}.csv", records)
+                if output_format is None or output_format == "csv":
+                    await self.write_csv_async(f"{file_output}.csv", records)
         except Exception as ex:
             logger.error(f"{ex}")
 

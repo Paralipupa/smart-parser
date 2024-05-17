@@ -24,12 +24,12 @@ from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 
 
 logger = logging.getLogger(__name__)
-manager = Manager()
-man_list = manager.list()
-man_queue = manager.Queue()
-DOWNLOAD_FILE = manager.dict()
-DOWNLOAD_FILE["name"] = ""
-DOWNLOAD_FILE["period"] = ""
+
+man_list = Manager().list()
+man_dict = Manager().dict()
+man_dict["name"] = ""
+man_dict["result"] = ""
+man_dict["period"] = ""
 lock = Lock()
 
 
@@ -69,13 +69,14 @@ class Parser:
         self.file_log = ""
         self.count = 0
         self.download_file = self.get_file_output(file_down)
-        clear_manager()
+        self.clear_manager()
+        self._dictionary = dict()
 
     def start(self) -> list:
         try:
-            DOWNLOAD_FILE["name"] = self.download_file
-            DOWNLOAD_FILE["period"] = self._period
-            put_queue(DOWNLOAD_FILE["name"])
+            self.set_period(self._period)
+            self.set_download_file(self.download_file)
+            self.set_result(self.get_download_file())
             nstart = time()
             if not self.name:
                 self.final_union(nstart)
@@ -86,12 +87,11 @@ class Parser:
                 self.run_background(nstart)
         except (FatalException, ConfigNotFoundException, CheckTarifException) as ex:
             logger.error(f"{ex}")
-            put_queue(f"{ex._message}")
+            self.set_result(f"{ex._message}")
         except (InnMismatchException, Exception) as ex:
             logger.error(f"{ex}")
-            put_queue(f"{ex}")
-        return get_queue()
-
+            self.set_result(f"{ex}")
+        return self.get_result()
 
     def run_background(self, nstart):
         main_process = Process(target=self.manage_tasks, args=(nstart,))
@@ -109,39 +109,40 @@ class Parser:
         self.list_files = self.get_config()
         if self.list_files:
             self.count = len(self.list_files)
-            parsers_0 = [
-                (name, index)
-                for index, name in enumerate(self.list_files, 1)
-                if "_000_" in str(name["config"][0]["name"])
-            ]
-            parsers_1 = [
-                (name, index)
-                for index, name in enumerate(self.list_files, len(parsers_0) + 1)
-                if not "_000_" in str(name["config"][0]["name"])
-            ]
+            parsers_0 = self.get_processes("_000_")
+            parsers_1 = self.get_processes("_001_")
+            parsers_2 = self.get_processes("_002_")
+            _ = list(map(self.process_run, parsers_0))
+            _ = list(map(self.process_run, parsers_1))
+            # _ = list(map(self.process_run, parsers_2))
             with ProcessPoolExecutor(max_workers=4) as executor:
-                executor.map(self.process_run, parsers_0)
-            with ProcessPoolExecutor(max_workers=8) as executor:
-                executor.map(self.process_run, parsers_1)
+                executor.map(self.process_run, parsers_2)
             self.stage_finish(nstart)
         else:
             logger.info(
                 f"Данные в архиве не распознаны {strftime('%H:%M:%S', gmtime(time()-nstart))}"
             )
             if self.is_daemon:
-                file_name = os.path.join(self.download_path, DOWNLOAD_FILE["name"])
+                file_name = os.path.join(self.download_path, self.get_download_file())
                 write_log_time(file_name, True)
             shutil.copy(
                 os.path.join(BASE_DIR, "doc", "error.txt"),
                 os.path.join(self.download_path, "error.txt"),
             )
             if not self.is_daemon:
-                put_queue("error.txt")
+                self.set_result("error.txt")
             else:
-                file_name = os.path.join(self.download_path, DOWNLOAD_FILE["name"])
+                file_name = os.path.join(self.download_path, self.get_download_file())
                 write_log_time(file_name, True)
-                put_queue("error.txt")
+                self.set_result("error.txt")
         return
+
+    def get_processes(self, pattern: str) -> list:
+        return [
+            (name, index)
+            for index, name in enumerate(self.list_files, 1)
+            if pattern in str(name["config"][0]["name"])
+        ]
 
     def stage_finish(self, nstart):
         self.file_log = write_list(
@@ -153,18 +154,18 @@ class Parser:
 
     def stage_extract(self, file_name: dict, counter: int):
         if file_name["config"] and file_name["config"][0]["sheets"]:
-            dictionary = get_dictionary_manager()
+            dictionary = self.get_dictionary_manager()
             rep: ExcelBaseImporter = ExcelBaseImporter(
                 file_name=file_name["name"],
                 inn=file_name["inn"],
                 config_files=file_name["config"],
                 index=counter,
                 output=self.output_path,
-                period=self._period,
+                period=self.get_period(),
                 is_hash=self.is_hash,
                 dictionary=dictionary,
                 download_file=(
-                    os.path.join(self.download_path, DOWNLOAD_FILE["name"])
+                    os.path.join(self.download_path, self.get_download_file())
                     if self.is_daemon
                     else ""
                 ),
@@ -177,29 +178,26 @@ class Parser:
                     raise CheckTarifException(mess)
             free_mem = round(psutil.virtual_memory().available / 1024**3, 2)
             logger.info(
-                f"({counter}/{self.count}) (dict={len(dictionary)}) {free_mem}/{self.mem}({round(100*free_mem/self.mem,2)}%) "
+                f"({counter}/{self.count}) (dict={len(self._dictionary)}) {free_mem}/{self.mem}({round(100*free_mem/self.mem,2)}%) "
                 + f"Начало обработки файла '{os.path.basename(file_name['name'])}'({Path(file_name['config'][0]['name']).stem})"
             )
             self.inn = rep.extract()
             if self.inn:
                 if not self.is_daemon:
-                    DOWNLOAD_FILE["name"] = self.get_file_output(DOWNLOAD_FILE["name"])
-                    put_queue(DOWNLOAD_FILE["name"])
+                    self.set_download_file(
+                        self.get_file_output(self.get_download_file())
+                    )
+                    self.set_result(self.get_download_file())
                 logger.info(f"Обработка завершена      ")
-                set_dictionary_manager(rep._dictionary)
+                self.set_dictionary_manager(rep._dictionary)
                 self.isParser = True
                 if rep._parameters.get("period"):
-                    if (
-                        DOWNLOAD_FILE["period"]
-                        > datetime.datetime.strptime(
-                            rep._parameters["period"]["value"][0],
-                            "%d.%m.%Y",
-                        ).date()
-                    ):
-                        DOWNLOAD_FILE["period"] > datetime.datetime.strptime(
-                            rep._parameters["period"]["value"][0],
-                            "%d.%m.%Y",
-                        ).date()
+                    d = datetime.datetime.strptime(
+                        rep._parameters["period"]["value"][0],
+                        "%d.%m.%Y",
+                    ).date()
+                    if self.get_period() > d:
+                        self.set_period(d)
 
             else:
                 logger.info(f"Неудачное завершение обработки")
@@ -224,7 +222,7 @@ class Parser:
                 file_log=self.file_log,
                 path_input=os.path.join(PATH_OUTPUT, self.output_path),
                 path_output=self.download_path,
-                file_output=DOWNLOAD_FILE["name"],
+                file_output=self.get_download_file(),
                 is_daemon=self.is_daemon,
                 inn=self.inn,
             )
@@ -232,7 +230,8 @@ class Parser:
             logger.info(
                 f"Окончание сборки {strftime('%H:%M:%S', gmtime(time()-nstart))} {'. Архив не сформирован' if bool(result) is False else ''}"
             )
-        return result
+            self.set_result(result)
+        return
 
     def download(self):
         if not self.union:
@@ -243,7 +242,7 @@ class Parser:
             u = UnionData(
                 path_input=os.path.join(PATH_OUTPUT, self.output_path),
                 path_output=self.download_path,
-                file_output=DOWNLOAD_FILE["name"],
+                file_output=self.get_download_file(),
                 inn=self.inn,
             )
             return u.start()
@@ -263,6 +262,42 @@ class Parser:
             )
         )
 
+    def set_result(self, val):
+        man_dict["result"] = val
+
+    def get_result(self):
+        return man_dict["result"]
+
+    def set_download_file(self, val):
+        man_dict["name"] = val
+
+    def get_download_file(self):
+        return man_dict["name"]
+
+    def set_period(self, val):
+        man_dict["period"] = val
+
+    def get_period(self):
+        return man_dict["period"]
+
+    def set_dictionary_manager(self, d: list):
+        with lock:
+            if d:
+                for key, value in d.items():
+                    man_list.append((key, value))
+
+
+    def get_dictionary_manager(self) -> list:
+        d: dict = dict()
+        with lock:
+            for i in range(len(man_list)):
+                x = man_list[i]
+                d[x[0]] = x[1]
+        return d
+    
+    def clear_manager(self):
+        del man_list[:]
+
 def get_path(pathname: str) -> str:
     if pathname == "logs":
         return PATH_LOG
@@ -277,35 +312,6 @@ def get_path(pathname: str) -> str:
             return os.path.join(BASE_DIR, pathname)
     return ""
 
-def clear_manager():
-    del man_list[:]
 
 
-def put_queue(val):
-    try:
-        while True:
-            man_queue.get_nowait()
-    except:
-        pass
-    finally:
-        man_queue.put(val)
 
-
-def get_queue():
-    return man_queue.get()
-
-
-def set_dictionary_manager(l: list):
-    with lock:
-        if l:
-            for key, value in l.items():
-                man_list.append((key, value))
-
-
-def get_dictionary_manager() -> list:
-    d: dict = dict()
-    with lock:
-        for i in range(len(man_list)):
-            x = man_list[i]
-            d[x[0]] = x[1]
-    return d
