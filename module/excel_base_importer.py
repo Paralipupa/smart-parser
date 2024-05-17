@@ -77,7 +77,7 @@ class ExcelBaseImporter:
 
         # список данных, сгруппированных по идентификатору - internal_id
         # блоки данных из таблицы сгруппированных по идентификатору (internal_id)
-        self._teams = OrderedDict()
+        self._teams = dict()
         self._collections = dict()  # коллекция выходных документов
         self._possible_columns = list()
         self._headers = list()
@@ -305,17 +305,27 @@ class ExcelBaseImporter:
         return
 
     def __done(self):
-        while len(self._teams) != 0:
-            self.__process_record()
+        # while len(self._teams) != 0:
+        #     team = self._teams.popitem(last=False)[1]
+        #     self.__process_record(team)
+        # for i, team in enumerate(self._teams.values()):
+        #     # self.__process_record(team, i)
+        #     self.__run_process_record((team,i))
+        _ = list(
+            map(
+                self.__run_process_record,
+                [(x, i) for i, x in enumerate(self._teams.values())],
+            )
+        )
+        # while len(self._teams) != 0:
+        #     team = self._teams.popitem(last=False)[1]
+        #     self.__process_record(team)
+        self._teams.clear()
 
-    def __process_record(self) -> None:
-        try:
-            self.lock.acquire()
-            if len(self._teams) == 0:
-                return
-            team = self._teams.popitem(last=False)[1]
-        finally:
-            self.lock.release()
+    def __run_process_record(self, data):
+        self.__process_record(data[0], data[1])
+
+    def __process_record(self, team, index: int) -> None:
         try:
             if not self.colontitul["is_parameters"]:
                 self.__set_parameters()
@@ -325,10 +335,10 @@ class ExcelBaseImporter:
         except Exception as ex:
             logger.error(f"{ex}")
         finally:
-            if not self.is_event and len(self._teams) % 10 == 0:
+            if not self.is_event and (len(self._teams) - index) % 10 == 0:
                 print_message(
                     "         {} {} Осталось обработать: {}                          \r".format(
-                        self.num_page, self.func_inn(), len(self._teams)
+                        self.num_page, self.func_inn(), len(self._teams) - index
                     ),
                     end="",
                     flush=True,
@@ -1873,8 +1883,8 @@ class ExcelBaseImporter:
 
     def __get_period_from_file_name(self):
         comp = re.compile(
-            r"(?:01|02|03|04|05|06|07|08|09|10|11|12)[.,_\s]?(?:202[0-9]|[2,3][0-9])|"+
-            r"(?:202[0-9]|[2,3][0-9])[,_\s-](?:01|02|03|04|05|06|07|08|09|10|11|12)"
+            r"(?:01|02|03|04|05|06|07|08|09|10|11|12)[.,_\s]?(?:202[0-9]|[2,3][0-9])|"
+            + r"(?:202[0-9]|[2,3][0-9])[,_\s-](?:01|02|03|04|05|06|07|08|09|10|11|12)"
         )
         period = comp.findall(self._parameters["filename"]["value"][0])
         if period:
@@ -2099,8 +2109,7 @@ class ExcelBaseImporter:
         for col in self.__get_columns_heading():
             col["active"] = False
         self._column_names = dict()
-        self._teams = OrderedDict()
-        self._teams_ref = OrderedDict()
+        self._teams = dict()
 
         _ = [
             list(map(self.__init_dictionary, value))
