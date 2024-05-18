@@ -114,9 +114,9 @@ class Parser:
             parsers_2 = self.get_processes("_002_")
             _ = list(map(self.process_run, parsers_0))
             _ = list(map(self.process_run, parsers_1))
-            # _ = list(map(self.process_run, parsers_2))
-            with ProcessPoolExecutor(max_workers=4) as executor:
-                executor.map(self.process_run, parsers_2)
+            _ = list(map(self.process_run, parsers_2))
+            # with ProcessPoolExecutor(max_workers=4) as executor:
+            #     executor.map(self.process_run, parsers_2)
             self.stage_finish(nstart)
         else:
             logger.info(
@@ -169,7 +169,7 @@ class Parser:
                     if self.is_daemon
                     else ""
                 ),
-                progress=round(((counter - 1) / self.count) * 100, 2),
+                count=self.count,
             )
             if self.check_tarif is False and not rep._dictionary.get("tarif") is None:
                 self.check_tarif = True

@@ -8,7 +8,7 @@ import json
 import logging
 import concurrent.futures
 
-from threading import Lock
+from multiprocessing import Lock
 from copy import deepcopy
 from time import sleep
 from threading import Thread
@@ -48,18 +48,19 @@ class ExcelBaseImporter:
         file_name: str,
         config_files: list,
         inn: str,
-        index: int = 0,
+        index: int = 1,
         output: str = "output",
         period: datetime.date = None,
         is_hash: bool = True,
         dictionary: dict = dict(),
         download_file: str = "",
-        progress: float = 0.0,
+        count: int=1,
     ):
         self.num_file = index
         self.index_config: int = 0
         self.config_files = config_files
-        self.progress = progress
+        self.count = count
+        self.progress = round((index / count) * 100, 2)
         self._output = output
         self.is_file_exists = True
         self.is_hash = is_hash
@@ -337,7 +338,8 @@ class ExcelBaseImporter:
                 if self.download_file:
                     # при фоновой обработке отслеживаем процесс выполнения
                     # записывая текущее время в файл
-                    write_log_time(self.download_file, False, f"{self.progress}%")
+                    with self.lock:
+                        write_log_time(self.download_file, False, self.num_file, self.count, f"{self.progress}%")
                 sleep(0)
 
     def __reset_row(self, x: dict) -> dict:

@@ -456,20 +456,20 @@ def mkdir(file_name):
     pathlib.Path(pathlib.Path(file_name).parent).mkdir(parents=True, exist_ok=True)
 
 
-def write_log_time(file_name: str, is_error: bool = False, data: str = ""):
+def write_log_time(file_name: str, is_error: bool = False, *args):
     mkdir(file_name)
     with open(file_name + ".log", "w") as f:
         if is_error:
             f.write(
-                f"{file_name}\t" + "01-01-1900 00:00:00" + f"\t{data}" if data else ""
+                f"{file_name}\t"
+                + "01-01-1900 00:00:00"
+                + "".join([f"\t{x}" for x in args])
             )
         else:
             f.write(
                 f"{file_name}\t"
                 + datetime.now().strftime("%d-%m-%Y %H:%M:%S")
-                + f"\t{data}"
-                if data
-                else ""
+                + "".join([f"\t{x}" for x in args])
             )
 
 
