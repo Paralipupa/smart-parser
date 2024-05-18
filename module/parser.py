@@ -281,19 +281,21 @@ class Parser:
         return man_dict["period"]
 
     def set_dictionary_manager(self, d: list):
-        with lock:
-            if d:
-                for key, value in d.items():
-                    man_list.append((key, value))
+        # with lock:
+        #     if d:
+        #         for key, value in d.items():
+        #             man_list.append((key, value))
+        self._dictionary = d
 
 
     def get_dictionary_manager(self) -> list:
-        d: dict = dict()
-        with lock:
-            for i in range(len(man_list)):
-                x = man_list[i]
-                d[x[0]] = x[1]
-        return d
+        # d: dict = dict()
+        # with lock:
+        #     for i in range(len(man_list)):
+        #         x = man_list[i]
+        #         d[x[0]] = x[1]
+        # return d
+        return self._dictionary
     
     def clear_manager(self):
         del man_list[:]
