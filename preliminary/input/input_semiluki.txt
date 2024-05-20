@@ -15,15 +15,21 @@ filename:gisconfig_002_00semiluki.ini
 main_page_index:-1
 pattern_inn:@3628019094
 
-pattern_ЛС:^11[0-9]{8}$
+pattern_ЛС:^[0-9]{10}$
 pattern_ЛС:.+
 
 required_pu:serial_number,device_type
 
-3:Статус шкалы ПУ@checking_rows::Работоспособен
+field:^Л/С;^Л/c@__internal_id(accounts){func{_,spacerepl,hash}}::^[0-9]+$
+field:@__account_internal_id(pp){func{_,spacerepl,hash}}::*
+field:@__account_internal_id(pu){func{_,spacerepl,hash}}::*
+field:@__account_internal_id(pu){func{_,spacerepl,hash}}::*
+field:@__contract_internal_id(accounts){func{_+К,spacerepl,hash}}::*
+
+3:Статус шкалы ПУ@checking_rows::Работоспособен|Поверка|
 
 0:^Л/С;^Л/c;^Лицевой счет;^Услуга;^Зав(?:.+)№$
-0:@internal_id_accounts::^11[0-9]{8}$
+0:@internal_id_accounts::^[0-9]+
 0:@account_internal_id::*
 0:@contract_internal_id::*
 0:@account_identifier::*

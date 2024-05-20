@@ -100,6 +100,10 @@ class Parser:
             main_process.join(0)
         else:
             main_process.join()
+            if main_process.exitcode != 0:
+                self.set_result(
+                    f"Процесс {main_process.pid} завершился с ошибкой. Код завершения: {main_process.exitcode}"
+                )
         return
 
     def process_run(self, data):
@@ -287,7 +291,6 @@ class Parser:
         #             man_list.append((key, value))
         self._dictionary = d
 
-
     def get_dictionary_manager(self) -> list:
         # d: dict = dict()
         # with lock:
@@ -296,9 +299,10 @@ class Parser:
         #         d[x[0]] = x[1]
         # return d
         return self._dictionary
-    
+
     def clear_manager(self):
         del man_list[:]
+
 
 def get_path(pathname: str) -> str:
     if pathname == "logs":
@@ -313,7 +317,3 @@ def get_path(pathname: str) -> str:
         ):
             return os.path.join(BASE_DIR, pathname)
     return ""
-
-
-
-

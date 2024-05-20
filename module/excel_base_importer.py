@@ -234,6 +234,7 @@ class ExcelBaseImporter:
                         #     t.join()
         except Exception as ex:
             logger.error(f"{ex}")
+            raise Exception(ex)
 
         self.__process_finish()
 
@@ -1359,12 +1360,8 @@ class ExcelBaseImporter:
     # --------------------------------------------------- Документы --------------------------------------------------------------------------------
     ################################################################################################################################################
     def __append_to_collection(self, name: str, doc: dict) -> None:
-        key = self._page_name if self._page_name else "noname"
         self._collections.setdefault(name, list())
-        # self._collections.setdefault(name, {key: list()})
-        # self._collections[name].setdefault(key, list())
         self._collections[name].append(doc)
-        # self._collections[name][key].append(doc)
         return
 
     # Формирование документа из части исходной таблицы - team (отдельной области или иерархии)

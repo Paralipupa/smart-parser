@@ -58,7 +58,7 @@ def set_columns(lines: list, path: str) -> str:
             lines["param"],
             names,
             patts,
-            len(lines["0"]) + len(lines["2"]),
+            len(lines["0"]) + len(lines["2"]) + len(lines["3"]),
             True,
         )
         parsing_lines(
@@ -163,7 +163,8 @@ def parsing_lines(
             )
 
         if col_begin + idx_col == 0:
-            file.write(f"name=ЛС\n")
+            name = get_name("ЛС", names)
+            file.write(f"name={name}\n")
             if lparam.get("pattern_condition_begin_team"):
                 file.write(f"condition_begin_team=@condition_begin_team\n")
             else:
