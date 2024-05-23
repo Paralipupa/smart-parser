@@ -54,7 +54,7 @@ class ExcelBaseImporter:
         is_hash: bool = True,
         dictionary: dict = dict(),
         download_file: str = "",
-        count: int=1,
+        count: int = 1,
     ):
         self.num_file = index
         self.index_config: int = 0
@@ -340,7 +340,14 @@ class ExcelBaseImporter:
                     # при фоновой обработке отслеживаем процесс выполнения
                     # записывая текущее время в файл
                     with self.lock:
-                        write_log_time(self.download_file, False, self.num_file, self.count, f"{self.progress}%")
+                        write_log_time(
+                            self.download_file,
+                            False,
+                            self.num_file,
+                            self.count,
+                            f"{self.progress}%",
+                            os.path.basename(self._parameters["filename"]["value"][0]),
+                        )
                 sleep(0)
 
     def __reset_row(self, x: dict) -> dict:

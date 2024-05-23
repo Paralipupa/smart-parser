@@ -82,7 +82,9 @@ class Parser:
                 self.final_union(nstart)
             else:
                 logger.info(
-                    f"Архив: {COLOR_CONSOLE['red']}'{os.path.basename(self.name) }'{COLOR_CONSOLE['end']}"
+                    f"Архив: {COLOR_CONSOLE['red']}'"
+                    + f"{re.findall('.+(?=_20)',os.path.basename(self.name))[0] if re.findall('.+(?=_20)',os.path.basename(self.name)) else os.path.basename(self.name) }"
+                    + f"'{COLOR_CONSOLE['end']}"
                 )
                 self.run_background(nstart)
         except (FatalException, ConfigNotFoundException, CheckTarifException) as ex:
@@ -94,7 +96,9 @@ class Parser:
         return self.get_result()
 
     def run_background(self, nstart):
-        main_process = Process(target=self.manage_tasks, args=(nstart,))
+        main_process = Process(
+            target=self.manage_tasks, args=(nstart,), name="smart-parser"
+        )
         main_process.start()
         if self.is_daemon:
             main_process.join(0)

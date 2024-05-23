@@ -26,7 +26,7 @@ field:@__account_internal_id(pu){func{_,spacerepl,hash}}::*
 field:@__account_internal_id(pu){func{_,spacerepl,hash}}::*
 field:@__contract_internal_id(accounts){func{_+К,spacerepl,hash}}::*
 
-3:Статус шкалы ПУ@checking_rows::Работоспособен|Поверка|
+3:Статус шкалы ПУ@checking_rows::Работоспособен|Поверка
 
 0:^Л/С;^Л/c;^Лицевой счет;^Услуга;^Зав(?:.+)№$
 0:@internal_id_accounts::^[0-9]+
