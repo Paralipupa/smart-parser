@@ -607,12 +607,13 @@ def __write_sec_func(**kwargs):
             **kwargs
         ):
             ident = "_"
-        func_ident = kwargs.get("sec_func_ident", "id")
-        kwargs.get("file").write(
-            f"func={func_ident}+{ident}{suffix}{spacerepl}{hash}{dictionary}\n"
-        )
-        if kwargs.get("sec_func_pattern") and __is_first_service(**kwargs):
-            kwargs.get("file").write(f"func_pattern={kwargs.get('sec_func_pattern')}\n")
+        if not (fld_param and fld_param[0]["func"]):
+            func_ident = kwargs.get("sec_func_ident", "id")
+            kwargs.get("file").write(
+                f"func={func_ident}+{ident}{suffix}{spacerepl}{hash}{dictionary}\n"
+            )
+            if kwargs.get("sec_func_pattern") and __is_first_service(**kwargs):
+                kwargs.get("file").write(f"func_pattern={kwargs.get('sec_func_pattern')}\n")
     elif __is_sec_as_service_name(**kwargs) and not current_service is None:
         if (
             fld_param
