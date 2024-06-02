@@ -34,6 +34,10 @@ field:@__contract_internal_id(accounts){func{_+К,spacerepl,hash}}::*
 0:@contract_internal_id::*
 0:@account_identifier::*
 0:@account_number_accounts::*
+0:@internal_id_pu{func{id+ПУ,spacerepl,hash}}
+0:@metering_device_internal_id{func{id+ПУ,spacerepl,hash}}
+0:@internal_id_puv{func{id+ПУП,spacerepl,hash}}
+0:@internal_id_pp_charges{func{id+НЧ,spacerepl,hash}}
 
 0:Адрес@address{func{_}}
 0:^О(?:.+)?площадь@total_square

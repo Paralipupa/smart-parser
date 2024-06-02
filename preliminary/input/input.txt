@@ -37,9 +37,9 @@ field:ОбъёмУслуги$@rrr1(pu)
 0:@contract_internal_id::*
 0:@account_identifier::*
 0:@account_number_accounts::*
-0:@internal_id_pu{func{id+ПУ,spacerepl,hash}}
-0:@metering_device_internal_id{func{id+ПУ,spacerepl,hash}}
-0:@internal_id_puv{func{id+ПУП,spacerepl,hash}}
+;0:@internal_id_pu{func{id+ПУ,spacerepl,hash}}
+;0:@metering_device_internal_id{func{id+ПУ,spacerepl,hash}}
+;0:@internal_id_puv{func{id+ПУП,spacerepl,hash}}
 
 0:Сальдо на начало периода;+(1)@credit{type{float}}{func{round2}}::*currency
 0:Начислено за период@bill_value	Оплачено за период;Оплата(пени)@payment_value
