@@ -18,13 +18,12 @@ pattern_ЛС:.+
 pattern_period:(?<=Начало периода: )[0-9]{2}\.{0-9}{2}\.[0-9]{4}
 pattern_period:(?<=с )\s*[0-9]{2}\.[0-9]{2}\.[0-9]{4}
 
+;добавляем временное поле __rrr1  в pu, чтобы по нему (в случае отсутствия данных) отсеить лишние строки
+field:ОбъёмУслуги$@__rrr1(pu)
+
 required_pu:serial_number,manufacturer,model,device_type,service_internal_id,(__rrr1)
 required_pp_charges:calc_value,recalculation,tariff
 required_pp:bill_value,payment_value,credit,saldo
-
-
-field:ОбъёмУслуги$@__rrr1(pu)
-
 
 0:^ЛС;^Услуга
 0:@internal_id_accounts::^[0-9]+

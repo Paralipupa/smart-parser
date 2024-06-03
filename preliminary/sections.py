@@ -21,7 +21,7 @@ def write_other_fields(**kwargs):
                 kwargs.get("file").write(f"col_config={fld['col']}\n")
                 kwargs.get("file").write("row_data=0\n")
                 if fld.get("func"):
-                    func = __get_func(fld['func'][0], **kwargs)
+                    func = __get_func(fld["func"][0], **kwargs)
                     kwargs.get("file").write(f"func={func}\n")
                 kwargs["sec_number"] += 1
 
@@ -48,7 +48,7 @@ def write_section_doc(**kwargs):
     kwargs.get("file").write(f"[{kwargs.get('sec_type')}_{kwargs.get('sec_number')}]\n")
     kwargs.get("file").write(f"; {kwargs.get('sec_title')}\n")
     kwargs.get("file").write(f"name={kwargs.get('sec_name')}\n")
-    if kwargs.get('sec_type') == "doc":
+    if kwargs.get("sec_type") == "doc":
         if kwargs.get("lines") and kwargs["lines"]["type"].get(
             f"type_{kwargs.get('sec_name')}"
         ):
@@ -497,7 +497,7 @@ def __write_sec_pattern(**kwargs):
     current_service = __get_current_service(**kwargs)
     if fld_param:
         pattern_default = __get_pattern_default(**kwargs)
-
+        col_fld = __get_field_col(**kwargs)
         if __is_sub_fields_in_col(**kwargs):
             if (
                 __is_service_parameters(**kwargs)
@@ -510,12 +510,12 @@ def __write_sec_pattern(**kwargs):
                 if __is_sec_internal_id(**kwargs):
                     if __is_first_service(**kwargs):
                         kwargs.get("file").write("pattern=@0\n")
-                    kwargs.get("file").write(f"offset_pattern=@{name}\n")
+                    if col_fld != 0:
+                        kwargs.get("file").write(f"offset_pattern=@{name}\n")
                 else:
                     kwargs.get("file").write(f"pattern=@{name}\n")
                     if __is_first_service(**kwargs):
                         col_service = __get_service_col(**kwargs)
-                        col_fld = __get_field_col(**kwargs)
                         if col_fld != col_service:
                             if pattern_default:
                                 kwargs.get("file").write(
@@ -549,7 +549,9 @@ def __write_sec_pattern(**kwargs):
             if __is_sec_internal_id(**kwargs):
                 if __is_first_service(**kwargs):
                     kwargs.get("file").write("pattern=@0\n")
-                kwargs.get("file").write(f"offset_pattern=@{name}\n")
+                col_fld = __get_field_col(**kwargs)
+                if col_fld != 0:
+                    kwargs.get("file").write(f"offset_pattern=@{name}\n")
             else:
                 kwargs.get("file").write(f"pattern=@{name}\n")
 
@@ -575,8 +577,8 @@ def __write_sec_type(**kwargs):
 def __get_func(func, **kwargs):
     columns = [
         (x[0]["col"], key)
-        for key,x in kwargs["lines"]["dic"].items()
-        if x and f'({key})' in func
+        for key, x in kwargs["lines"]["dic"].items()
+        if x and f"({key})" in func
     ]
     if columns:
         func = func.replace(columns[0][1], str(columns[0][0]))
@@ -613,7 +615,9 @@ def __write_sec_func(**kwargs):
                 f"func={func_ident}+{ident}{suffix}{spacerepl}{hash}{dictionary}\n"
             )
             if kwargs.get("sec_func_pattern") and __is_first_service(**kwargs):
-                kwargs.get("file").write(f"func_pattern={kwargs.get('sec_func_pattern')}\n")
+                kwargs.get("file").write(
+                    f"func_pattern={kwargs.get('sec_func_pattern')}\n"
+                )
     elif __is_sec_as_service_name(**kwargs) and not current_service is None:
         if (
             fld_param
