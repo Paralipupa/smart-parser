@@ -1,4 +1,5 @@
 from datetime import datetime
+from collections import defaultdict
 import re
 import logging
 import os
@@ -102,16 +103,22 @@ class UnionData:
                             )
                         for file in files:
                             for key_record, record in file.items():
-                                if file_data.get(key_record):
-                                    record = self.__merge(
-                                        record, file_data.get(key_record), key_record
-                                    )
-                                if not record.get("account_type") is None:
-                                    if is_separate_account_type is False:
-                                        record.pop("account_type", None)
-                                    elif record.get("account_type") == "":
-                                        record["account_type"] = "uo"
-                                file_data[key_record] = record
+                                try:
+                                    if file_data.get(key_record):
+                                        record = self.__merge(
+                                            record,
+                                            file_data.get(key_record),
+                                            key_record,
+                                        )
+                                    if not record.get("account_type") is None:
+                                        if is_separate_account_type is False:
+                                            record.pop("account_type", None)
+                                        elif record.get("account_type") == "":
+                                            record["account_type"] = "uo"
+                                    file_data[key_record] = record
+                                except Exception as ex:
+                                    logger.error(f"{ex}")
+                                    raise
                         if re.search("^accounts", id_period):
                             is_separate_account_type = self.__write_account(
                                 inn, id_period, file_data, save_directories
@@ -133,7 +140,11 @@ class UnionData:
                     os.path.join(self.path_output, self.file_output + ".log")
                 ):
                     os.remove(os.path.join(self.path_output, self.file_output + ".log"))
-        return self.file_output if os.path.exists(os.path.join(self.path_output, self.file_output)) else ""
+        return (
+            self.file_output
+            if os.path.exists(os.path.join(self.path_output, self.file_output))
+            else ""
+        )
 
     def __get_commom_data(self, files: list):
         period_current: list = [datetime.now().strftime("%m%Y")]
@@ -243,6 +254,7 @@ class UnionData:
                 )
                 for x in data
             ]
+            is_merged = False
             if self.dict_ids:
                 for dic in data:
                     for key in keys_redefine:
@@ -251,10 +263,43 @@ class UnionData:
                             dic.get(key_old)
                         ):
                             dic[key_old] = self.dict_ids.get(dic.get(key_old))
+                            if key_old == "internal_id":
+                                is_merged = True
             self.__check_unique(file_name, keys)
-            data = dict(zip(keys, data))
+            if is_merged:
+                data = self.merged_data(keys, data)
+            else:
+                data = dict(zip(keys, data))
         except Exception as ex:
             logger.error(f"ex")
+        return data
+
+    def merged_data(self, keys, data):
+        """ объединение записей с одинаковым internal_id с сумирование числовых полей """
+        try:
+            merged_data = defaultdict(lambda: defaultdict(float))
+            for dic, key in zip(data, keys):
+                for field_name, value in dic.items():
+                    if self.__is_numeric(value):
+                        if not isinstance(merged_data[key][field_name], float):
+                            merged_data[key][field_name] = 0
+                        merged_data[key][field_name] += round(float(value), 2)
+                        merged_data[key][field_name] = round(
+                            merged_data[key][field_name], 2
+                        )
+                    else:
+                        if (
+                            field_name not in merged_data[key]
+                            or not merged_data[key][field_name]
+                        ):
+                            merged_data[key][field_name] = value
+            data = {
+                key: {k: str(v) for k, v in values.items()}
+                for key, values in merged_data.items()
+            }
+
+        except Exception as ex:
+            logger.error(f"{ex}")
         return data
 
     @fatal_error
@@ -270,6 +315,15 @@ class UnionData:
                 if file.endswith(".csv"):
                     files.append(file)
         return files
+
+    def __is_numeric(self, value):
+        try:
+            if "." in value:
+                float(value)
+                return True
+        except ValueError:
+            return False
+        return False
 
     def __files_sorted(self, files_o: list) -> list:
         """Сортировка файлов для обработки
@@ -302,20 +356,23 @@ class UnionData:
 
         return files
 
-    @warning_error
     def __merge(self, a: dict, b: dict, key_record: str) -> dict:
-        for key, valA in a.items():
-            valB = b.get(key)
-            if (
-                valB is not None
-                and (len(valB.strip()) != 0)
-                and ((len(valA.strip()) == 0) or valA != valB)
-            ):
-                if (len(valA.strip()) == 0) or (
-                    len(valA.replace(" ", "")) < len(valB.replace(" ", ""))
+        try:
+            for key, valA in a.items():
+                valB = b.get(key)
+                if (
+                    valB is not None
+                    and (len(valB.strip()) != 0)
+                    and ((len(valA.strip()) == 0) or valA != valB)
                 ):
-                    a[key] = valB
-        return a
+                    if (len(valA.strip()) == 0) or (
+                        len(valA.replace(" ", "")) < len(valB.replace(" ", ""))
+                    ):
+                        a[key] = valB
+        except Exception as ex:
+            logger.error(f"{ex}")
+        finally:
+            return a
 
     @fatal_error
     def __write(self, inn: str, file_with_period: str, data: dict) -> None:
