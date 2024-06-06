@@ -74,7 +74,7 @@ class UnionData:
                     end="",
                     flush=True,
                 )
-                data = self.__get_data_files(files_s, period, inn_common, fn)
+                data = self.__get_data_from_files(files_s, period, inn_common, fn)
                 if self.is_daemon:
                     # при фоновой обработке отслеживаем процесс выполнения
                     # записывая текущее время в файл
@@ -162,7 +162,7 @@ class UnionData:
                 inn_common = inn_file
         return period_common, inn_common
 
-    def __get_data_files(
+    def __get_data_from_files(
         self, files: list, period: list, inn_common: str, fn: str
     ) -> dict:
         data = dict()
@@ -230,22 +230,27 @@ class UnionData:
                 x[key_old] = x[key]
         return x
 
-    @fatal_error
     def __get_data(self, file_name: str) -> dict:
-        data = dict()
+        """Формируем данные из csv файла"""
         file_name = pathlib.Path(self.path_input, file_name)
         try:
+            # данные в виде списка словарей ключ - имя поля
             data = get_list_dict_from_csv(file_name)
+            # формируем список ключей прототипов (с двумя __ в начале имени)
+            # аналоги которых (имя поля без __) есть в списке полей
+            # Например, если присутствуют __internal_id и internal_id,
+            # тогда __internal_id добавляем
             keys_redefine = [
                 key
                 for key in data[0].keys()
                 if key[:2] == "__" and data[0].get(key[2:]) is not None
             ]
-
+            # заносим в словарь значения временных полей
             for key in keys_redefine:
                 self.dict_ids |= {
                     x[key[2:]]: x[key] for x in data if x.get(key, "").strip()
                 }
+            # формируем список ключей для каждой строки
             keys = [
                 (
                     self.dict_ids.get(x["internal_id"])
@@ -254,8 +259,11 @@ class UnionData:
                 )
                 for x in data
             ]
+
             is_merged = False
             if self.dict_ids:
+                # меняем старые значения на новые (из временных полей)
+                # для полей у которых были заданы прототипы ( <имя поля> и __<имя поля>)
                 for dic in data:
                     for key in keys_redefine:
                         key_old = key[2:]
@@ -264,23 +272,26 @@ class UnionData:
                         ):
                             dic[key_old] = self.dict_ids.get(dic.get(key_old))
                             if key_old == "internal_id":
+                                # если протопит __internal_id, то нужно суммировать числовые поля
+                                # из записей соответствующих этом идентификатору
                                 is_merged = True
             self.__check_unique(file_name, keys)
             if is_merged:
-                data = self.merged_data(keys, data)
+                # объединяем записи по идентификатрору с суммирование числовых данных
+                data = self.merged_data_on_internal_id(keys, data)
             else:
                 data = dict(zip(keys, data))
         except Exception as ex:
             logger.error(f"ex")
         return data
 
-    def merged_data(self, keys, data):
-        """ объединение записей с одинаковым internal_id с сумирование числовых полей """
+    def merged_data_on_internal_id(self, keys, data):
+        """объединение записей с одинаковым internal_id с сумирование числовых полей"""
         try:
             merged_data = defaultdict(lambda: defaultdict(float))
             for dic, key in zip(data, keys):
                 for field_name, value in dic.items():
-                    if self.__is_numeric(value):
+                    if self.__is_float(value):
                         if not isinstance(merged_data[key][field_name], float):
                             merged_data[key][field_name] = 0
                         merged_data[key][field_name] += round(float(value), 2)
@@ -316,9 +327,12 @@ class UnionData:
                     files.append(file)
         return files
 
-    def __is_numeric(self, value):
+    def __is_float(self, value):
+        """Определяем число с плавающей точкой с не более 
+        чем 2-мя знаками в дробной части"""
+        comp: re.compile = re.compile("^-?[0-9]+[.][0-9]{1,2}$")
         try:
-            if "." in value:
+            if comp.search(value):
                 float(value)
                 return True
         except ValueError:
@@ -337,8 +351,6 @@ class UnionData:
             )
             for x in files_o
         ]
-        list_sorted = sorted(list_tuple)
-
         files = sorted(
             [
                 x
@@ -357,6 +369,8 @@ class UnionData:
         return files
 
     def __merge(self, a: dict, b: dict, key_record: str) -> dict:
+        """ сравниваем записи с одинаковм идентификатором и записывем по принципу
+        чем больше размер, тем лучше """
         try:
             for key, valA in a.items():
                 valB = b.get(key)
@@ -376,15 +390,13 @@ class UnionData:
 
     @fatal_error
     def __write(self, inn: str, file_with_period: str, data: dict) -> None:
+        """ запись данных в csv файл"""
         data = [x for x in data.values()]
         file_name, period = file_with_period.split("@")
         key = f"{inn}_{period}"
         path = pathlib.Path(self.path_input, key)
         os.makedirs(path, exist_ok=True)
         file_name = pathlib.Path(path, file_name)
-        # with open(f"{file_name}.json", mode="w", encoding=ENCONING) as file:
-        #     jstr = json.dumps(data, indent=4, ensure_ascii=False)
-        #     file.write(jstr)
         with open(f"{file_name}.csv", mode="w", encoding=ENCONING) as file:
             names = [x for x in data[0].keys() if x[:2] != "__"]
             file_writer = csv.DictWriter(
@@ -399,6 +411,7 @@ class UnionData:
 
     @fatal_error
     def __make_archive(self, dirs: list) -> str:
+        """ создаем архив zip из csv и log файлов"""
         os.makedirs(self.path_output, exist_ok=True)
         arch_zip = zipfile.ZipFile(
             pathlib.Path(self.path_output, self.file_output), "w"

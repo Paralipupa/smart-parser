@@ -24,7 +24,9 @@ required_accounts:address,living_person_number,total_square,contract_internal_id
 required_pu:serial_number,manufacturer,model
 required_puv:rr1
 
+;ключ справочника по идентификатору (~ - только первое совпадение)
 field:^Номер платежного документа;^№ записи@__key(accounts)::~.+
+;значение справочника 
 field:Идентификатор ЖКУ@__value(accounts)
 field:@__internal_id(accounts){func{hash}}
 field:^Оплачено денежных средств@__value_0(accounts)

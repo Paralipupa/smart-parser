@@ -65,6 +65,7 @@ class ExcelBaseImporter:
         self.is_file_exists = True
         self.is_hash = is_hash
         self.is_check_mode = False
+        self.is_check_title = False
         self.is_condition_check = False
         self._period = period
         self._dictionary = dictionary
@@ -145,6 +146,7 @@ class ExcelBaseImporter:
     ####################  Точка входа, чтение и обработка файла #############################
     def extract(self) -> bool:
         try:
+            is_check_data = False
             data_reader = self.__get_data_xls()
             if not data_reader:
                 self.add_warning(
@@ -177,6 +179,9 @@ class ExcelBaseImporter:
                     if page is None:
                         break
                     self.num_page = page
+                    self.is_check_title = (
+                        False if self._config._check["pattern"][0]["pattern"] else True
+                    )
                     self.__init_data()
                     self.__init_page()
                     self.__set_parameters_page()
@@ -203,13 +208,15 @@ class ExcelBaseImporter:
                             record = record[self._col_start :]
                             if self.colontitul["status"] != 2:
                                 # Область до или после таблицы
+                                self.is_check_title = self.__check_title(record)
                                 if not self.__check_bound_row(self.row):
-                                    break
+                                    break  # for
                                 self.__check_colontitul(
                                     self.__get_names(record), self.row, record
                                 )
                             if self.colontitul["status"] == 2:
                                 # Табличная область данных
+                                is_check_data = True
                                 self.__check_record_in_body(record, self.row)
 
                             if self.row % 100 == 0:
@@ -238,7 +245,7 @@ class ExcelBaseImporter:
 
         self.__process_finish()
 
-        return self.func_inn()
+        return self.func_inn() if is_check_data else ""
 
     def stage_build_documents(self):
         while self.is_event:
@@ -584,21 +591,22 @@ class ExcelBaseImporter:
                 if (
                     len(self.__get_columns_heading()) <= len(self._column_names)
                 ) or self.__check_condition_team(self.__map_record(record)):
-                    # переход в табличную область данных
-                    self.colontitul["status"] = 2
-                    if not self._column_service:
-                        self.__dynamic_change_config()
-                    self._config._parameters.setdefault(
-                        "table_start",
-                        [
-                            {
-                                "row": [row],
-                                "col": [0],
-                                "pattern": [f"@{row}"],
-                                "ishead": True,
-                            }
-                        ],
-                    )
+                    if self.is_check_title:
+                        # переход в табличную область данных
+                        self.colontitul["status"] = 2
+                        if not self._column_service:
+                            self.__dynamic_change_config()
+                        self._config._parameters.setdefault(
+                            "table_start",
+                            [
+                                {
+                                    "row": [row],
+                                    "col": [0],
+                                    "pattern": [f"@{row}"],
+                                    "ishead": True,
+                                }
+                            ],
+                        )
 
     # Проверка записи в таблице
     def __check_record_in_body(self, record: list, row: int):
@@ -1996,25 +2004,29 @@ class ExcelBaseImporter:
     def __get_check(self, name: str):
         return self._config._check[name]
 
+    def __check_title(self, record):
+        if self.is_check_title:
+            return True
+        for patt in self._config._check["pattern"]:
+            if not patt["is_find"]:
+                patt["is_find"] = any(
+                    [regular_calc(patt["pattern"], x) for x in record]
+                )
+        return all([x["is_find"] for x in self._config._check["pattern"]])
+
     def __check_controll(self, headers: list, is_warning: bool = False) -> list:
         self.is_check_mode = True
-        is_check = False if self._config._check["pattern"][0]["pattern"] else True
+        self.is_check_title = (
+            False if self._config._check["pattern"][0]["pattern"] else True
+        )
         for row in range(self._config._max_rows_heading[0][0]):
             if row < len(headers):
-                if not is_check:
-                    # Проверка данных перед таблицей
-                    for patt in self._config._check["pattern"]:
-                        if not patt["is_find"]:
-                            patt["is_find"] = any(
-                                [regular_calc(patt["pattern"], x) for x in headers[row]]
-                            )
-                    is_check = all(
-                        [x["is_find"] for x in self._config._check["pattern"]]
-                    )
+                # Проверка данных перед таблицей
+                self.is_check_title = self.__check_title(headers[row])
                 names = self.__get_names(headers[row])
                 self.__check_columns(names, row)
                 if (
-                    is_check
+                    self.is_check_title
                     and self.__check_stable_columns()
                     and self.__check_condition_team(self.__map_record(headers[row]))
                 ):
@@ -2040,7 +2052,7 @@ class ExcelBaseImporter:
                         s
                     )
                 )
-            if is_check is False:
+            if self.is_check_title is False:
                 x = [
                     x["pattern"]
                     for x in self._config._check["pattern"]

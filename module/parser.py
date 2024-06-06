@@ -189,8 +189,9 @@ class Parser:
                 f"({counter}/{self.count}) (dict={len(self._dictionary)}) {free_mem}/{self.mem}({round(100*free_mem/self.mem,2)}%) "
                 + f"Начало обработки файла '{os.path.basename(file_name['name'])}'({Path(file_name['config'][0]['name']).stem})"
             )
-            self.inn = rep.extract()
-            if self.inn:
+            inn = rep.extract()
+            if inn:
+                self.inn = inn
                 if not self.is_daemon:
                     self.set_download_file(
                         self.get_file_output(self.get_download_file())
