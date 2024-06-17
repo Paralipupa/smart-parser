@@ -46,7 +46,7 @@ required_pp:bill_value,payment_value,credit,saldo
 0:Всего начислено;Начислено за период;Начисленов указ.периоде(руб.);Сумма перерасчета@accounting_period_total{offset{4}}
 0:Лицевой счет;ЛС ИКУ/ поставщика;ЛС ИКУ/поставщика@account_number_accounts@account_identifier
 0:ОбъёмУслуги@rr1_puv{type{float}}{func{round6}}
-0:Тариф@tariff	Сумма перерасчета@recalculation{offset{4,(2)}}
+0:Тариф@tariff	Сумма перерасчета@recalculation
 0:Дата@date_puv{func{period_last}}
 
 1:^Услуга@service@name_pp_service@kind
