@@ -47,7 +47,10 @@ field:@__pp_internal_id(pp_charges){func{_+account_number+ПУ,spacerepl,hash}}
 0:^Кол(?:.+)?проживающих@living_person_number
 0:^Номер помещения|^Помещение@room_number
 0:^Начислено с учетом корректировок@bill_value{type{float}}{func{round2}}::*currency
-0:^Итого начислено в тек@accounting_period_total{type{float}}{func{round2}}::*currency
+0:@calc_value{type{float}}{func{round2}}::*currency
+0:^ВСЕГО с учетом перерасчетов@saldo{type{float}}{func{round2}}::*currency
+0:@accounting_period_total{type{float}}{func{round2}}::*currency
+0:^Перерасчет по услуге@recalculation{type{float}}{func{round2}}::*currency
 0:Тариф@tariff
 
 0:^Показание@rr1_puv{type{float}}{func{round6}}
