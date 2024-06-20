@@ -17,6 +17,7 @@ pattern_inn:@3628019094
 
 pattern_ЛС:^[0-9]{10}$
 pattern_ЛС:.+
+pattern_volume:^[0-9]+[,.]?[0-9]{0,6}
 
 required_pu:serial_number,device_type
 
@@ -27,6 +28,7 @@ field:@__account_internal_id(pu){func{_,spacerepl,hash}}::*
 field:@__contract_internal_id(accounts){func{_+К,spacerepl,hash}}::*
 field:^Л/С;^Л/c;^Лицевой счет@__internal_id(pp){func{_+account_number+ПУ,spacerepl,hash}}
 field:@__pp_internal_id(pp_charges){func{_+account_number+ПУ,spacerepl,hash}}
+field:@version(pp_charges){func{2}}
 
 3:Статус шкалы ПУ@checking_rows::Работоспособен|Поверка
 
@@ -46,11 +48,12 @@ field:@__pp_internal_id(pp_charges){func{_+account_number+ПУ,spacerepl,hash}}
 ;0:^Общ(?:.+)? площадь@total_square
 0:^Кол(?:.+)?проживающих@living_person_number
 0:^Номер помещения|^Помещение@room_number
-0:^Начислено с учетом корректировок@bill_value{type{float}}{func{round2}}::*currency
-0:@calc_value{type{float}}{func{round2}}::*currency
+0:^Начислено с учетом корректировок@calc_value{type{float}}{func{round2}}::*currency
 0:^ВСЕГО с учетом перерасчетов@saldo{type{float}}{func{round2}}::*currency
+0:@bill_value{type{float}}{func{round2}}::*currency
 0:@accounting_period_total{type{float}}{func{round2}}::*currency
 0:^Перерасчет по услуге@recalculation{type{float}}{func{round2}}::*currency
+0:Итоговый объем с учетом корректировок@rr_pp_charges::*volume
 0:Тариф@tariff
 
 0:^Показание@rr1_puv{type{float}}{func{round6}}
