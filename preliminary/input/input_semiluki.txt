@@ -26,8 +26,8 @@ field:@__account_internal_id(pp){func{_,spacerepl,hash}}::*
 field:@__account_internal_id(pu){func{_,spacerepl,hash}}::*
 field:@__account_internal_id(pu){func{_,spacerepl,hash}}::*
 field:@__contract_internal_id(accounts){func{_+К,spacerepl,hash}}::*
-field:^Л/С;^Л/c;^Лицевой счет@__internal_id(pp){func{_+account_number+ПУ,spacerepl,hash}}
-field:@__pp_internal_id(pp_charges){func{_+account_number+ПУ,spacerepl,hash}}
+field:^Л/С;^Л/c;^Лицевой счет@__internal_id(pp){func{id+account_number+ПУ,spacerepl,hash}}
+field:@__pp_internal_id(pp_charges){func{id+account_number+ПУ,spacerepl,hash}}
 field:@version(pp_charges){func{2}}
 
 3:Статус шкалы ПУ@checking_rows::Работоспособен|Поверка
