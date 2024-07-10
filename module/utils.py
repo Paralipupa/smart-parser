@@ -276,3 +276,27 @@ def get_hash_file(file_name: str):
                 break
             md5.update(data)
     return md5.hexdigest()
+
+
+def make_archive(file_name: str, **kwargs) -> str:
+    """создаем архив"""
+    file_path = pathlib.Path(file_name)
+    file_name = file_path.name
+    path = file_path.parent
+    path.mkdir(parents=True, exist_ok=True)
+    input_file = kwargs.get("file")
+    if kwargs.get("error"):
+        input_file = pathlib.Path(path, "error.txt")
+        write_text(input_file, kwargs["error"])
+    if input_file:
+        with zipfile.ZipFile(pathlib.Path(path, file_name), "w") as zfile:
+            zfile.write(input_file, arcname=pathlib.Path(input_file).name)
+        input_file.unlink()
+        return True
+    else:
+        return False 
+
+
+def write_text(file_name, text):
+    with open(file_name, "w") as file:
+        file.write(text)

@@ -18,5 +18,5 @@ class ConfigNotFoundException(Exception):
 
 class CheckTarifException(Exception):
     def __init__(self, msg: str):
-        self._message = "Не правильно заданы тарифы:\n{}".format(msg)
+        self._message = "Неверный формат тарифов:\n{}".format(msg)
         super(CheckTarifException, self).__init__(self._message)

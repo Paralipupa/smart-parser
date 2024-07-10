@@ -17,6 +17,7 @@ from module.exceptions import (
     CheckTarifException,
 )
 from module.search_config_tasks import SearchConfig
+from module.utils import make_archive
 from module.settings import *
 
 from multiprocessing import Process, Pool, Manager, Lock, Value, Queue, Semaphore
@@ -87,7 +88,10 @@ class Parser:
                     + f"'{COLOR_CONSOLE['end']}"
                 )
                 self.run_background(nstart)
-        except (FatalException, ConfigNotFoundException, CheckTarifException) as ex:
+        except (ConfigNotFoundException, CheckTarifException) as ex:
+            logger.error(f"{ex}")
+            self.set_result(f"{ex._message}")
+        except FatalException as ex:
             logger.error(f"{ex}")
             self.set_result(f"{ex._message}")
         except (InnMismatchException, Exception) as ex:
@@ -116,33 +120,32 @@ class Parser:
     def manage_tasks(self, nstart):
         self.list_files = self.get_config()
         if self.list_files:
-            self.count = len(self.list_files)
-            parsers_0 = self.get_processes("_000_")
-            parsers_1 = self.get_processes("_001_")
-            parsers_2 = self.get_processes("_002_")
-            _ = list(map(self.process_run, parsers_0))
-            _ = list(map(self.process_run, parsers_1))
-            _ = list(map(self.process_run, parsers_2))
-            # with ProcessPoolExecutor(max_workers=4) as executor:
-            #     executor.map(self.process_run, parsers_2)
-            self.stage_finish(nstart)
+            try:
+                self.count = len(self.list_files)
+                parsers_0 = self.get_processes("_000_")
+                parsers_1 = self.get_processes("_001_")
+                parsers_2 = self.get_processes("_002_")
+                _ = list(map(self.process_run, parsers_0))
+                _ = list(map(self.process_run, parsers_1))
+                _ = list(map(self.process_run, parsers_2))
+                # with ProcessPoolExecutor(max_workers=4) as executor:
+                #     executor.map(self.process_run, parsers_2)
+                self.stage_finish(nstart)
+            except Exception as ex:
+                file_name = os.path.join(
+                    self.download_path, self.get_download_file()
+                )
+                make_archive(file_name, **dict(error=f"{ex}"))
+                if self.is_daemon:
+                    write_log_time(file_name, True)
         else:
             logger.info(
                 f"Данные в архиве не распознаны {strftime('%H:%M:%S', gmtime(time()-nstart))}"
             )
+            file_name = os.path.join(self.download_path, self.get_download_file())
+            make_archive(file_name, **dict(error="Данные в архиве не распознаны"))
             if self.is_daemon:
-                file_name = os.path.join(self.download_path, self.get_download_file())
                 write_log_time(file_name, True)
-            shutil.copy(
-                os.path.join(BASE_DIR, "doc", "error.txt"),
-                os.path.join(self.download_path, "error.txt"),
-            )
-            if not self.is_daemon:
-                self.set_result("error.txt")
-            else:
-                file_name = os.path.join(self.download_path, self.get_download_file())
-                write_log_time(file_name, True)
-                self.set_result("error.txt")
         return
 
     def get_processes(self, pattern: str) -> list:
