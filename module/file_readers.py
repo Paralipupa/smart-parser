@@ -25,30 +25,57 @@ class DataFile(abc.ABC):
         return ""
 
 
+class CsvReaderWrapper:
+    def __init__(self, reader, title):
+        self._reader = reader
+        self.title = title
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return next(self._reader)
+
+
 class CsvFile(DataFile):
     def __init__(self, fname):
         super(CsvFile, self).__init__(fname)
         self._freader = open(fname, "r", encoding="cp1251")
-        self._reader = csv.reader(self._freader, delimiter=";", quotechar="|")
+        self._reader = CsvReaderWrapper(
+            csv.reader(self._freader, delimiter=";", quotechar="|"),
+            title=os.path.basename(fname),
+        )
+        self._rows = iter(self._reader)
         self._line_num = 0
 
-    def get_row(self, row):
-        index = 0
-        for cell in row:
-            if index in self._columns:
-                yield XlsFile.get_cell_text(cell)
-            index = index + 1
+    def set_config(
+        self, page_indexes: List[int] = [], number_columns: int = 150
+    ) -> bool:
+        self._page_current = 0
+        self._columns = range(number_columns)
+        self._page_indexes = [0]
+        return self._page_current
+
+    def get_sheets(self):
+        return [self._reader]
+
+    def get_sheet(self):
+        # Возвращаем текущий "лист" (всегда один для CSV)
+        if self._page_current == 0:
+            self._page_current += 1
+            return 0
+        return None
 
     def __next__(self):
-        for row in self._reader:
-            self._line_num += 1
-            if self._line_num < self._first_line:
-                continue
-            return row
-        raise StopIteration
+        try:
+            return next(self._rows)
+        except StopIteration:
+            self._freader.close()
+            raise StopIteration
 
     def __del__(self):
-        self._freader.close()
+        if not self._freader.closed:
+            self._freader.close()
 
 
 class XlsFile(DataFile):
@@ -66,7 +93,7 @@ class XlsFile(DataFile):
         else:
             self._page_indexes = range(len(self._wb.sheets()))
         return self._page_current
-    
+
     def get_sheets(self):
         return self._wb.sheets()
 
@@ -78,7 +105,7 @@ class XlsFile(DataFile):
                     self._sheet.row(index) for index in range(self._sheet.nrows)
                 )
                 self._page_current += 1
-                return self._page_current-1
+                return self._page_current - 1
             return None
         except Exception as ex:
             logger.exception("getSheet")
@@ -127,7 +154,7 @@ class XlsxFile(DataFile):
 
     def get_sheets(self):
         return self._wb.worksheets
-    
+
     def get_sheet(self) -> object:
         try:
             if self._page_current < len(self._page_indexes):
@@ -136,7 +163,7 @@ class XlsxFile(DataFile):
                 ]
                 self._cursor = self._sheet.iter_rows()
                 self._page_current += 1
-                return self._page_current-1
+                return self._page_current - 1
             return None
         except Exception as ex:
             logger.exception("getSheet")
@@ -169,8 +196,6 @@ class XlsxFile(DataFile):
 def get_file_reader(fname):
     """Get class for reading file as iterable"""
     _, file_extension = os.path.splitext(fname)
-    # if file_extension == '.csv':
-    #     return CsvFile
     if file_extension == ".xls":
         return XlsFile
     if file_extension == ".xlsx":

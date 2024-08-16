@@ -143,7 +143,7 @@ class UnionData:
         return (
             self.file_output
             if os.path.exists(os.path.join(self.path_output, self.file_output))
-            else ""
+            else None
         )
 
     def __get_commom_data(self, files: list):

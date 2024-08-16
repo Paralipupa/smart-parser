@@ -210,6 +210,7 @@ class ExcelBaseImporter:
                                 # Область до или после таблицы
                                 self.is_check_title = self.__check_title(record)
                                 if not self.__check_bound_row(self.row):
+                                    # прошли заданное кол-во строк но заголовок не найден
                                     break  # for
                                 self.__check_colontitul(
                                     self.__get_names(record), self.row, record
@@ -417,7 +418,7 @@ class ExcelBaseImporter:
                 size = len(result_record[key])
                 for index in value["indexes"]:
                     if index[POS_INDEX_VALUE] in range(len(record)):
-                        v = record[index[POS_INDEX_VALUE]]
+                        v = record[index[POS_INDEX_VALUE]].strip('"')
                         if not check_row is None and check_row["name"] == key:
                             if not re.search(check_row["pattern"], v):
                                 return None
@@ -555,6 +556,17 @@ class ExcelBaseImporter:
                 s = "Найдены колонки:"
                 for key, value in self._column_names.items():
                     s += f"\n{key} - {value['indexes'][0][POS_INDEX_VALUE]}"
+                if self.is_check_title:
+                    self.add_warning(
+                        "Не найден текст перед табличными данными:\n{}".format(
+                            [
+                                f"{x['pattern']}\n"
+                                for x in self._config._check["pattern"]
+                                if not x["is_find"]
+                            ]
+                        )
+                    )
+
                 self.add_warning(
                     '\n{0}:\nВ загружаемом файле "{1}(Лист {5})" \
                 \nневерен шаблон нахождения начала области данных(({3})condition_begin_team(\n{2}\n))\n{4}\n'.format(
@@ -587,10 +599,12 @@ class ExcelBaseImporter:
         if self.__check_columns(names, row):
             self._row_start = row
         if self.colontitul["status"] == 1:
+            # Проверяем нахождение всех обязательных колонок
             if self.__check_stable_columns():
-                if (
-                    len(self.__get_columns_heading()) <= len(self._column_names)
-                ) or self.__check_condition_team(self.__map_record(record)):
+                _nlen = len(self.__get_columns_heading())
+                if (_nlen <= len(self._column_names)) or self.__check_condition_team(
+                    self.__map_record(record)
+                ):
                     if self.is_check_title:
                         # переход в табличную область данных
                         self.colontitul["status"] = 2

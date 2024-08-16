@@ -112,13 +112,14 @@ class SearchConfig:
         return False
 
     def __extact_zip_files(self) -> None:
-        if self.file_name.find(".lst") != -1:
+        _, file_extension = os.path.splitext(self.file_name)
+        if file_extension == ".lst":
             self.zip_files = get_list_files(self.file_name)
-        elif self.file_name.lower().find(".zip") != -1:
+        elif file_extension == ".zip":
             self.zip_files.append(
                 {"file": self.file_name, "inn": self.inn, "config": self.file_conf}
             )
-        elif self.file_name.lower().find(".xls") != -1:
+        elif file_extension in ".xlsx,.csv":
             self.list_files.append(
                 get_data_file(
                     {
@@ -134,7 +135,7 @@ class SearchConfig:
             for file_name in self.zip_files:
                 file_name["inn"] = self.inn
                 file_name["config"] = [self.file_conf]
-                file_conf = get_extract_files(archive_file=file_name)
+                file_conf = get_extract_files(archive_file=file_name, ext=".xls|.csv")
                 self.list_files.extend(file_conf)
         return
 

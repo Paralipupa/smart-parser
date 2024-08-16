@@ -118,6 +118,7 @@ class Parser:
         self.stage_extract(data[0], data[1])
 
     def manage_tasks(self, nstart):
+        self.set_result(None)
         self.list_files = self.get_config()
         if self.list_files:
             try:
@@ -132,13 +133,11 @@ class Parser:
                 #     executor.map(self.process_run, parsers_2)
                 self.stage_finish(nstart)
             except Exception as ex:
-                file_name = os.path.join(
-                    self.download_path, self.get_download_file()
-                )
+                file_name = os.path.join(self.download_path, self.get_download_file())
                 make_archive(file_name, **dict(error=f"{ex}"))
                 if self.is_daemon:
                     write_log_time(file_name, True)
-        else:
+        if not self.get_result():
             logger.info(
                 f"Данные в архиве не распознаны {strftime('%H:%M:%S', gmtime(time()-nstart))}"
             )
@@ -146,6 +145,7 @@ class Parser:
             make_archive(file_name, **dict(error="Данные в архиве не распознаны"))
             if self.is_daemon:
                 write_log_time(file_name, True)
+            self.set_result(self.get_download_file())
         return
 
     def get_processes(self, pattern: str) -> list:
