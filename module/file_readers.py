@@ -26,6 +26,7 @@ class DataFile(abc.ABC):
 
 
 class CsvReaderWrapper:
+    """ обёртка класса csv.reader для добавления своих атрибутов """
     def __init__(self, reader, title):
         self._reader = reader
         self.title = title
@@ -43,7 +44,7 @@ class CsvFile(DataFile):
         self._freader = open(fname, "r", encoding="cp1251")
         self._reader = CsvReaderWrapper(
             csv.reader(self._freader, delimiter=";", quotechar="|"),
-            title=os.path.basename(fname),
+            title="Лист1",
         )
         self._rows = iter(self._reader)
         self._line_num = 0

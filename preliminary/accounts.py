@@ -1,7 +1,7 @@
 from sections import *
 
 
-def accounts(lines: list, path: str, sec_number:int) -> str:
+def accounts(lines: list, path: str, sec_number: int) -> str:
     doc_type = "accounts"
     file_name = f"{path}/ini/2_accounts.ini"
     with open(file_name, "w") as file:
@@ -73,7 +73,7 @@ def accounts(lines: list, path: str, sec_number:int) -> str:
                 sec_number=sec_number,
                 sec_title="Идентификатор дома GUID",
                 sec_name="fias",
-                sec_func="!fias",
+                sec_func="!fias" if lines["dic"].get("fias") is None else None,
                 sec_is_service=False,
             )
         )

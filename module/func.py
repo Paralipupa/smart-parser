@@ -322,7 +322,9 @@ class Func:
         return self._current_value[-1].strip().replace(" ", "")
 
     def func_spacerepl(self):
-        return self._current_value[-1].strip().replace(" ", "_")
+        # заменить более одного пробела подряд на одинарный
+        # заменить пробелы на подчеркивание
+        return re.sub(r"\s+", " ", self._current_value[-1]).strip().replace(" ", "_")
 
     def func_round2(self):
         return (
@@ -518,6 +520,6 @@ class Func:
 
     def func_source_file_name(self):
         try:
-            return os.path.basename(self._parameters['filename']['value'][0])
+            return os.path.basename(self._parameters["filename"]["value"][0])
         except Exception as ex:
             return f"{ex}"

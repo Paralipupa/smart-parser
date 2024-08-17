@@ -207,10 +207,14 @@ class ExcelBaseImporter:
                                 )
                             record = record[self._col_start :]
                             if self.colontitul["status"] != 2:
-                                # Область до или после таблицы
-                                self.is_check_title = self.__check_title(record)
+                                # Проверяем строки до начала табличных данных
+                                # проверяем наличие необходимых данных в "заголовке" таблицы
+                                self.is_check_title = (
+                                    self.is_check_title or self.__check_title(record)
+                                )
                                 if not self.__check_bound_row(self.row):
-                                    # прошли заданное кол-во строк но заголовок не найден
+                                    # прошли заданное максимальное кол-во строк, но необходимые поля таблицы не найдены
+                                    # выходим из парсинга текущей страницы с данными
                                     break  # for
                                 self.__check_colontitul(
                                     self.__get_names(record), self.row, record
@@ -236,7 +240,9 @@ class ExcelBaseImporter:
                         logger.error(f"{self.row}:{ex}")
                     finally:
                         self.is_event = False
+                        # формируем документы
                         self.stage_build_documents()
+                        # сохраняем документы в файл
                         self.stage_print_documents()
                         # for t in threads:
                         #     t.join()
@@ -249,12 +255,14 @@ class ExcelBaseImporter:
         return self.func_inn() if is_check_data else ""
 
     def stage_build_documents(self):
+        """Формируем документы"""
         while self.is_event:
             if len(self._teams) > 50:
                 self.__process_record()
         self.__done()
 
     def stage_build_documents_new(self):
+        """Формируем документы через потоки (не эффективно при процессорной обработки данных)"""
         while self.is_event:
             if len(self._teams) > 50:
                 with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -399,14 +407,15 @@ class ExcelBaseImporter:
                     team=self._collections.get(doc_param["name"]),
                 )
 
-    # Формируем словарь колонок из записи исходной таблицы MS Excel
-    # key - имя колонки
-    # value - словарь
-    #   row - порядковый номер строки в группе
-    #   col - номер колонки в группе
-    #   active - найдена колонка в исходной  таблице или нет
-    #  indexes - список номеров колонок в виде кортежа (номер, признак отриц.значения) в исходной таблице откуда берутся данные
     def __map_record(self, record):
+        """Формируем словарь колонок из записи исходной таблицы MS Excel
+        key - имя колонки
+        value - словарь
+        row - порядковый номер строки в группе
+        col - номер колонки в группе
+        active - найдена колонка в исходной  таблице или нет
+        indexes - список номеров колонок в виде кортежа (номер, признак отриц.значения) в исходной таблице откуда берутся данные
+        """
         is_possible = False
         result_record = dict()
         is_empty = True
@@ -454,14 +463,16 @@ class ExcelBaseImporter:
 
         return result_record if not is_empty else None
 
-    # группируем записи по идентификатору
     def __append_to_team(self, mapped_record: dict) -> bool:
+        """заносим запись в словарь по идентификатору (internal_id)"""
         try:
             team_id = self.__get_team_id(mapped_record)
             if team_id:
                 if self._teams.get(team_id):
+                    # уже есть такой идентификатор в словаре - группируем
                     self.__update_team(mapped_record, team_id)
                 else:
+                    # создаем новый элемент словаря с internal_id
                     self._teams[team_id] = mapped_record
                     self.team_index += 1
         except Exception as ex:
@@ -469,6 +480,7 @@ class ExcelBaseImporter:
         return False
 
     def __update_team(self, mapped_record: dict, team_id: str = ""):
+        """группироуем записи в словаре с одинаковым идентификатором (internal_id)"""
         if team_id:
             try:
                 for key in mapped_record.keys():
@@ -487,8 +499,8 @@ class ExcelBaseImporter:
             except Exception as ex:
                 logger.error(f"{ex}")
 
-    # Проверяем условие завершения группировки записей по текущему идентификатору
     def __check_condition_team(self, mapped_record: dict) -> bool:
+        """Проверяем условие завершения группировки записей по текущему идентификатору"""
         if not self.__get_condition_team():
             return True
         if not mapped_record:
@@ -522,74 +534,57 @@ class ExcelBaseImporter:
                         return result
         return ""
 
-    # Область до или после таблицы
     def __check_bound_row(self, row: int) -> bool:
-        if self.__get_row_start() + self.__get_max_rows_heading() < row:
-            # Вышли за границу области перед таблицей
-            if len(self._teams) != 0:
-                return False
-            s1, s2, is_active_find = "", "", False
-            for item in self.__get_columns_heading():
+        """Если после прохождения заданного количества строк для проверки
+        не найдены необходимые колонки таблицы, то определяем причину и
+        завершаем работу парсинга"""
+        if self.__get_row_start() + self.__get_max_rows_heading() >= row:
+            # пока еще не достигли максимально допустимого количества строк для проверки
+            # еще есть надежда на удачный поиск необходимых колонок
+            # продолжаем работу
+            return True
+        # Вышли за границу максимально допустимых строк
+        if len(self._teams) != 0:
+            # есть данные - Ок
+            return True
+        # определяем причину неудачного парсинга
+        # и заносим в warnings
+        s = "\n==== Проверка '{}' (Лист {}) по шаблону {} ===\n".format(
+            os.path.basename(self._parameters["filename"]["value"][0]),
+            self.num_page,
+            self._config._config_name,
+        )
+        s1 = ""
+        # определяем какие обязательные поля в таблице были найдены, а какие нет
+        for item in self.__get_columns_heading():
+            if not item["optional"]:
+                # обязательное поле
                 if not item["active"]:
-                    if not item["optional"]:
-                        s1 += f"{item['name']} {'не обязат.' if item['optional'] else ''},\n"
-                        is_active_find = True
-                else:
-                    c = ""
-                    for index in item["indexes"]:
-                        c += f"({item['row']},{index[POS_INDEX_VALUE]}) "
-                    s2 += f"{item['name']} {c}\n"
-
-            if is_active_find:
-                self.add_warning(
-                    '\n{0}:\nВ загружаемом файле "{1}"(Лист {2})\nне все колонки найдены \n'.format(
-                        self._config._config_name,
-                        self._parameters["filename"]["value"][0],
-                        self.num_page,
-                    )
+                    # не найдено поле
+                    s1 += f"\n\t{item['name']}"
+        if s1:
+            # не все обязательные колонки найдены
+            s += "- не найдены колонки:{}\n".format(s1)
+        if not self.is_check_title:
+            s += "- не найден текст перед табличными данными:\n\t{}\n".format(
+                "\n\t".join(
+                    [
+                        x["pattern"]
+                        for x in self._config._check["pattern"]
+                        if not x["is_find"]
+                    ]
                 )
-                if s2:
-                    self.add_warning("\tНайдены колонки:\n{}\n".format(s2.strip()))
-                if s1:
-                    self.add_warning("\tНе найдены колонки:\n{}\n".format(s1.strip()))
-            else:
-                s = "Найдены колонки:"
-                for key, value in self._column_names.items():
-                    s += f"\n{key} - {value['indexes'][0][POS_INDEX_VALUE]}"
-                if self.is_check_title:
-                    self.add_warning(
-                        "Не найден текст перед табличными данными:\n{}".format(
-                            [
-                                f"{x['pattern']}\n"
-                                for x in self._config._check["pattern"]
-                                if not x["is_find"]
-                            ]
-                        )
-                    )
-
-                self.add_warning(
-                    '\n{0}:\nВ загружаемом файле "{1}(Лист {5})" \
-                \nневерен шаблон нахождения начала области данных(({3})condition_begin_team(\n{2}\n))\n{4}\n'.format(
-                        self._config._config_name,
-                        self._parameters["filename"]["value"][0],
-                        (
-                            self.__get_condition_team()[0]["pattern"]
-                            if self.__get_condition_team()
-                            else ""
-                        ),
-                        (
-                            self.__get_condition_team()[0]["col"]
-                            if self.__get_condition_team()
-                            else ""
-                        ),
-                        s,
-                        self.num_page,
-                    )
-                )
-            return False
-        return True
+            )
+        cond_teams = self.__get_condition_team()
+        if cond_teams:
+            s += "- не найдены данные internal_id \n\t{}\n".format(
+                "\n\t".join([x["pattern"][0] for x in cond_teams])
+            )
+        self.add_warning(s)
+        return False
 
     def __check_colontitul(self, names: list, row: int, record: list):
+        """Проверка строк до начала табличных данных"""
         if self.colontitul["status"] == 0:
             if self.__check_headers_status(names):
                 if len(self._teams) != 0:
@@ -622,8 +617,8 @@ class ExcelBaseImporter:
                             ],
                         )
 
-    # Проверка записи в таблице
     def __check_record_in_body(self, record: list, row: int):
+        """Проверка записи в таблице"""
         if self._config._rows_exclude:
             # если номер записи в исключении, то пропускаем его
             if row in [
@@ -644,14 +639,15 @@ class ExcelBaseImporter:
                     item["active"] = False
                 self.colontitul["foot"].append(record)
             else:
+                # формируем группу записей для одинаковых internal_id
                 self.__append_to_team(mapped_record)
         if len(self._teams) < 2:
-            # добавляем первые записи в таблице в область заголовка
+            # добавляем первые записи таблицы в область заголовка
             # (иногда там могут находиться некоторые параметры)
             self.colontitul["head"].append(record)
 
-    # Проверка колонок таблицы на соответствие конфигурации
     def __check_columns(self, names: list, row: int) -> bool:
+        """Проверка колонок таблицы на соответствие конфигурации"""
         is_find = False
         if names:
             last_cols = []
@@ -695,7 +691,6 @@ class ExcelBaseImporter:
                         is_find = True
         return is_find
 
-    # Проверка колонки таблицы
     def __check_column(
         self,
         item_head_column: dict,
@@ -704,6 +699,7 @@ class ExcelBaseImporter:
         cols_exclude: list = [],
         is_last: bool = False,
     ) -> dict:
+        """Проверка колонки таблицы на соответствии конфигурации"""
         is_find = False
         patt = ""
         for p in item_head_column["pattern"]:
@@ -790,15 +786,17 @@ class ExcelBaseImporter:
                         break
         return is_find
 
-    # Проверка на наличие всех обязательных колонок
     def __check_stable_columns(self) -> bool:
+        """Проверка на наличие всех обязательных колонок"""
         return all(
             [x["active"] for x in self.__get_columns_heading() if not x["optional"]]
         )
 
-    # Проверка на наличие 'якоря' (текста, смещенного относительно позиции текущего заголовка)
-    # параметры offset_col, offset_row, offsert_pattern в разделах [col_X]
     def __check_column_offset(self, item: dict, index: int) -> bool:
+        """
+        Проверка на наличие 'якоря' (текста, смещенного относительно позиции текущего заголовка)
+        параметры offset_col, offset_row, offsert_pattern в разделах [col_X]
+        """
         offset = item["offset"]
         if offset and offset["pattern"][0]:
             rows = [i for i in offset["row"]]
@@ -1152,10 +1150,10 @@ class ExcelBaseImporter:
             value = value.lstrip()
         return value
 
-    # данные из колонки по смещению (offset_column_)
     def __get_value_from_offset(
         self, team: dict, record: dict, row_curr: int, col_curr: int
     ) -> Union[str, int, float]:
+        """Получение данных из колонки по смещению (offset_column_)"""
         rows: list = record["offset_row"]
         cols: list = record["offset_column"]
         value = record["value_o"]
@@ -1228,10 +1226,12 @@ class ExcelBaseImporter:
             x = ""
         return x
 
-    # если текущая таблица типа словарь (задается в gisconfig_000_00),
-    # то формируем глобальный словарь значений
-    # для последующих таблиц
     def __build_global_dictionary(self, doc: dict):
+        """
+        если текущая таблица типа словарь (наличие ключей key или __key),
+        то формируем глобальный словарь значений
+        для последующих таблиц
+        """
         param = {}
         for fld, value in doc.items():
             if (fld == "key") or (fld == "__key"):
@@ -2019,8 +2019,6 @@ class ExcelBaseImporter:
         return self._config._check[name]
 
     def __check_title(self, record):
-        if self.is_check_title:
-            return True
         for patt in self._config._check["pattern"]:
             if not patt["is_find"]:
                 patt["is_find"] = any(
@@ -2036,7 +2034,9 @@ class ExcelBaseImporter:
         for row in range(self._config._max_rows_heading[0][0]):
             if row < len(headers):
                 # Проверка данных перед таблицей
-                self.is_check_title = self.__check_title(headers[row])
+                self.is_check_title = self.is_check_title or self.__check_title(
+                    headers[row]
+                )
                 names = self.__get_names(headers[row])
                 self.__check_columns(names, row)
                 if (
