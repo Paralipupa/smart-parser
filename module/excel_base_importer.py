@@ -106,6 +106,9 @@ class ExcelBaseImporter:
         self.__init_config()
         self.__read_config()
         is_find = False
+        file_type = self._config._file_type if self._config._file_type else ".xls"
+        if re.search(file_type, self._parameters["filename"]["value"][0]) is None:
+            return False
         if not self.is_verify(self._parameters["filename"]["value"][0]):
             mess = f'Файл не найден {self._parameters["filename"]["value"][0]}'
             self.add_warning(mess)

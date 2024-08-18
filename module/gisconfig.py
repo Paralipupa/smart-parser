@@ -55,6 +55,7 @@ class GisConfig:
         self._is_init = True
 
     def set_main(self):
+        self._file_type = self.read_config("main", "file_type")
         self._row_start = self.read_config("main", "row_start", isNumeric=True)  #
         self._col_start = self.read_config("main", "col_start", isNumeric=True)  #
         self._page_name = self.read_config("main", "page_name")

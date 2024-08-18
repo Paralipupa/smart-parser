@@ -4,6 +4,7 @@
 name:ТСЖ Шустовъ парк
 
 filename:gisconfig_002_00shustov_park.ini
+filetype:.xls|.csv
 
 check_row:0<20
 check_pattern:Шустовъ парк

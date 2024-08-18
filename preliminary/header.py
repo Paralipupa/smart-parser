@@ -27,6 +27,8 @@ def header(lines: list, path: str) -> str:
         file.write("\n")
 
         file.write("[main]\n")
+        if lines['param'].get('filetype'):
+            file.write(f"file_type={lines['param'].get('filetype')[0]}\n")
         file.write(
             f"path_output={lines['param'].get('main_path_output',['output'])[0]}\n"
         )
