@@ -51,12 +51,13 @@ required_pp:bill_value,payment_value,credit,saldo
 0:Начисление(пени)	Населенный пункт;Улица;Дом@address	Кв.@room_number
 0:Кол-вопрож.;Кол-во прож.@living_person_number
 0:Общаяплощадь;Общая площадь@total_square::^[0-9]+(?:[.,][0-9]{1,2})?
-0:Всего начислено;Начислено за период;Начисленов указ.периоде(руб.);Сумма перерасчета@accounting_period_total{offset{4}}
+0:Всего начислено;Начислено за период;Начисленов указ.периоде(руб.);Сумма перерасчета@accounting_period_total{offset{5}}
 0:Лицевой счет;ЛС ИКУ/ поставщика;ЛС ИКУ/поставщика@account_number_accounts@account_identifier
 0:ОбъёмУслуги;Объем услуги@rr1_puv{type{float}}{func{round6}}
 0:Тариф@tariff::^[0-9]+[.,][0-9]{1,2}
 0:Сумма перерасчета@recalculation
 0:Дата@date_puv{func{period_last}}
+
 
 1:^Услуга;^Тип услуги@service@name_pp_service@kind
 
